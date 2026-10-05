@@ -1,4 +1,6 @@
 import type { AuthClient, IRegisterResult } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useFonderieSubClient, useUiError, useUiT } from '@fonderie/react';
 import { useRegister } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -17,14 +19,21 @@ export interface IRegisterScreenProps {
 	client?: AuthClient;
 	onRegisterSuccess?: (result: IRegisterResult) => void;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function RegisterScreen({
 	client,
 	onRegisterSuccess,
 	onNavigateToLogin,
+	locale,
 }: IRegisterScreenProps) {
 	const { register, isLoading, error } = useRegister(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	// The new account's language: this screen's, else the client's UI language.
+	const authClient = useFonderieSubClient(client, (c) => c.auth, 'RegisterScreen');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [firstName, setFirstName] = useState('');
@@ -34,15 +43,22 @@ export function RegisterScreen({
 	const handleSubmit = async () => {
 		setValidationError(null);
 		if (!EMAIL_PATTERN.test(email)) {
-			setValidationError('Enter a valid email address.');
+			setValidationError(t('auth.register.invalidEmail'));
 			return;
 		}
 		if (password.length < MIN_PASSWORD_LENGTH) {
-			setValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+			setValidationError(t('auth.register.passwordTooShort', { min: MIN_PASSWORD_LENGTH }));
 			return;
 		}
 		try {
-			const result = await register({ email, password, firstName, lastName });
+			const signUpLocale = locale ?? uiLocaleFor(authClient)?.get();
+			const result = await register({
+				email,
+				password,
+				firstName,
+				lastName,
+				...(signUpLocale ? { locale: signUpLocale } : {}),
+			});
 			onRegisterSuccess?.(result);
 		} catch {
 			// Surfaced via `error` from useRegister.
@@ -51,47 +67,47 @@ export function RegisterScreen({
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Create Account</Text>
+			<Text style={styles.title}>{t('auth.register.title')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="First name"
+				placeholder={t('auth.fields.firstName')}
 				value={firstName}
 				onChangeText={setFirstName}
-				accessibilityLabel="First name input"
+				accessibilityLabel={t('auth.register.a11y.firstName')}
 			/>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Last name"
+				placeholder={t('auth.fields.lastName')}
 				value={lastName}
 				onChangeText={setLastName}
-				accessibilityLabel="Last name input"
+				accessibilityLabel={t('auth.register.a11y.lastName')}
 			/>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChangeText={setEmail}
 				autoCapitalize="none"
 				keyboardType="email-address"
-				accessibilityLabel="Email input"
+				accessibilityLabel={t('auth.register.a11y.email')}
 			/>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Password"
+				placeholder={t('auth.fields.password')}
 				value={password}
 				onChangeText={setPassword}
 				secureTextEntry
-				accessibilityLabel="Password input"
-				accessibilityHint={`At least ${MIN_PASSWORD_LENGTH} characters`}
+				accessibilityLabel={t('auth.register.a11y.password')}
+				accessibilityHint={t('auth.register.passwordRule', { min: MIN_PASSWORD_LENGTH })}
 			/>
 
 			{(validationError || error) && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{validationError ?? error?.explanation}
+					{validationError ?? errorText(error)}
 				</Text>
 			)}
 
@@ -99,19 +115,20 @@ export function RegisterScreen({
 				onPress={handleSubmit}
 				disabled={isLoading}
 				style={styles.button}
-				accessibilityLabel="Create account button"
+				accessibilityLabel={t('auth.register.a11y.submit')}
 				accessibilityRole="button"
 			>
 				{isLoading ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Create Account</Text>
+					<Text style={styles.buttonText}>{t('auth.register.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
 			<TouchableOpacity onPress={onNavigateToLogin}>
 				<Text style={styles.link}>
-					Already have an account? <Text style={styles.linkBold}>Sign in</Text>
+					{t('auth.register.haveAccount')}{' '}
+					<Text style={styles.linkBold}>{t('auth.register.signIn')}</Text>
 				</Text>
 			</TouchableOpacity>
 		</View>

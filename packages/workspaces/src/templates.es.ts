@@ -6,14 +6,20 @@ import { MESSAGE_KEYS, type WorkspacesMessageKey } from './config';
 // the English (./templates.ts); the coverage test checks they match.
 export const ES_TEMPLATES = {
 	[MESSAGE_KEYS.workspaceInvitation]: {
-		subject: 'Te invitaron a un espacio de trabajo',
+		subject: 'Te invitaron a unirte a {{workspaceName}}',
 		html: `<h1>Te invitaron</h1>
-<p>Te invitaron a unirte a un espacio de trabajo. Usa este código para aceptar la invitación:</p>
+<p>Te invitaron a unirte a <strong>{{workspaceName}}</strong>{{#inviterName}} de parte de {{inviterName}}{{/inviterName}}.</p>
+{{#acceptUrl}}<p><a href="{{acceptUrl}}" target="_blank" rel="noopener noreferrer">Aceptar la invitación</a></p>{{/acceptUrl}}
+<p>Tu código de invitación:</p>
 <p><span class="pin-code">{{pin}}</span></p>
 <p class="muted">Introduce este código en la pantalla de invitación para unirte al equipo.</p>`,
 		text: `Te invitaron
 
-Te invitaron a unirte a un espacio de trabajo. Usa este código para aceptar la invitación: {{pin}}
+Te invitaron a unirte a {{workspaceName}}{{#inviterName}} de parte de {{inviterName}}{{/inviterName}}.
+{{#acceptUrl}}
+Aceptar la invitación: {{acceptUrl}}
+{{/acceptUrl}}
+Tu código de invitación: {{pin}}
 
 Introduce este código en la pantalla de invitación para unirte al equipo.`,
 	},

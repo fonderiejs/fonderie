@@ -1,8 +1,7 @@
-import type { IInvitationDTO, IInviteEntry, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IInvitationDTO, IInviteEntry, WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 export interface IUseInvitationsReturn {
 	invitations: Ref<IInvitationDTO[]>;
@@ -11,56 +10,33 @@ export interface IUseInvitationsReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
 	cancelInvitation: (inviteId: string) => Promise<void>;
+	/** Send again with a new link and PIN (the old ones stop working) and a fresh expiry. */
+	resendInvitation: (inviteId: string) => Promise<void>;
 }
 
+const NONE: IInvitationDTO[] = [];
+
+// The selected workspace's invitations — re-read on a workspace switch.
 export function useInvitations(client?: WorkspacesClient): IUseInvitationsReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useInvitations');
-	const invitations = ref<IInvitationDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.listInvitations({ bust: opts?.force });
-			invitations.value = result.invitations;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function invite(entries: IInviteEntry | IInviteEntry[]) {
-		error.value = null;
-		try {
-			await workspaces.invite(entries);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function cancelInvitation(inviteId: string) {
-		error.value = null;
-		try {
-			await workspaces.cancelInvitation(inviteId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	return { invitations, isLoading, error, refresh, invite, cancelInvitation };
+	const q = useScopedQuery(workspaces, '/workspaces/invitations', async (bust) => (await workspaces.listInvitations({ bust })).result.invitations);
+	const w = useWrite(() => q.refresh());
+	return {
+		invitations: computed(() => q.data.value ?? NONE),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		invite: (entries) =>
+			w.run(async () => {
+				await workspaces.invite(entries);
+			}),
+		cancelInvitation: (inviteId) =>
+			w.run(async () => {
+				await workspaces.cancelInvitation(inviteId);
+			}),
+		resendInvitation: (inviteId) =>
+			w.run(async () => {
+				await workspaces.resendInvitation(inviteId);
+			}),
+	};
 }

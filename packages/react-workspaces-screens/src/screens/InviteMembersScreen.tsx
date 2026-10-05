@@ -1,4 +1,5 @@
-import type { WorkspacesClient } from '@fonderie/client';
+import type { UiMessageKey, WorkspacesClient } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useInvitations } from '@fonderie/react-workspaces';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -6,10 +7,24 @@ import { useState } from 'react';
 export interface IInviteMembersScreenProps {
 	client?: WorkspacesClient;
 	onNavigateToMembers?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMembersScreenProps) {
+export function InviteMembersScreen({
+	client,
+	onNavigateToMembers,
+	locale,
+}: IInviteMembersScreenProps) {
 	const { invitations, isLoading, error, invite, cancelInvitation } = useInvitations(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	// A status Fonderie does not know shows as sent by the server.
+	const statusLabel = (status: string) => {
+		const key = `workspaces.invitationStatus.${status}` as UiMessageKey;
+		const text = t(key);
+		return text === key ? status : text;
+	};
 	const [email, setEmail] = useState('');
 	const [isInviting, setIsInviting] = useState(false);
 
@@ -28,45 +43,47 @@ export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMemb
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Invite members</h1>
+			<h1 style={styles.title}>{t('workspaces.invite.title')}</h1>
 
 			<form style={styles.form} onSubmit={handleSubmit}>
 				<input
 					style={styles.input}
 					type="email"
-					placeholder="Email address"
+					placeholder={t('workspaces.invite.email')}
+					aria-label={t('workspaces.invite.email')}
 					value={email}
 					onChange={(event) => setEmail(event.target.value)}
 					required
 				/>
 				<button type="submit" disabled={isInviting} style={styles.button}>
-					{isInviting ? 'Sending…' : 'Send invite'}
+					{isInviting ? t('workspaces.invite.submitting') : t('workspaces.invite.submit')}
 				</button>
 			</form>
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 
-			<h2 style={styles.subtitle}>Pending invitations</h2>
+			<h2 style={styles.subtitle}>{t('workspaces.invite.pending')}</h2>
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('workspaces.invite.loading')}</p>
 			) : (
 				<ul style={styles.list}>
 					{invitations.map((inv) => (
 						<li key={inv.id} style={styles.row}>
 							<div>
 								<p style={styles.email}>{inv.email}</p>
-								<p style={styles.meta}>{inv.status}</p>
+								<p style={styles.meta}>{statusLabel(inv.status)}</p>
 							</div>
 							<button
 								type="button"
 								onClick={() => cancelInvitation(inv.id)}
+								aria-label={t('workspaces.invite.a11y.cancel', { email: inv.email })}
 								style={styles.cancelButton}
 							>
-								Cancel
+								{t('workspaces.invite.cancel')}
 							</button>
 						</li>
 					))}
@@ -74,7 +91,7 @@ export function InviteMembersScreen({ client, onNavigateToMembers }: IInviteMemb
 			)}
 
 			<button type="button" onClick={onNavigateToMembers} style={styles.link}>
-				Back to team
+				{t('workspaces.invite.backToTeam')}
 			</button>
 		</div>
 	);

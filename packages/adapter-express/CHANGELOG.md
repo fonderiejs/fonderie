@@ -1,5 +1,44 @@
 # @fonderie/adapter-express
 
+## 5.4.9
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+
+## 5.4.8
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
+## 5.4.7
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
+## 5.4.6
+
+### Patch Changes
+
+- 93a26ec: **A request counts once against a plan's rate limit, not twice.** For a request that falls through to a fonderie-owned route (`/auth/*`, `/billing/*`, `/workspaces/*`, …), an adapter runs the global middleware in `bridge()` and again inside `handle()`. Billing's windowed counters (`'api-calls': { limit, window: '1d' }`) were incremented on both passes, so a plan selling 1,000 calls a day blocked at about 500 on those routes. App-owned routes counted once.
+  
+  Adapters now hand `handle()` the first pass's meta as `ctx.meta.bridged` (documented on `IFonderieContextMeta`), and billing reuses its context from there when it is for the same subscriber: no second increment, no second grant or notice. Any global middleware with a per-request side effect can do the same. `withMetrics` and a user-added `.use()` rate limiter still count twice (stricter, never a bypass).
+  
+  **Limit notices for user subscribers are delivered.** A `limit-warning` / `limit-reached` notice for a user subscriber was left on `ctx.meta.messages`, which nothing sends. With `config.resolveRecipient` and an event bus wired, every subscriber's notice now goes out on the bus, as workspace notices already did. Without them, notices stay on `ctx.meta.messages` for the app to send.
+
+## 5.4.5
+
+### Patch Changes
+
+- 87f6e1d: **Billing webhooks refuse unverifiable deliveries on every host.** Node-server hosts (local, Docker, Cloud Run) replace `globalThis.Response` after `@fonderie/core` has loaded, so the webhook routes' `instanceof Response` check missed core's own refusal. A delivery with no webhook secret configured, no signature, or an invalid signature was then treated as a verified event and answered `200 {"received":true}` instead of 500/400. The signature check now returns a tagged result that no host can confuse; the same request served in-process was never affected.
+  
+  The adapters had the same hazard for pipeline short-circuits (a parser 413, a guard's refusal): they now recognise a Response by its shape, not its global identity, so the refusal is sent instead of the request carrying on.
+
 ## 5.4.4
 
 ### Patch Changes

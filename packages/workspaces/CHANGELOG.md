@@ -1,5 +1,154 @@
 # @fonderie/workspaces
 
+## 6.7.0
+
+### Minor Changes
+
+- 8d1aa7d: Accepting an invitation now says WHY it failed, and a link only joins the
+  account it was sent to.
+  
+  - Every refusal was `400 INVITATION_FAILED` with an English sentence, so apps
+    told "expired" from "already used" by parsing text. Each now has its own
+    reason: `INVITATION_NOT_FOUND` (404 — also a link replaced by a resend),
+    `INVITATION_EXPIRED` (410), `INVITATION_REVOKED` (410), `INVITATION_ALREADY_USED`
+    (409), `INVITATION_ROLE_UNAVAILABLE` (409), `INVITATION_EMAIL_MISMATCH` (403),
+    and `NO_EMAIL_ON_ACCOUNT` for a PIN on an account without email. Unexpected
+    errors are 500s instead of a misleading 400.
+  - **Behaviour change:** an invitation link accepted by a signed-in account whose
+    email is not the invited one is refused (`INVITATION_EMAIL_MISMATCH`, with
+    `details.email` a masked hint such as `a***@acme.example`), and the link stays
+    usable by the invitee. Accounts with no email (phone sign-up) still accept with
+    the link. Configure with `invitationAccountMatch`: `'email-when-present'`
+    (default), `'email'` (also refuse accounts without email) or `'any'` (previous
+    behaviour).
+  - **'+tag' addresses are the same person.** Accounts are stored under
+    `normalizeEmail` (lowercase, `+tag` dropped), but invitations compared the
+    typed address by case only — so an invite to `ana+crew@acme.example` could
+    never be accepted by PIN by Ana's account `ana@acme.example` (and would not
+    have matched the new link check either), and inviting an alias of an existing
+    member counted a new seat. Invitations now compare with the same rule
+    (pinned to auth's `normalizeEmail` by a test). The email still goes to the
+    address as typed.
+  - `@fonderie/client` translates the new reasons in en, fr, es, zh-Hans and zh-Hant.
+
+## 6.6.1
+
+### Patch Changes
+
+- 1867604: Two businesses with the same name can both create a workspace. The slug was the
+  lower-cased name with no de-duplication, so the second "Acme Plumbing" — and the
+  second business whose name has no Latin letters (水管公司 slugs to an empty
+  string) — hit the unique slug index and got a 500. A taken slug now gets a short
+  random suffix (`acme-plumbing-3f9a1c`), and an empty one falls back to
+  `workspace`.
+
+## 6.6.0
+
+### Minor Changes
+
+- 4aca9ac: Every built-in email in Chinese, Simplified and Traditional, and amounts written the way the reader writes them.
+  
+  - **Chinese in both scripts.** All 24 built-in emails (auth 13, billing 10, workspaces 1) ship in `zh-Hans` (Simplified) and `zh-Hant` (Traditional), alongside English, French and Spanish. The Traditional copy is written for Traditional readers (帳戶, 電子郵件, 儲值), not converted character by character.
+  - **The script follows the reader.** `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified, derived from CLDR via `Intl.Locale#maximize` with no hand-kept region list. New in core: `localeScriptTag()` and `localeCopyKeys()`. `localeChain()` now puts the script right after the tag (`zh-HK` → `zh-Hant`), so an app's saved `zh-Hant` template also reaches Hong Kong and Taiwan readers, and never Simplified ones. This applies only to languages written in more than one script.
+  - **Amounts in the reader's language.** Billing formatted every amount as en-US before anyone knew who would read it, so a Québec customer's French receipt said `CA$19.99`. Notices now also carry the raw amount under core's reserved `$format` data key, and courier formats it in the resolved language: `19,99 $` for fr-CA, `$19.99` for en-CA. The plain string is still sent too, so an older courier shows it unchanged. `$format` accepts `{ money: { amount, currency, precision } }` and `{ date, style? }`.
+  - `SHIPPED_TEMPLATE_LANGUAGES` is now `['es', 'fr', 'zh-Hans', 'zh-Hant']`, so the parity checks and `check:template-coverage` require Chinese in every notifying module. The gate's pattern was lower-case only and would have skipped `zh-Hans` while still passing.
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+  - @fonderie/rate-limit@4.0.34
+
+## 6.5.0
+
+### Minor Changes
+
+- 7ec4d32: Every email is written in its recipient's language, including the ones sent without a signed-in user.
+  
+  Billing receipts and notices, and workspace invitations, passed no language, so a French- or Chinese-speaking customer got them in the system default (English). Courier now decides in this order:
+  
+  1. the `locale` the sender passed (auth already passes the signed-in user's);
+  2. **the language of the account the recipient's email or phone belongs to** (`@fonderie/auth`'s users, same database);
+  3. the new `fallbackLocale` on the message: the business's language, for someone without an account;
+  4. the system default.
+  
+  - `ICourierMessage.fallbackLocale` (core).
+  - Courier: the account lookup is on by default; `recipientLocaleLookup: false` turns it off (e.g. when accounts live in another database). The message log records the language actually used.
+  - Workspaces: an invitation carries the workspace's language as its fallback, so a Quebec business invites in French. An invitee who already has an account still gets their own language.
+  - Billing: `IBillingRecipient` takes `locale` and `fallbackLocale`, so an app's `resolveRecipient` can say which language to use. Without either, courier uses the recipient's account.
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+  - @fonderie/rate-limit@4.0.33
+
+## 6.4.0
+
+### Minor Changes
+
+- 3f521bc: A business profile fit for Canada and the US, and customers that are safe to delete and speak their own language.
+  
+  **Country rules as data: `@fonderie/core/region`.** One registry decides what a valid province, postal code or tax number is, per country. Fonderie ships Canada (English and French names: Québec, Colombie-Britannique…; `A1A 1A1`; GST/HST, QST, PST, BN) and the United States (states and territories; ZIP and ZIP+4; EIN, state sales-tax permits). An app adds any other country with `regions.register({ code: 'MX', … })`. A country without a pack is stored as given, never judged by another country's rules.
+  
+  **Business profile (`PUT /workspaces`)**: `legalName`, `email`, `website`, `logoUrl`, `taxRegistrations` (`{ country, type, number, region?, label? }`, checked and normalized against the country, e.g. `123 456 789 rt 0001` → `123456789RT0001`), and `languages`, the languages the business serves customers in (`['en-CA', 'fr-CA', 'zh-Hant']`). The address is normalized (`Canada`/`Québec`/`h2x1y4` → `CA`/`QC`/`H2X 1Y4`). `businessType` is now one of `SOLE_PROP`, `PARTNERSHIP`, `LLC`, `INC`, `NONPROFIT`, `COOPERATIVE`. Settings check `locale` (BCP 47, canonical), `currency` (ISO 4217) and `timezone` (IANA). Every refusal is a 422 naming the field. Migration `workspaces/005`.
+  
+  **Customers**
+  - **Language**: `locale` is validated and canonical, and defaults to the business's own (workspace settings) instead of `en-US`. `displayName` writes the name in the customer's language's order: `王小明` for Chinese, Japanese and Korean, `Marie Tremblay` otherwise, the company name for a business.
+  - **Archive** (`POST /customers/:id/archive|unarchive`, `archiveCustomer`): hidden from lists and pickers, still readable by id for the documents that name them. Lists exclude archived customers unless `archived: true | 'all'`. Migration `customers/014`.
+  - **Safe delete**: one transaction. A customer still referenced (a database foreign key, or the new `isInUse(customerId, workspaceId)` config hook) is refused with `409 CUSTOMER_IN_USE` and loses nothing. Before, its emails, phones and notes were deleted first and the customer then survived without them.
+  - **Search** also matches any email, and any phone by digits (`514 555` finds `+1 (514) 555-0100`). The count always describes the same rows.
+  - **Primaries can't be lost**: setting a primary email, phone, address or relationship with an id that isn't this customer's now answers 404 and keeps the current primary. Before, it cleared every primary.
+  - **Relationships**: the expanded relationship now has `relatedId` (the related customer) and `relationshipId`. `id`/`customerId` stay as deprecated aliases; `id` was the relationship's id, which apps read as the customer's.
+  - Addresses use the same country rules.
+  
+  **Hooks**
+  - `useCustomer()` gains `deleteCustomer`/`archiveCustomer`/`unarchiveCustomer`; `useCustomers()` gains `archiveCustomer`/`unarchiveCustomer`.
+  - Section hooks take `{ read: false }` for their actions only, so a detail screen makes one request instead of one per section.
+  - `@fonderie/react`: refreshing a disabled query no longer fetches it. A write made through a hook told not to read, or still waiting for an id, used to request that hook's list anyway.
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+  - @fonderie/rate-limit@4.0.32
+
+## 6.3.0
+
+### Minor Changes
+
+- 64aefa4: Permissions work end to end, from one declared list to the button a member sees.
+  
+  - **One catalog**: `new PermissionsModule(store, { catalog: [{ key: 'jobs' }, { key: 'reports', operations: ['read'] }] })`. A role editor reads it (`GET /workspaces/permissions/catalog`, `usePermissionCatalog`). Saving a role refuses a key outside it (`422 UNKNOWN_PERMISSION`) or an operation the resource does not have (`422 UNSUPPORTED_OPERATION`), so no switch can promise a restriction the server never checks.
+  - **Rights for the built-in roles, from config**: `systemGrants: { GUEST: { jobs: ['read'] } }`. The system roles are shared by every workspace, so their rights are read from config at check time: every workspace, existing ones included, has them at once, with no seeding or backfill. A workspace's own role named `GUEST` gets none of them. A `systemGrants` key missing from the catalog stops the app at boot.
+  - **What may I do here?** `GET /workspaces/current/permissions` returns `isOwner`, `isManager`, `isSuper` and per-resource rights (the union across all the member's roles). `usePermissions()` / `useCan(op, resource)` in React, React Native and Vue answer **no until the server has answered**, and re-read on a workspace switch and after any workspace write (a role change).
+  - **Customers obey permissions**: `new CustomersModule(store, { permission: 'customers' })`. Reads need `read`; creating a customer `create`; deleting one `delete`; every other write (emails, notes, tags, blacklist…) `update`. Unset: unchanged.
+  - **Deleting a role** now also removes its assignments and grants (before, they were left pointing at nothing). Anyone for whom it was the only role stays on the team with the default role, and the response (and `useRoles().removeRole`) says `{ membersAffected, movedToDefaultRole }`.
+  - Hooks taking an id (`useRole`, `useRolePermissions`, `useMemberRoles`, `useWorkspace`) wait instead of requesting with an empty one.
+
+## 6.2.0
+
+### Minor Changes
+
+- cb678f7: Members and invitations work end to end.
+  
+  - **Invite without picking a role**: the person joins with the default role; the default role named explicitly is accepted, a manager role is refused.
+  - **Accept by link**: set `invitationUrl` (e.g. `https://app.example.com/invite/{token}`) and the invitation email carries the link, the workspace name and who invited, with the PIN as fallback. `client.workspaces.acceptInvitation({ token } | { pin })`; a bare string is still a PIN. The prebuilt accept screens sent the link's token as a PIN, so they could never succeed; they now send it as a token.
+  - **The invitation email** (en/fr/es) shows the link when one is configured, the workspace name and who invited, and always the PIN. Courier migration `006` upgrades the seeded `workspace-invitation` row to the same copy, but only if nobody edited it; the change is recorded as a revision the console can roll back. Without it, existing installs would keep sending the PIN-only email.
+  - **A link joins one person**: accepting is single-use, even when two people race for one forwarded link.
+  - **One pending invitation per address**, whatever the case: re-inviting refreshes it instead of stacking a duplicate (migration `004` adds the unique index and cancels existing duplicates). `resendInvitation` sends a new link and PIN; invitations past expiry are listed with `isExpired`.
+  - **Seats** count each person once, plus pending invitations, never the owner. Adding a role never makes someone a member.
+  - **Members list**: one row per person, with `roles[]`, `isOwner` and `isManager`.
+  - **Manager path**: the owner can make a member a manager (`setManager` / `unsetManager`), hand over the workspace (`transferOwnership`; the previous owner stays as a manager), and any member can `leaveWorkspace` (the owner must hand over first).
+  - **`GET /workspaces/current`** and `useCurrentWorkspace()` (React / React Native / Vue): the selected workspace from the shared cache, so an app needs no store copy.
+  - Updating one workspace setting keeps the others (it replaced the whole settings object).
+
+## 6.1.8
+
+### Patch Changes
+
+- 87f6e1d: **`workspace.plan` is marked deprecated.** The field is set to `'free'` when a workspace is created and nothing ever updates it — not a subscription, an upgrade or a cancellation — so an app reading it shows "free" for a paying workspace. It is now documented as such; read the workspace's subscription from `@fonderie/billing` (`GET /billing/subscription` with `X-Workspace-ID`, `useSubscription()` in the frontend packages). No behaviour change.
+
 ## 6.1.7
 
 ### Patch Changes

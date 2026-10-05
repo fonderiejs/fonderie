@@ -1,12 +1,13 @@
 import type {
+	FonderieApiError,
 	ICreateRoleInput,
+	IRoleDeleteResult,
 	IRoleDTO,
 	IUpdateRoleInput,
 	WorkspacesClient,
 } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseRolesReturn {
 	roles: IRoleDTO[];
@@ -15,86 +16,28 @@ export interface IUseRolesReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createRole: (input: ICreateRoleInput) => Promise<IRoleDTO>;
 	updateRole: (roleId: string, input: IUpdateRoleInput) => Promise<IRoleDTO>;
-	removeRole: (roleId: string) => Promise<void>;
+	/** Resolves with how many members held it, and how many moved to the default role. */
+	removeRole: (roleId: string) => Promise<IRoleDeleteResult>;
 }
 
+const NONE: IRoleDTO[] = [];
+
+// The selected workspace's roles — re-read on a workspace switch.
 export function useRoles(client?: WorkspacesClient): IUseRolesReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useRoles');
-	const [roles, setRoles] = useState<IRoleDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.listRoles({ bust: opts?.force });
-				setRoles(result.roles);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces],
-	);
-
+	const q = useScopedQuery(workspaces, '/workspaces/roles', async (bust) => (await workspaces.listRoles({ bust })).result.roles);
+	const w = useWrite(q.refresh);
 	const createRole = useCallback(
-		async (input: ICreateRoleInput) => {
-			setError(null);
-			try {
-				const { result } = await workspaces.createRole(input);
-				await refresh();
-				return result.role;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, refresh],
+		(input: ICreateRoleInput) => w.run(async () => (await workspaces.createRole(input)).result.role),
+		[workspaces, w.run],
 	);
-
 	const updateRole = useCallback(
-		async (roleId: string, input: IUpdateRoleInput) => {
-			setError(null);
-			try {
-				const { result } = await workspaces.updateRole(roleId, input);
-				await refresh();
-				return result.role;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, refresh],
+		(roleId: string, input: IUpdateRoleInput) => w.run(async () => (await workspaces.updateRole(roleId, input)).result.role),
+		[workspaces, w.run],
 	);
-
 	const removeRole = useCallback(
-		async (roleId: string) => {
-			setError(null);
-			try {
-				await workspaces.removeRole(roleId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, refresh],
+		(roleId: string) => w.run(async () => (await workspaces.removeRole(roleId)).result),
+		[workspaces, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { roles, isLoading, error, refresh, createRole, updateRole, removeRole };
+	return { roles: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, createRole, updateRole, removeRole };
 }

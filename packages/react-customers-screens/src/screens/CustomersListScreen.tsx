@@ -1,4 +1,5 @@
 import type { CustomersClient, ICustomerDTO } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useCustomers } from '@fonderie/react-customers';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -6,9 +7,17 @@ import { useState } from 'react';
 export interface ICustomersListScreenProps {
 	client?: CustomersClient;
 	onSelectCustomer?: (customerId: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-export function CustomersListScreen({ client, onSelectCustomer }: ICustomersListScreenProps) {
+export function CustomersListScreen({
+	client,
+	onSelectCustomer,
+	locale,
+}: ICustomersListScreenProps) {
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [search, setSearch] = useState('');
 	const { customers, isLoading, error, createCustomer, refresh } = useCustomers(
 		client,
@@ -33,16 +42,16 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 		}
 	};
 
-	const displayName = (c: ICustomerDTO) =>
-		c.companyName || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.id;
+	// The server writes the name in the order the customer's language uses.
+	const displayName = (c: ICustomerDTO) => c.displayName || c.id;
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Customers</h1>
+			<h1 style={styles.title}>{t('customers.list.title')}</h1>
 
 			<input
 				style={styles.searchInput}
-				placeholder="Search customers…"
+				placeholder={t('customers.list.searchPlaceholder')}
 				value={search}
 				onChange={(e) => setSearch(e.target.value)}
 				onKeyDown={(e) => e.key === 'Enter' && refresh()}
@@ -51,35 +60,35 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 			<div style={styles.form}>
 				<input
 					style={styles.input}
-					placeholder="First name"
+					placeholder={t('customers.fields.firstName')}
 					value={firstName}
 					onChange={(e) => setFirstName(e.target.value)}
 				/>
 				<input
 					style={styles.input}
-					placeholder="Last name"
+					placeholder={t('customers.fields.lastName')}
 					value={lastName}
 					onChange={(e) => setLastName(e.target.value)}
 				/>
 				<input
 					style={styles.input}
-					placeholder="Company (optional)"
+					placeholder={t('customers.fields.companyOptional')}
 					value={companyName}
 					onChange={(e) => setCompanyName(e.target.value)}
 				/>
 				<button type="button" onClick={handleCreate} style={styles.createButton}>
-					Add customer
+					{t('customers.list.create')}
 				</button>
 			</div>
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 
 			{isLoading ? (
-				<p style={styles.status}>Loading…</p>
+				<p style={styles.status}>{t('customers.loading')}</p>
 			) : (
 				<ul style={styles.list}>
 					{customers.map((customer) => (
@@ -90,7 +99,9 @@ export function CustomersListScreen({ client, onSelectCustomer }: ICustomersList
 								style={styles.rowButton}
 							>
 								<span style={styles.name}>{displayName(customer)}</span>
-								{customer.blacklisted.status && <span style={styles.blacklisted}>Blacklisted</span>}
+								{customer.blacklisted.status && (
+									<span style={styles.blacklisted}>{t('customers.list.blacklisted')}</span>
+								)}
 							</button>
 						</li>
 					))}

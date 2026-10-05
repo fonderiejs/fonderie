@@ -70,6 +70,9 @@ interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     routes?: Partial<Record<AuthRouteId, AuthRouteOverride>>;
     legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
     dataExportContributors?: IDataExportContributor[];
+    accountDeletion?: {
+        gracePeriodDays?: number;
+    };
 }
 
 interface IAuthSecrets {
@@ -78,8 +81,9 @@ interface IAuthSecrets {
     mfaSecretKey?: string;
     google?: {
         clientId: string;
-        clientSecret: string;
-        redirectUri: string;
+        clientSecret?: string;
+        redirectUri?: string;
+        nativeClientIds?: string[];
     };
     apple?: {
         clientId: string;
@@ -198,7 +202,7 @@ type LocationResolver = (req: ILocationRequest) => IRequestLocation | null | und
 
 function validate(schema: IRequestSchema): Middleware
 
-namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, forgotPasswordSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, resetPasswordSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 

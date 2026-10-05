@@ -1,4 +1,5 @@
 import type { CustomersClient } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import {
 	useCustomer,
 	useCustomerEmails,
@@ -13,13 +14,18 @@ export interface ICustomerDetailScreenProps {
 	client?: CustomersClient;
 	customerId: string;
 	onNavigateToList?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function CustomerDetailScreen({
 	client,
 	customerId,
 	onNavigateToList,
+	locale,
 }: ICustomerDetailScreenProps) {
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { customer, isLoading, error, updateCustomer } = useCustomer(client, customerId, 1);
 	const { emails, addEmail, setPrimaryEmail, removeEmail } = useCustomerEmails(client, customerId);
 	const { phones, addPhone, setPrimaryPhone, removePhone } = useCustomerPhones(client, customerId);
@@ -90,48 +96,49 @@ export function CustomerDetailScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading…</p>;
+	if (isLoading) return <p style={styles.status}>{t('customers.loading')}</p>;
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Customer</h1>
+			<h1 style={styles.title}>{t('customers.detail.title')}</h1>
 
 			<form style={styles.form} onSubmit={handleSaveProfile}>
 				<input
 					style={styles.input}
-					placeholder="First name"
+					placeholder={t('customers.fields.firstName')}
 					value={firstName}
 					onChange={(e) => setFirstName(e.target.value)}
 				/>
 				<input
 					style={styles.input}
-					placeholder="Last name"
+					placeholder={t('customers.fields.lastName')}
 					value={lastName}
 					onChange={(e) => setLastName(e.target.value)}
 				/>
 				<input
 					style={styles.input}
-					placeholder="Company"
+					placeholder={t('customers.fields.company')}
 					value={companyName}
 					onChange={(e) => setCompanyName(e.target.value)}
 				/>
 				<button type="submit" style={styles.button}>
-					Save
+					{t('customers.detail.save')}
 				</button>
 			</form>
 
-			<h2 style={styles.subtitle}>Emails</h2>
+			<h2 style={styles.subtitle}>{t('customers.detail.emails')}</h2>
 			<ul style={styles.list}>
 				{emails.map((email) => (
 					<li key={email.id} style={styles.row}>
 						<span>
-							{email.email} {email.isPrimary && <em style={styles.primary}>primary</em>}
+							{email.email}{' '}
+							{email.isPrimary && <em style={styles.primary}>{t('customers.detail.primary')}</em>}
 						</span>
 						<span style={styles.rowActions}>
 							{!email.isPrimary && (
@@ -140,7 +147,7 @@ export function CustomerDetailScreen({
 									onClick={() => setPrimaryEmail(email.id)}
 									style={styles.smallButton}
 								>
-									Make primary
+									{t('customers.detail.makePrimary')}
 								</button>
 							)}
 							<button
@@ -148,7 +155,7 @@ export function CustomerDetailScreen({
 								onClick={() => removeEmail(email.id)}
 								style={styles.smallButton}
 							>
-								Remove
+								{t('customers.detail.remove')}
 							</button>
 						</span>
 					</li>
@@ -157,21 +164,22 @@ export function CustomerDetailScreen({
 			<div style={styles.inlineForm}>
 				<input
 					style={styles.input}
-					placeholder="new@email.com"
+					placeholder={t('customers.detail.emailPlaceholder')}
 					value={newEmail}
 					onChange={(e) => setNewEmail(e.target.value)}
 				/>
 				<button type="button" onClick={handleAddEmail} style={styles.smallButton}>
-					Add
+					{t('customers.detail.add')}
 				</button>
 			</div>
 
-			<h2 style={styles.subtitle}>Phones</h2>
+			<h2 style={styles.subtitle}>{t('customers.detail.phones')}</h2>
 			<ul style={styles.list}>
 				{phones.map((phone) => (
 					<li key={phone.id} style={styles.row}>
 						<span>
-							{phone.phone} {phone.isPrimary && <em style={styles.primary}>primary</em>}
+							{phone.phone}{' '}
+							{phone.isPrimary && <em style={styles.primary}>{t('customers.detail.primary')}</em>}
 						</span>
 						<span style={styles.rowActions}>
 							{!phone.isPrimary && (
@@ -180,7 +188,7 @@ export function CustomerDetailScreen({
 									onClick={() => setPrimaryPhone(phone.id)}
 									style={styles.smallButton}
 								>
-									Make primary
+									{t('customers.detail.makePrimary')}
 								</button>
 							)}
 							<button
@@ -188,7 +196,7 @@ export function CustomerDetailScreen({
 								onClick={() => removePhone(phone.id)}
 								style={styles.smallButton}
 							>
-								Remove
+								{t('customers.detail.remove')}
 							</button>
 						</span>
 					</li>
@@ -197,21 +205,26 @@ export function CustomerDetailScreen({
 			<div style={styles.inlineForm}>
 				<input
 					style={styles.input}
-					placeholder="+1 555 0100"
+					placeholder={t('customers.detail.phonePlaceholder')}
 					value={newPhone}
 					onChange={(e) => setNewPhone(e.target.value)}
 				/>
 				<button type="button" onClick={handleAddPhone} style={styles.smallButton}>
-					Add
+					{t('customers.detail.add')}
 				</button>
 			</div>
 
-			<h2 style={styles.subtitle}>Tags</h2>
+			<h2 style={styles.subtitle}>{t('customers.detail.tags')}</h2>
 			<div style={styles.tags}>
 				{tags.map((tag) => (
 					<span key={tag} style={styles.tag}>
 						{tag}
-						<button type="button" onClick={() => removeTag(tag)} style={styles.tagRemove}>
+						<button
+							type="button"
+							onClick={() => removeTag(tag)}
+							style={styles.tagRemove}
+							aria-label={t('customers.detail.a11y.removeTag', { tag })}
+						>
 							×
 						</button>
 					</span>
@@ -220,22 +233,22 @@ export function CustomerDetailScreen({
 			<div style={styles.inlineForm}>
 				<input
 					style={styles.input}
-					placeholder="new tag"
+					placeholder={t('customers.detail.tagPlaceholder')}
 					value={newTag}
 					onChange={(e) => setNewTag(e.target.value)}
 				/>
 				<button type="button" onClick={handleAddTag} style={styles.smallButton}>
-					Add
+					{t('customers.detail.add')}
 				</button>
 			</div>
 
-			<h2 style={styles.subtitle}>Notes</h2>
+			<h2 style={styles.subtitle}>{t('customers.detail.notes')}</h2>
 			<ul style={styles.list}>
 				{notes.map((note) => (
 					<li key={note.id} style={styles.noteRow}>
 						<p style={styles.noteBody}>{note.body}</p>
 						<button type="button" onClick={() => deleteNote(note.id)} style={styles.smallButton}>
-							Delete
+							{t('customers.detail.delete')}
 						</button>
 					</li>
 				))}
@@ -243,17 +256,17 @@ export function CustomerDetailScreen({
 			<div style={styles.inlineForm}>
 				<input
 					style={styles.input}
-					placeholder="Add a note…"
+					placeholder={t('customers.detail.notePlaceholder')}
 					value={newNote}
 					onChange={(e) => setNewNote(e.target.value)}
 				/>
 				<button type="button" onClick={handleAddNote} style={styles.smallButton}>
-					Add
+					{t('customers.detail.add')}
 				</button>
 			</div>
 
 			<button type="button" onClick={onNavigateToList} style={styles.link}>
-				Back to customers
+				{t('customers.detail.backToList')}
 			</button>
 		</div>
 	);

@@ -33,9 +33,36 @@ export interface IWorkspace {
 
 // ── Courier contract — lives in core because auth + workspaces emit
 // messages without importing @fonderie/courier.
+/**
+ * Values a message wants formatted in its READER's language, under the reserved
+ * data key `$format` (COURIER_FORMAT_KEY). Courier formats each one into the
+ * key of the same name once it knows the language — 19,99 $ for a fr-CA
+ * reader, $19.99 for en-CA. The sender still puts a plain-string version under
+ * that key: a courier that predates this ignores `$format` and shows it.
+ *
+ *   data: { amountPaidDisplay: '$19.99', $format: { amountPaidDisplay: { money: { amount: '1999', currency: 'CAD', precision: 2 } } } }
+ */
+export type ICourierFormatValue =
+	| { money: { amount: string; currency: string; precision: number } }
+	| { date: string; style?: 'short' | 'medium' | 'long' | 'full' };
+
+export const COURIER_FORMAT_KEY = '$format';
+
 export interface ICourierMessage {
 	type: string;
+	/**
+	 * The language to write this message in, when the sender knows it (the
+	 * signed-in user's, a customer's preferred one). Absent: courier uses the
+	 * language of the account the recipient's address belongs to, then
+	 * `fallbackLocale`, then the system default.
+	 */
 	locale?: string;
+	/**
+	 * The language to use when neither `locale` nor the recipient's own account
+	 * says — typically the business's (workspace settings), for someone without
+	 * an account yet (an invitee). Never overrides the recipient's own choice.
+	 */
+	fallbackLocale?: string;
 	recipient: {
 		email: string | null;
 		phone: string | null;
@@ -101,6 +128,13 @@ export interface IFonderieContextMeta {
 	userId?: string;
 	userWorkspaceRoles?: string[];
 	message?: ICourierMessage;
+	// Set by an adapter's mount() on the context handle() builds for a request
+	// its bridge() already ran the global middleware for: that first pass's
+	// meta. The global stack runs again inside handle(), so a middleware whose
+	// work is a per-request side effect — counting a request against a limit,
+	// above all — finds its own first-pass result here and reuses it instead of
+	// doing it twice. Read-only by convention; absent outside that second pass.
+	bridged?: Readonly<IFonderieContextMeta>;
 	[key: string]: unknown;
 }
 

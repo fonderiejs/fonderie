@@ -51,13 +51,14 @@ export function webhookController(
 
 	return {
 		async handle(ctx: IFonderieContext): Promise<Response> {
-			const event = await readWebhookEvent(
+			const read = await readWebhookEvent(
 				ctx,
 				config.webhookSecret,
 				config.provider,
 				'Webhook secret not configured',
 			);
-			if (event instanceof Response) return event;
+			if (!read.ok) return read.response;
+			const event = read.event;
 			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook', SUBSCRIPTION_WEBHOOK_EVENTS);
 
 			// §8: keep the price cache honest. Invalidate on any price/product change

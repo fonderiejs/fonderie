@@ -1,4 +1,6 @@
 import type { AuthClient, IRegisterResult } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useFonderieSubClient, useUiError, useUiT } from '@fonderie/react';
 import { useRegister } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -10,14 +12,21 @@ export interface IRegisterScreenProps {
 	client?: AuthClient;
 	onRegisterSuccess?: (result: IRegisterResult) => void;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function RegisterScreen({
 	client,
 	onRegisterSuccess,
 	onNavigateToLogin,
+	locale,
 }: IRegisterScreenProps) {
 	const { register, isLoading, error } = useRegister(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	// The new account's language: this screen's, else the client's UI language.
+	const authClient = useFonderieSubClient(client, (c) => c.auth, 'RegisterScreen');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [firstName, setFirstName] = useState('');
@@ -28,15 +37,22 @@ export function RegisterScreen({
 		event.preventDefault();
 		setValidationError(null);
 		if (!EMAIL_PATTERN.test(email)) {
-			setValidationError('Enter a valid email address.');
+			setValidationError(t('auth.register.invalidEmail'));
 			return;
 		}
 		if (password.length < MIN_PASSWORD_LENGTH) {
-			setValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+			setValidationError(t('auth.register.passwordTooShort', { min: MIN_PASSWORD_LENGTH }));
 			return;
 		}
 		try {
-			const result = await register({ email, password, firstName, lastName });
+			const signUpLocale = locale ?? uiLocaleFor(authClient)?.get();
+			const result = await register({
+				email,
+				password,
+				firstName,
+				lastName,
+				...(signUpLocale ? { locale: signUpLocale } : {}),
+			});
 			onRegisterSuccess?.(result);
 		} catch {
 			// Surfaced via `error` from useRegister.
@@ -45,12 +61,12 @@ export function RegisterScreen({
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Create Account</h1>
+			<h1 style={styles.title}>{t('auth.register.title')}</h1>
 
 			<input
 				style={styles.input}
 				type="text"
-				placeholder="First name"
+				placeholder={t('auth.fields.firstName')}
 				value={firstName}
 				onChange={(event) => setFirstName(event.target.value)}
 				autoComplete="given-name"
@@ -59,7 +75,7 @@ export function RegisterScreen({
 			<input
 				style={styles.input}
 				type="text"
-				placeholder="Last name"
+				placeholder={t('auth.fields.lastName')}
 				value={lastName}
 				onChange={(event) => setLastName(event.target.value)}
 				autoComplete="family-name"
@@ -68,7 +84,7 @@ export function RegisterScreen({
 			<input
 				style={styles.input}
 				type="email"
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChange={(event) => setEmail(event.target.value)}
 				autoComplete="email"
@@ -78,7 +94,7 @@ export function RegisterScreen({
 			<input
 				style={styles.input}
 				type="password"
-				placeholder="Password"
+				placeholder={t('auth.fields.password')}
 				value={password}
 				onChange={(event) => setPassword(event.target.value)}
 				autoComplete="new-password"
@@ -88,16 +104,16 @@ export function RegisterScreen({
 
 			{(validationError || error) && (
 				<p style={styles.error} role="alert">
-					{validationError ?? error?.explanation}
+					{validationError ?? errorText(error)}
 				</p>
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Creating account…' : 'Create Account'}
+				{isLoading ? t('auth.register.submitting') : t('auth.register.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateToLogin} style={styles.link}>
-				Already have an account? <strong>Sign in</strong>
+				{t('auth.register.haveAccount')} <strong>{t('auth.register.signIn')}</strong>
 			</button>
 		</form>
 	);

@@ -11,6 +11,8 @@ type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 type ICustomersConfig = {
     referenceCodePrefix?: string;
+    permission?: string;
+    isInUse?: (customerId: string, workspaceId: string) => Promise<boolean>;
 };
 
 const EVENT_KEYS: { readonly customerCreated: "fonderie.customer.created"; readonly customerUpdated: "fonderie.customer.updated"; readonly customerDeleted: "fonderie.customer.deleted"; readonly customerBlacklisted: "fonderie.customer.blacklisted"; readonly customerUnblacklisted: "fonderie.customer.unblacklisted"; }
@@ -51,6 +53,7 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    displayName: string;
     referenceCode: string;
     referralCode: string;
     referredBy: string | null;
@@ -61,6 +64,10 @@ interface ICustomerDTO {
     createdBy: string;
     createdAt: string;
     updatedAt: string;
+    archived: {
+        status: boolean;
+        at: string | null;
+    };
 }
 
 interface ICustomerEmailDTO {
@@ -116,14 +123,14 @@ new CustomerAddressModel(store: IStoreAdapter): CustomerAddressModel
   .list(customerId: string): Promise<ICustomerAddress[]>
   .add(opts: { customerId: string; countryIso: string; subdivision1Iso?: string | null; subdivision2Iso?: string | null; zipPostalCode: string; unit?: string | null; line1?: string | null; line2?: string | null; labelId: string; isPrimary?: boolean; }): Promise<...>
   .updateLabel(addrId: string, customerId: string, labelId: string): Promise<ICustomerAddress>
-  .setPrimary(addrId: string, customerId: string): Promise<void>
+  .setPrimary(addrId: string, customerId: string): Promise<boolean>
   .remove(addrId: string, customerId: string): Promise<boolean>
 
 new CustomerEmailModel(store: IStoreAdapter): CustomerEmailModel
   .list(customerId: string): Promise<ICustomerEmail[]>
   .add(opts: { customerId: string; email: string; labelId: string; isPrimary?: boolean; }): Promise<ICustomerEmail>
   .updateLabel(emailId: string, customerId: string, labelId: string): Promise<ICustomerEmail>
-  .setPrimary(emailId: string, customerId: string): Promise<void>
+  .setPrimary(emailId: string, customerId: string): Promise<boolean>
   .remove(emailId: string, customerId: string): Promise<void>
 
 new CustomerModel(store: IStoreAdapter): CustomerModel
@@ -135,6 +142,8 @@ new CustomerModel(store: IStoreAdapter): CustomerModel
   .create(opts: CreateCustomerOpts): Promise<ICustomer>
   .update(id: string, workspaceId: string, opts: UpdateCustomerOpts, referenceCodePrefix?: string): Promise<ICustomer | null>
   .delete(id: string, workspaceId: string): Promise<void>
+  .archive(id: string, workspaceId: string): Promise<boolean>
+  .unarchive(id: string, workspaceId: string): Promise<boolean>
   .blacklist(id: string, workspaceId: string, reason?: string | null | undefined): Promise<void>
   .unblacklist(id: string, workspaceId: string): Promise<void>
 
@@ -148,7 +157,7 @@ new CustomerPhoneModel(store: IStoreAdapter): CustomerPhoneModel
   .list(customerId: string): Promise<ICustomerPhone[]>
   .add(opts: { customerId: string; phone: string; labelId: string; isPrimary?: boolean; }): Promise<ICustomerPhone>
   .updateLabel(phoneId: string, customerId: string, labelId: string): Promise<ICustomerPhone>
-  .setPrimary(phoneId: string, customerId: string): Promise<void>
+  .setPrimary(phoneId: string, customerId: string): Promise<boolean>
   .remove(phoneId: string, customerId: string): Promise<void>
 
 new CustomerTagModel(store: IStoreAdapter): CustomerTagModel
@@ -191,6 +200,8 @@ interface ICustomer {
     referredBy: string | null;
     isBlacklisted: boolean;
     blacklistReason: string | null;
+    isArchived?: boolean;
+    archivedAt?: string | null;
     createdBy: string | null;
     createdAt: string;
     updatedAt: string;

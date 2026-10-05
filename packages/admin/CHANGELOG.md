@@ -1,5 +1,37 @@
 # @fonderie/admin
 
+## 1.7.11
+
+### Patch Changes
+
+- 8f45758: The admin console in Chinese, Simplified (简体中文) and Traditional (繁體中文).
+  
+  - All 609 console strings in `zh-Hans` and `zh-Hant`, alongside English, French and Spanish. The language menu lists both. The Traditional copy uses Taiwan/Hong Kong software terms (使用者, 設定, 範本, 權杖, 工作階段), not a character conversion of the Simplified copy.
+  - `detectAdminLocale` picks the script from the browser's language: `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified.
+  - `ADMIN_LOCALES` is now `['en', 'fr', 'es', 'zh-Hans', 'zh-Hant']`. The parity test checks both scripts for empty strings and dropped `{placeholders}`, and checks that Traditional is not a copy of Simplified.
+  - `@fonderie/admin` bumps so the console it ships includes the new language.
+
+## 1.7.10
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+
+## 1.7.9
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
+## 1.7.8
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
 ## 1.7.7
 
 ### Patch Changes

@@ -34,6 +34,8 @@ export const checkoutSchema = z.object({
 	// Idempotency key: kept in the schema so validate() doesn't strip it as an
 	// unknown key before the controller passes it to the provider.
 	idempotencyKey: z.string().min(1).max(255).optional(),
+	// Decline the plan's free trial for this checkout (paid from day one).
+	skipTrial: z.boolean().optional(),
 });
 
 export const recordUsageSchema = z.object({

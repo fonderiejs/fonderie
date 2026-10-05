@@ -202,8 +202,21 @@ export interface IPortalUrlResult {
 
 export interface IUsageResult {
 	metric: string;
+	// 'counter' = a windowed plan limit (e.g. 'api-calls' per day) read from the
+	// live counter; 'records' = the sum of POST /billing/usage records this
+	// month. Absent from servers that predate it (records).
+	kind?: 'counter' | 'records';
+	// Used in the current window ('counter'), or recorded this month ('records').
 	total: number;
+	// Start of what `total` covers (the window, or the month).
 	since: string;
+	// The plan's advertised limit for this metric; null = unlimited or none.
+	limit?: number | null;
+	// 'counter' only: where `total` stands against the limit.
+	status?: 'ok' | 'warning' | 'over_limit' | 'blocked' | null;
+	// 'counter' only: the window, e.g. '1d', and when it resets (ISO-8601).
+	window?: string | null;
+	resetsAt?: string | null;
 }
 
 // Wallet balance snapshot. Money fields are digit strings (server bigint →
@@ -286,10 +299,18 @@ export interface ISubscriptionChangeResult {
 // nor the server-side card `fingerprint`, which billing deliberately keeps
 // off the wire (it correlates identity across accounts).
 export interface IPaymentMethodDTO {
+	/**
+	 * 'card' (brand/last4/expiry) or 'link' (Stripe Link: no card details —
+	 * show `email` instead, e.g. "Link · ana@acme.example"). Absent from servers
+	 * that predate it: treat as 'card'.
+	 */
+	type?: 'card' | 'link';
 	brand: string;
 	last4: string;
 	expMonth: number;
 	expYear: number;
+	/** The Link account's email, for type 'link'. */
+	email?: string | null;
 }
 
 export interface IPaymentMethodResult {
@@ -325,6 +346,9 @@ export interface IInvoiceDTO {
 
 export interface IInvoicesResult {
 	invoices: IInvoiceDTO[];
+	// Opaque cursor for the next (older) page, or null when there is none.
+	// Absent from servers that predate invoice pagination.
+	nextCursor?: string | null;
 }
 
 // ── Workspaces ───────────────────────────────────────────────────────────────
@@ -338,6 +362,18 @@ export interface IWorkspaceAddressDTO {
 	country: string;
 }
 
+export interface ITaxRegistrationDTO {
+	/** ISO 3166-1, e.g. 'CA'. */
+	country: string;
+	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'QST', 'EIN'. */
+	type: string;
+	number: string;
+	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
+	region: string;
+	/** Shown on documents instead of the type, e.g. 'TPS/TVH'. */
+	label: string;
+}
+
 export interface IWorkspaceDTO {
 	id: string;
 	name: string;
@@ -348,6 +384,22 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/** Registered name, when it differs from the display name. */
+	legalName: string;
+	email: string;
+	website: string;
+	logoUrl: string;
+	/** GST/HST, QST, PST, EIN, state sales-tax permits… — normalized by country rules. */
+	taxRegistrations: ITaxRegistrationDTO[];
+	/** The languages the business serves customers in (BCP 47), e.g. ['en-CA', 'fr-CA', 'zh-Hant']. */
+	languages: string[];
+	/**
+	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
+	 * workspace is created and never maintained — nothing writes it when the
+	 * workspace subscribes, upgrades or cancels. Read the subscription from
+	 * @fonderie/billing instead (GET /billing/subscription with the
+	 * X-Workspace-ID header; `useSubscription()` in the frontend packages).
+	 */
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;
@@ -380,6 +432,18 @@ export interface IMemberDTO {
 	firstName: string;
 	lastName: string;
 	profileImageUrl: string;
+	/** Every role this person holds here, earliest first. */
+	roles: IMemberRoleDTO[];
+	/** The workspace owner. */
+	isOwner: boolean;
+	/** The owner, or a holder of a manager role — may manage the team. */
+	isManager: boolean;
+}
+
+export interface IMemberRoleDTO {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitationDTO {
@@ -391,6 +455,8 @@ export interface IInvitationDTO {
 	status: string;
 	expiresAt: string;
 	createdAt: string;
+	/** Past its expiry: still listed so a manager can resend it, but no longer acceptable. */
+	isExpired: boolean;
 }
 
 export interface IWorkspaceSettingsDTO {
@@ -428,6 +494,45 @@ export interface IInvitationListResult {
 export interface IInviteResult {
 	invitations: Array<{ invitationId: string; email: string }>;
 }
+
+export type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
+
+/** What the signed-in member may do in the current workspace. */
+export interface IMyPermissionsResult {
+	isOwner: boolean;
+	/** The owner or a manager: may run the team (members, invitations, roles, settings). */
+	isManager: boolean;
+	/** Holds the super role: every resource, every operation. */
+	isSuper: boolean;
+	/** Per resource, per operation. A missing resource or operation is not allowed. */
+	permissions: Record<string, Record<PermissionOperation, boolean>>;
+}
+
+export interface IPermissionCatalogEntryDTO {
+	key: string;
+	operations: PermissionOperation[];
+	label: string;
+	description: string;
+}
+
+export interface IPermissionCatalogResult {
+	catalog: IPermissionCatalogEntryDTO[];
+	/** False when the app declared no catalog (the list is then empty). */
+	declared: boolean;
+}
+
+export interface IRoleDeleteResult {
+	/** People who held the role. */
+	membersAffected: number;
+	/** Of those, the ones it was the only role of — now on the default role. */
+	movedToDefaultRole: number;
+}
+
+export interface IInvitationResult {
+	invitation: IInvitationDTO;
+}
+
+export type IAcceptInvitationInput = { token: string } | { pin: string };
 
 export interface IAcceptInvitationResult {
 	workspaceId: string;
@@ -1033,11 +1138,20 @@ export interface ICustomerDTO {
 	lastName: string;
 	companyName: string;
 	avatarUrl: string;
+	/** Preferred language (BCP 47), e.g. 'fr-CA', 'zh-Hant'. Defaults to the business's. */
 	locale: string;
+	/**
+	 * The name to show, in the order the customer's language writes it: family
+	 * name first for Chinese, Japanese, Korean ('王小明'); given name first
+	 * otherwise. A business shows its company name.
+	 */
+	displayName: string;
 	referenceCode: string;
 	referralCode: string;
 	referredBy: string | null;
 	blacklisted: { status: boolean; reason: string | null };
+	/** Archived: hidden from lists and pickers, kept on documents. */
+	archived: { status: boolean; at: string | null };
 	createdBy: string;
 	createdAt: string;
 	updatedAt: string;
@@ -1102,7 +1216,13 @@ export interface ICustomerRelationshipDTO {
 // same level. `id` is the relationship record id; `customerId` is the
 // related customer's id — matches @fonderie/customers' own flattening.
 export type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+	/** The RELATED customer's id — same name as in ICustomerRelationshipDTO. */
+	relatedId: string;
+	/** The relationship record's id. */
+	relationshipId: string;
+	/** @deprecated The relationship record's id, not a customer's — read `relationshipId`. */
 	id: string;
+	/** @deprecated The related customer's id — read `relatedId`. */
 	customerId: string;
 	relationship: string;
 	isPrimary: boolean;

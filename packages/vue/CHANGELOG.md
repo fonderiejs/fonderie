@@ -1,5 +1,133 @@
 # @fonderie/vue
 
+## 0.11.0
+
+### Minor Changes
+
+- 2686f16: Error messages in the reader's language. The screens showed the server's English sentence to everyone; a wrong password now reads « Le courriel ou le mot de passe est incorrect. » for a fr-CA user, 「電子郵件或密碼不正確。」 for zh-TW.
+  
+  - **`localizeApiError(error, locale)`** (client):
+    - English readers keep the server's exact sentence.
+    - Every other language gets the message for the error's reason code, filled from its `details`.
+    - If the code is unknown or a value is missing, they get the generic message for the status, never a half-filled sentence.
+    - An offline failure reads "couldn't reach the server" in every language, instead of "TypeError: Failed to fetch".
+    - Covers 57 user-facing reason codes (sign-in, teams, billing, customers, uploads) plus 12 generic messages, in en/fr/es/zh-Hans/zh-Hant.
+  - **`useUiError(source?, locale?)`** in `@fonderie/react` and `@fonderie/vue` returns that function in the app's UI language, following `setLocale()`.
+  - **Every prebuilt screen** (all 18 packages) shows errors through it.
+  - **Server:** `PLAN_UNCHANGED` (`plan`, `interval`), `FEATURE_UNAVAILABLE` (`feature`), `ASSET_TOO_LARGE` (`maxBytes`, `maxMegabytes`) and `ASSET_UNSUPPORTED` (`allowed`) now send their values in `details`, like the other messages that name a value. The English sentences are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [2686f16]
+  - @fonderie/client@3.12.0
+
+## 0.10.0
+
+### Minor Changes
+
+- 09e227e: The prebuilt screens speak the app's language: English, French, Spanish, and Chinese in Simplified and Traditional.
+  
+  - **One UI language per client.** `new FonderieClient({ locale: 'fr-CA' })`, `client.setLocale()`, `getLocale()`, `onLocaleChange()`; the default is the device's language. Every sub-client shares it, so a screen handed only `client.auth` follows it too. Requests now carry it as `Accept-Language`, a CORS-safelisted header, so no preflight is added.
+  - **The screens' words** live in `@fonderie/client` (`ui-i18n/<domain>/<language>.ts`), shared by React, React Native and Vue: auth, billing, customers, workspaces, audit and webhooks, about 225 keys including React Native's screen-reader labels. Every language is typed against English, so a missing key won't compile. A parity test checks every string is non-empty with the same `{placeholders}`, and that Traditional is not the Simplified copy. French is written for Canada (« courriel »). `zh-TW`/`zh-HK`/`zh-MO` get Traditional and `zh`/`zh-CN`/`zh-SG` Simplified; other languages fall back to English.
+  - **Hooks:** `useUiT(source?, locale?)` and `useUiLocale(source?, locale?)` in `@fonderie/react` (React and React Native) and `@fonderie/vue`. They follow `setLocale()` live.
+  - **Every screen in the 18 packages** takes an optional `locale` prop (one screen in another language) and has no English left in it.
+  - **Formatting follows the language too:** prices (were hard-coded `en-US`), renewal dates and audit timestamps. Server status words (subscription status, roles, invitation status, webhook delivery status) are translated, and an unknown value shows as-is.
+  - **Fixes found on the way:**
+    - The register screens send the UI language, so a new account starts in the language it signed up in (it always defaulted to en-US).
+    - The team screens show each member's name (in the language's name order, e.g. 王小明), email and all their roles, instead of the user id.
+    - React Native's subscription screen shows a Stripe Link payment method (it showed an empty card line; React and Vue were fixed in #605).
+    - A subscription set to cancel says "Ends {date}", not "Renews {date}".
+    - `formatPersonName()` in client.
+
+### Patch Changes
+
+- Updated dependencies [09e227e]
+  - @fonderie/client@3.11.0
+
+## 0.9.0
+
+### Minor Changes
+
+- 90963c4: **Customer, audit and webhook screens open on their data and follow a workspace switch.** `useCustomers` and the customer sub-resource hooks (emails, phones, addresses, notes, tags, relationships, labels), `useAuditEvents` and the webhook hooks loaded once per mount on a spinner. The selected-workspace reads among them never re-read after a switch. They now go through the client's shared store like the billing and workspaces hooks: data on the first frame when seen before, refreshes behind what is shown, no redraw when the answer is unchanged, a write under the same resource refreshes them everywhere, and a workspace switch reads the other workspace's entry without showing the previous one. Return shapes and `refresh({ force })` semantics are unchanged.
+  
+  - `@fonderie/react` / `@fonderie/vue`: `usePagedQuery(source, path, readFirst, readMore, opts)` for cursor- or offset-paginated lists. The first page is the cached read, and pages appended by `loadMore` belong to the exact first page they extend: an unchanged refresh keeps them, a changed first page re-anchors the list. `rethrowLoadMore: false` reports a failed page on `error` only. `customers` and `audit` use it, because their `loadMore` never threw. Vue `useScopedQuery` gains `enabled`, as React's already had.
+  - `@fonderie/client`: `queryParams(params)`, a stable key fragment for a filter object (property order and undefined values do not change it).
+  - Lists filtered by params (customers, audit) are keyed by the filters' content, so the same filters on two screens share one entry.
+
+### Patch Changes
+
+- Updated dependencies [90963c4]
+  - @fonderie/client@3.4.0
+
+## 0.8.0
+
+### Minor Changes
+
+- ab62ea4: **Workspace screens open on their data, and follow a workspace switch.** `useMembers`, `useRoles`, `useInvitations`, `useWorkspaceSettings` and the other workspace reads loaded once on mount and never again. After the user switched workspace they kept showing the previous workspace's members and roles, and every visit opened on a spinner. They now read through the client's shared store (`client.queries`), like the billing hooks: data on the first frame when it was seen before, refreshes behind the data, no redraw when the answer is unchanged, and a workspace switch reads the other workspace's entry (instantly when seen before) without ever showing the previous one. Return shapes are unchanged.
+  
+  - `@fonderie/client`: the `workspaces`, `customers`, `audit` and `webhooks` sub-clients now report their scope, `getWorkspaceId()` and `onWorkspaceChange(listener)`, as `billing` already did. They held the workspace id silently, so no hook could follow a switch. Instances built without the constructor (test doubles) still work.
+  - `@fonderie/react` / `@fonderie/vue`: `useScopedQuery(source, path, read, { normal, perWorkspace })`, the one read every hook package makes (keyed by path and, for per-workspace data, the selected workspace), plus `useWrite(after)` for the write → re-read → keep-the-error pattern, and `toApiError`.
+  - `refresh({ force })` keeps its documented meaning in every migrated hook: it always re-reads, and `force: true` also bypasses the HTTP response cache. The billing hooks released in the previous version bypassed it on every `refresh()`; that is restored too.
+
+### Patch Changes
+
+- Updated dependencies [ab62ea4]
+  - @fonderie/client@3.3.0
+
+## 0.7.0
+
+### Minor Changes
+
+- 157004a: **Screens open on their data, not on a spinner — and a refresh never flickers.** Every hook used to start each mount with no data and `isLoading: true`, then wait for the network, even for data the previous screen had just fetched. A refresh that came back with the same answer still replaced the screen's data. The client's response cache could not help: it honours the server's `Cache-Control`, and an API answering `max-age=0` is cached for 0 ms.
+  
+  - `@fonderie/client`: `client.queries`, one shared read model per client (`QueryStore`). Fetched answers can be read synchronously and are observed by every screen showing them. A fetch happens only when an answer is missing or older than `staleMs` (option `queries: { staleMs }`, default 5 minutes; `Infinity` = only when asked), or on an explicit refresh. A refresh never removes data, and an answer equal to what is shown keeps the same object. A failed refresh keeps the data and reports the error. A write marks the reads under its resource stale (the same fragments the HTTP cache evicts), so screens showing them refetch in the background. Sign-out and revocation clear it.
+  - `@fonderie/react` / `@fonderie/vue`: `useClientQuery(source, key, fetcher)`, the one way a hook reads server data. `isLoading` means "nothing to show yet", never "a refresh is running" (that is `isFetching`). In Vue, requests wait for mount, so SSR never fetches.
+  - `@fonderie/react-billing` / `@fonderie/vue-billing`: every read (`useSubscription`, `usePaymentMethod`, `useInvoices`, `useUsage`, `useWallet`, `useWalletTransactions`, `useWalletPreferences`, `usePlans`, `usePlan`) goes through it. Returning to a screen, or switching back to a workspace already seen, shows its data on the first frame with no request. `useWallet` and `useWalletPreferences` share one request. Pages loaded with `loadMore` survive a refresh that returns the same first page. Return shapes are unchanged. Two behaviour differences: a failed refresh now keeps the last data shown instead of clearing it, and `refresh()` always bypasses the HTTP cache.
+  
+  `@fonderie/react-native-billing` re-exports `@fonderie/react-billing`, so React Native apps get this too.
+
+### Patch Changes
+
+- Updated dependencies [157004a]
+  - @fonderie/client@3.2.0
+
+## 0.6.0
+
+### Minor Changes
+
+- 87f6e1d: **Billing screens follow a workspace switch.** With workspace billing the subscriber is the selected workspace, but the billing hooks only loaded on mount — a screen that stayed open across a switch kept showing the previous workspace's subscription, card, invoices or wallet.
+  
+  - `@fonderie/client`: `client.getWorkspaceId()` and `client.onWorkspaceChange(listener)` (returns an unsubscribe); the billing sub-client has the same pair. Listeners fire only when the id actually changes.
+  - `@fonderie/react` / `@fonderie/vue`: `useWorkspaceId(source?)` — the current workspace id, re-rendering (React) or as a Ref (Vue) when it changes. Follows the provided client, or the sub-client you pass.
+  - `@fonderie/react-billing` / `@fonderie/vue-billing`: `useSubscription`, `usePaymentMethod`, `useInvoices`, `useWallet`, `useWalletTransactions`, `useWalletPreferences` and `useUsage` clear what they showed and re-read on a switch, and a slow answer for the previous workspace can no longer land on top of the new one. `usePlans` / `usePlan` are not per-workspace and are unchanged.
+  
+  `@fonderie/react-native-billing` re-exports `@fonderie/react-billing`, so React Native apps get this too.
+
+### Patch Changes
+
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+  - @fonderie/client@3.1.0
+
+## 0.5.3
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+
+## 0.5.2
+
+### Patch Changes
+
+- 789d775: **Depending on a Fonderie package now actually upgrades the Fonderie packages it uses.**
+  
+  These packages depended on their siblings at `"*"`. npm treats an already-installed version as satisfying `"*"`, so upgrading one package left the packages it builds on at their old versions. For example, `@fonderie/react-native-media` 0.1.1 kept `@fonderie/react-media` at 0.1.0, without the fix the upgrade was for. Nothing reported it.
+  
+  Each internal dependency is now a caret range on the current version (e.g. `^0.2.0`), so installing a package brings its siblings up to what it was built with. Releases keep the ranges current, and a new `check:internal-ranges` gate keeps `"*"` from coming back.
+
 ## 0.5.1
 
 ### Patch Changes

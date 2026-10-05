@@ -1,8 +1,8 @@
-import type { IRoleDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IRoleDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseRoleReturn {
 	role: Ref<IRoleDTO | null>;
@@ -11,8 +11,8 @@ export interface IUseRoleReturn {
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 }
 
-// Read composable for a single role. Writes live where their lists refresh:
-// useRoles (create/update/remove) and useRolePermissions (permission set).
+// Read composable for a single role. Writes live where their lists refresh
+// (useRoles, useRolePermissions) — and any of them marks this read stale too.
 export function useRole(id: MaybeRefOrGetter<string>): IUseRoleReturn;
 export function useRole(
 	client: WorkspacesClient | undefined,
@@ -26,30 +26,18 @@ export function useRole(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const id = firstIsClient ? (maybeId as MaybeRefOrGetter<string>) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useRole');
-	const role = ref<IRoleDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.getRole(toValue(id), { bust: opts?.force });
-			role.value = result.role;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(id),
-		() => void refresh(),
+	// The key follows the id: a new id reads that entry.
+	const q = useScopedQuery(
+		workspaces,
+		() => `/workspaces/roles/${encodeURIComponent(toValue(id))}`,
+		async (bust) => (await workspaces.getRole(toValue(id), { bust })).result.role,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: () => !!toValue(id) },
 	);
-
-	return { role, isLoading, error, refresh };
+	return {
+		role: computed(() => q.data.value ?? null),
+		isLoading: q.isLoading,
+		error: q.error,
+		refresh: q.refresh,
+	};
 }

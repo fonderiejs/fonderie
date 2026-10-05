@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/react-native-audit-screens",
-	"version": "0.2.1",
-	"description": "Pre-built React Native screen for Fonderie's audit log \u2014 filterable, cursor-paginated event list.",
+	"version": "0.3.1",
+	"description": "Pre-built React Native screen for Fonderie's audit log — filterable, cursor-paginated event list.",
 	"keywords": [
 		"fonderiejs",
 		"react-native",
@@ -35,8 +35,9 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react-native-audit": "*"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/react": "^0.11.0",
+		"@fonderie/react-native-audit": "^0.1.3"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",

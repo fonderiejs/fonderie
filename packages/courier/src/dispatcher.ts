@@ -1,6 +1,10 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
+import type { ILocaleSettings } from '@fonderie/core';
+import { defineLocales } from '@fonderie/core';
+
 import type { ICourierConfig } from './config';
+import { applyFormats } from './format';
 import type { ICourierMessage, ICourierChannel, ITemplateResolver } from './types';
 import {
 	insertMessageLog,
@@ -26,6 +30,13 @@ export class Dispatcher {
 		private store?: IStoreAdapter,
 	) {}
 
+	private locales: ILocaleSettings = defineLocales();
+
+	/** The app's locales — the default language when a message names none. */
+	setLocales(locales: ILocaleSettings): void {
+		this.locales = locales;
+	}
+
 	registerChannel(channel: ICourierChannel): this {
 		this.channels.set(channel.name, channel);
 		return this;
@@ -35,6 +46,30 @@ export class Dispatcher {
 	// guard to detect message types routed to a channel with no provider.
 	channelNames(): string[] {
 		return [...this.channels.keys()];
+	}
+
+	/**
+	 * The language of the account the recipient's address belongs to — read
+	 * from @fonderie/auth's users table when it is in the same database. No
+	 * auth, no account, or `recipientLocaleLookup: false`: undefined.
+	 */
+	private async accountLocale(message: ICourierMessage): Promise<string | undefined> {
+		if (!this.store || this.config.recipientLocaleLookup === false) return undefined;
+		const { email, phone } = message.recipient;
+		if (!email && !phone) return undefined;
+		try {
+			const [row] = await this.store.query<{ locale: string | null }>(
+				`SELECT locale FROM fonderie_users
+				 WHERE ($1::text IS NOT NULL AND lower(email) = lower($1))
+				    OR ($2::text IS NOT NULL AND phone = $2)
+				 ORDER BY (lower(email) = lower($1)) DESC NULLS LAST
+				 LIMIT 1`,
+				[email ?? null, phone ?? null],
+			);
+			return row?.locale || undefined;
+		} catch {
+			return undefined; // no users table here (courier without auth)
+		}
 	}
 
 	async dispatch(message: ICourierMessage): Promise<void> {
@@ -48,10 +83,18 @@ export class Dispatcher {
 		// The configured product name is available to EVERY template without each
 		// call site remembering to pass it. Spread first so a message that supplies
 		// its own brandName still wins (a multi-tenant app may brand per workspace).
-		const data = this.config.brandName
+		const withBrand = this.config.brandName
 			? { brandName: this.config.brandName, ...message.data }
 			: message.data;
-		const template = await this.resolver.resolve(message.type, data, message.locale);
+		// Whose language: the sender's explicit choice, else the recipient's own
+		// account, else the sender's fallback (the business's), else the default.
+		// Senders without a session (billing webhooks, invitations) used to pass
+		// nothing, so a French-speaking customer got their receipt in English.
+		const locale = message.locale ?? (await this.accountLocale(message)) ?? message.fallbackLocale;
+		// Amounts and dates the sender marked under $format, in that same
+		// language: 19,99 $ for fr-CA, $19.99 for en-CA — not one fixed locale.
+		const data = applyFormats(withBrand, locale ?? this.locales.default);
+		const template = await this.resolver.resolve(message.type, data, locale);
 
 		await Promise.allSettled(
 			channelNames.map(async (name) => {
@@ -67,7 +110,7 @@ export class Dispatcher {
 					channel: name,
 					recipient: resolveRecipient(message, name),
 				};
-				if (message.locale) logEntry.locale = message.locale;
+				if (locale) logEntry.locale = locale;
 
 				const logId = this.store
 					? await insertMessageLog(logEntry, this.store).catch(() => '')

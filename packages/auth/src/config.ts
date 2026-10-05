@@ -25,9 +25,17 @@ export interface IAuthSecrets {
 	// existing MFA secrets unrecoverable (users must re-enroll).
 	mfaSecretKey?: string;
 	google?: {
+		// The web (OAuth client) id: the `aud` of the web redirect flow.
 		clientId: string;
-		clientSecret: string;
-		redirectUri: string;
+		// Web redirect flow only (GET /auth/google + /auth/google/callback).
+		// A native-only setup leaves them out.
+		clientSecret?: string;
+		redirectUri?: string;
+		// Client ids whose NATIVE ID tokens POST /auth/google/native accepts —
+		// the Android, iOS and web client ids of the app's Google project (the
+		// Android SDK mints tokens with aud = the web client id the app passes
+		// as serverClientId; iOS with its own client id).
+		nativeClientIds?: string[];
 	};
 	// Sign in with Apple. Unlike Google, Apple's client secret is not a static
 	// string — it's a short-lived ES256 JWT minted from a .p8 key at token
@@ -175,7 +183,19 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	legacyVerify?: (plain: string, hash: string) => boolean | Promise<boolean>;
 	// SAR export contributors from other modules (see IDataExportContributor).
 	dataExportContributors?: IDataExportContributor[];
+	// Account deletion (docs/ACCOUNT-DELETION-DESIGN.md). A deleted account is
+	// archived for `gracePeriodDays` (default 30 — inside GDPR's one-month
+	// answer, CCPA's 45 days) before the purge erases it; meanwhile signing in
+	// says when it will be deleted and that it can still be kept. Purge with
+	// the SAME number (purgeSoftDeletedUsers / startUserRetention olderThanDays).
+	accountDeletion?: { gracePeriodDays?: number };
 }
+
+/** The grace period an app configured, else the design default (30 days). */
+export const deletionGracePeriodDays = (config: Pick<IAuthConfig, 'accountDeletion'>): number => {
+	const days = config.accountDeletion?.gracePeriodDays;
+	return typeof days === 'number' && Number.isFinite(days) && days >= 0 ? days : 30;
+};
 
 // A module's contribution to the per-user data export (SAR). The app wires
 // these (e.g. from @fonderie/workspaces) so auth can aggregate data owned by
@@ -203,5 +223,5 @@ export interface ISessionRevokedEvent {
 	userId: string;
 	/** The revoked sessions' sids; null = every session of the user. */
 	sids: Array<string | null> | null;
-	reason: 'terminated' | 'password-changed' | 'admin' | 'refresh-reuse';
+	reason: 'terminated' | 'password-changed' | 'admin' | 'refresh-reuse' | 'account-deleted';
 }

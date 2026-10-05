@@ -1,9 +1,15 @@
+export type { IUseCurrentWorkspaceReturn } from './useCurrentWorkspace';
+export { useCurrentWorkspace } from './useCurrentWorkspace';
 export type { IUseInvitationsReturn } from './useInvitations';
 export { useInvitations } from './useInvitations';
 export type { IUseMemberRolesReturn } from './useMemberRoles';
 export { useMemberRoles } from './useMemberRoles';
 export type { IUseMembersReturn } from './useMembers';
 export { useMembers } from './useMembers';
+export type { IUsePermissionsReturn } from './usePermissions';
+export { useCan, usePermissions } from './usePermissions';
+export type { IUsePermissionCatalogReturn } from './usePermissionCatalog';
+export { usePermissionCatalog } from './usePermissionCatalog';
 export type { IUseRoleReturn } from './useRole';
 export { useRole } from './useRole';
 export type { IUseRolePermissionsReturn } from './useRolePermissions';

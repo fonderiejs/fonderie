@@ -48,16 +48,20 @@ interface IUseDeleteMediaReturn {
 }
 
 interface IUseUploadAvatarReturn {
-    uploadAvatar: (file: Blob) => Promise<string>;
+    uploadAvatar: (file: MediaInput) => Promise<string>;
     isUploading: boolean;
     error: FonderieApiError | null;
 }
 
 interface IUseUploadMediaReturn {
-    upload: (file: Blob, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => Promise<IMediaAssetDTO>;
+    upload: (file: MediaInput, opts?: Omit<IUploadMediaInput, 'dataBase64'>) => Promise<IMediaAssetDTO>;
     isUploading: boolean;
     error: FonderieApiError | null;
 }
+
+type MediaInput = Blob | {
+    base64: string;
+};
 
 function useDeleteMedia(client?: MediaClient | undefined): IUseDeleteMediaReturn
 

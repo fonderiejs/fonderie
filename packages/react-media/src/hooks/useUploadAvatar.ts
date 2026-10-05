@@ -3,13 +3,13 @@ import { FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
 import { useCallback, useState } from 'react';
 
-import { blobToBase64 } from '../lib/blobToBase64';
+import { type MediaInput, toBase64 } from '../lib/mediaInput';
 
 export interface IUseUploadAvatarReturn {
 	// Upload a new avatar and set it as the user's profile image. Resolves to the
 	// absolute avatar URL now stored on the profile (surfaced as
 	// user.profileImageUrl).
-	uploadAvatar: (file: Blob) => Promise<string>;
+	uploadAvatar: (file: MediaInput) => Promise<string>;
 	isUploading: boolean;
 	error: FonderieApiError | null;
 }
@@ -25,7 +25,7 @@ export function useUploadAvatar(client?: FonderieClient): IUseUploadAvatarReturn
 	const [error, setError] = useState<FonderieApiError | null>(null);
 
 	const uploadAvatar = useCallback(
-		async (file: Blob) => {
+		async (file: MediaInput) => {
 			setIsUploading(true);
 			setError(null);
 			try {
@@ -33,7 +33,7 @@ export function useUploadAvatar(client?: FonderieClient): IUseUploadAvatarReturn
 				const me = await fonderie.auth.getUser();
 				const priorUrl = me.result.user.profileImageUrl;
 
-				const dataBase64 = await blobToBase64(file);
+				const dataBase64 = await toBase64(file);
 				const { result } = await fonderie.media.upload({ dataBase64, purpose: 'avatar' });
 				const avatarUrl = fonderie.media.assetUrl(result.asset.id);
 				await fonderie.auth.updateProfile({ avatarUrl });

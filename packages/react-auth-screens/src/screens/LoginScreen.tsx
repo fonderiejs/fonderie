@@ -1,5 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useLogin } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -11,6 +12,8 @@ export interface ILoginScreenProps {
 	onMfaRequired?: (mfaToken: string) => void;
 	onNavigateToRegister?: () => void;
 	onNavigateToForgotPassword?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function LoginScreen({
@@ -19,8 +22,11 @@ export function LoginScreen({
 	onMfaRequired,
 	onNavigateToRegister,
 	onNavigateToForgotPassword,
+	locale,
 }: ILoginScreenProps) {
 	const { login, isLoading, error } = useLogin(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
@@ -40,16 +46,16 @@ export function LoginScreen({
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Sign In</h1>
+			<h1 style={styles.title}>{t('auth.login.title')}</h1>
 
 			<label htmlFor="fonderie-login-email" style={styles.visuallyHidden}>
-				Email
+				{t('auth.fields.email')}
 			</label>
 			<input
 				id="fonderie-login-email"
 				style={styles.input}
 				type="email"
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChange={(event) => setEmail(event.target.value)}
 				autoComplete="email"
@@ -57,13 +63,13 @@ export function LoginScreen({
 			/>
 
 			<label htmlFor="fonderie-login-password" style={styles.visuallyHidden}>
-				Password
+				{t('auth.fields.password')}
 			</label>
 			<input
 				id="fonderie-login-password"
 				style={styles.input}
 				type="password"
-				placeholder="Password"
+				placeholder={t('auth.fields.password')}
 				value={password}
 				onChange={(event) => setPassword(event.target.value)}
 				autoComplete="current-password"
@@ -72,20 +78,20 @@ export function LoginScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Signing in…' : 'Sign In'}
+				{isLoading ? t('auth.login.submitting') : t('auth.login.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateToForgotPassword} style={styles.link}>
-				Forgot password?
+				{t('auth.login.forgotPassword')}
 			</button>
 
 			<button type="button" onClick={onNavigateToRegister} style={styles.link}>
-				Don't have an account? <strong>Sign up</strong>
+				{t('auth.login.noAccount')} <strong>{t('auth.login.signUp')}</strong>
 			</button>
 		</form>
 	);

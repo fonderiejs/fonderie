@@ -25,6 +25,7 @@ function handleMailgunDelivery(req: Request, store: IStoreAdapter, signingKey?: 
 function handleMailtrapDelivery(req: Request, store: IStoreAdapter): Promise<Response>
 
 new Dispatcher(config: ICourierConfig, resolver: ITemplateResolver, store?: IStoreAdapter | undefined): Dispatcher
+  .setLocales(locales: ILocaleSettings): void
   .registerChannel(channel: ICourierChannel): Dispatcher
   .channelNames(): string[]
   .dispatch(message: ICourierMessage): Promise<void>
@@ -142,6 +143,7 @@ type MessageLogStatus = 'pending' | 'sent' | 'failed' | 'delivered' | 'opened' |
 interface ICourierMessage {
     type: string;
     locale?: string;
+    fallbackLocale?: string;
     recipient: {
         email: string | null;
         phone: string | null;
@@ -184,6 +186,7 @@ interface ICourierConfig {
     push?: IPushChannelConfig;
     email?: IEmailChannelConfig;
     brandName?: string;
+    recipientLocaleLookup?: boolean;
     adminToken?: string;
     templates?: {
         source: 'db' | 'fs';

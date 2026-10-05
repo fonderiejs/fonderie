@@ -1,4 +1,6 @@
-import type { BillingClient } from '@fonderie/client';
+import type { BillingClient, UiMessageKey, UiT } from '@fonderie/client';
+import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import {
 	useBillingPortal,
 	usePaymentMethod,
@@ -6,6 +8,13 @@ import {
 	useSubscription,
 } from '@fonderie/react-billing';
 import type { CSSProperties } from 'react';
+
+// A server-reported state ('past_due') in words; an unknown one shown as-is.
+function statusLabel(t: UiT, status: string): string {
+	const key = `billing.status.${status}` as UiMessageKey;
+	const word = t(key);
+	return word === key ? status : word;
+}
 
 export interface ISubscriptionScreenProps {
 	client?: BillingClient;
@@ -16,6 +25,8 @@ export interface ISubscriptionScreenProps {
 	// a portal URL. useSetupPaymentMethod/useSavePaymentMethod live there; this
 	// provider-agnostic screen only shows + removes the card.
 	onAddPaymentMethod?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function SubscriptionScreen({
@@ -23,7 +34,11 @@ export function SubscriptionScreen({
 	onManageBilling,
 	onNavigateToPricing,
 	onAddPaymentMethod,
+	locale,
 }: ISubscriptionScreenProps) {
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { subscription, isLoading, error } = useSubscription(client);
 	const { openPortal, isLoading: isOpeningPortal, error: portalError } = useBillingPortal(client);
 	const {
@@ -53,20 +68,20 @@ export function SubscriptionScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading subscription…</p>;
+	if (isLoading) return <p style={styles.status}>{t('billing.subscription.loading')}</p>;
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
 	if (!subscription) {
 		return (
 			<div style={styles.container}>
-				<p style={styles.status}>You don't have an active subscription.</p>
+				<p style={styles.status}>{t('billing.subscription.none')}</p>
 				<button type="button" onClick={onNavigateToPricing} style={styles.button}>
-					View plans
+					{t('billing.subscription.viewPlans')}
 				</button>
 			</div>
 		);
@@ -78,55 +93,72 @@ export function SubscriptionScreen({
 
 	return (
 		<div style={styles.container}>
-			<h1 style={styles.title}>Your subscription</h1>
+			<h1 style={styles.title}>{t('billing.subscription.title')}</h1>
 			<p style={styles.plan}>{subscription.plan}</p>
 			<p style={styles.status}>
-				Status: {subscription.status}
-				{subscription.cancelAtPeriodEnd && ' (cancels at period end)'}
+				{t(
+					subscription.cancelAtPeriodEnd
+						? 'billing.subscription.statusLineCanceling'
+						: 'billing.subscription.statusLine',
+					{ status: statusLabel(t, subscription.status) },
+				)}
 			</p>
 			{subscription.currentPeriodEnd && (
 				<p style={styles.status}>
-					Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+					{t(subscription.cancelAtPeriodEnd ? 'billing.subscription.ends' : 'billing.subscription.renews', {
+						date: new Date(subscription.currentPeriodEnd).toLocaleDateString(formatLocale),
+					})}
 				</p>
 			)}
 
 			{portalError && (
 				<p style={styles.error} role="alert">
-					{portalError.explanation}
+					{errorText(portalError)}
 				</p>
 			)}
 
 			<button type="button" disabled={isOpeningPortal} onClick={handleManage} style={styles.button}>
-				{isOpeningPortal ? 'Opening…' : 'Manage billing'}
+				{isOpeningPortal ? t('billing.subscription.opening') : t('billing.subscription.manage')}
 			</button>
 
 			<div style={styles.section}>
-				<h2 style={styles.sectionTitle}>Payment method</h2>
+				<h2 style={styles.sectionTitle}>{t('billing.paymentMethod.title')}</h2>
 				{isLoadingCard && !paymentMethod ? (
-					<p style={styles.status}>Loading payment method…</p>
+					<p style={styles.status}>{t('billing.paymentMethod.loading')}</p>
 				) : (
 					<>
 						{cardError && (
 							<p style={styles.error} role="alert">
-								{cardError.explanation}
+								{errorText(cardError)}
 							</p>
 						)}
 						{removeError && (
 							<p style={styles.error} role="alert">
-								{removeError.explanation}
+								{errorText(removeError)}
 							</p>
 						)}
-						{paymentMethod ? (
+						{paymentMethod?.type === 'link' ? (
+							// Stripe Link: no card details — the Link account is what pays.
 							<p style={styles.cardLine}>
-								{brand} •••• {paymentMethod.last4} · expires {paymentMethod.expMonth}/
-								{paymentMethod.expYear}
+								{paymentMethod.email
+									? t('billing.paymentMethod.linkWithEmail', { email: paymentMethod.email })
+									: t('billing.paymentMethod.link')}
+							</p>
+						) : paymentMethod ? (
+							<p style={styles.cardLine}>
+								{t('billing.paymentMethod.card', {
+									brand,
+									last4: paymentMethod.last4,
+									month: paymentMethod.expMonth,
+									year: paymentMethod.expYear,
+								})}
 							</p>
 						) : (
-							<p style={styles.status}>No card on file.</p>
+							<p style={styles.status}>{t('billing.paymentMethod.none')}</p>
 						)}
 						<div style={styles.buttonRow}>
 							<button type="button" onClick={onAddPaymentMethod} style={styles.secondaryButton}>
-								{paymentMethod ? 'Update card' : 'Add card'}
+								{paymentMethod ? t('billing.paymentMethod.update') : t('billing.paymentMethod.add')}
 							</button>
 							{paymentMethod && (
 								<button
@@ -135,7 +167,9 @@ export function SubscriptionScreen({
 									onClick={handleRemove}
 									style={styles.dangerButton}
 								>
-									{isRemoving ? 'Removing…' : 'Remove'}
+									{isRemoving
+										? t('billing.paymentMethod.removing')
+										: t('billing.paymentMethod.remove')}
 								</button>
 							)}
 						</div>

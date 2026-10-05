@@ -26,6 +26,22 @@ export interface IWorkspacesConfig {
 	// manage, and a member-created local role named 'ADMIN' must grant nothing.
 	managerRoles?: string[];
 
+	// Link the invitation email points to, with `{token}` replaced by the
+	// invitation's token — e.g. 'https://app.example.com/invite/{token}'. The
+	// page (or the app, via a universal / app link) signs the person in or up and
+	// accepts with POST /workspaces/invitations/accept { token }. Unset: the
+	// email carries the 6-digit PIN only.
+	invitationUrl?: string;
+
+	// Which account may accept an invitation LINK (the PIN is always bound to
+	// the invited email). Default 'email-when-present': an account with an
+	// email must be the invited one (else 403 INVITATION_EMAIL_MISMATCH, with a
+	// masked hint of the right address) — a forwarded link or the wrong
+	// signed-in account cannot join; an account with no email (phone sign-up)
+	// accepts with the link, which only the invitee received. 'email' also
+	// refuses accounts with no email; 'any' is the pre-6.7 behaviour.
+	invitationAccountMatch?: 'email-when-present' | 'email' | 'any';
+
 	// Auto-create a personal workspace when user.registered fires.
 	// Requires an EventBus to be passed to WorkspacesModule. Default: true
 	personalWorkspace?: boolean;
@@ -44,7 +60,8 @@ export type WorkspaceRouteId =
 	| 'createWorkspace' | 'listWorkspaces' | 'getWorkspace' | 'updateWorkspace'
 	| 'archive' | 'restore' | 'getSettings' | 'updateSettings'
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
-	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'acceptInvitation'
+	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
+	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };

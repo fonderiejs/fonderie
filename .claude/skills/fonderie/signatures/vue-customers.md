@@ -12,12 +12,16 @@ type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listCustomers(input?: IListCustomersInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput | undefined): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput | undefined): Promise<IApiResponse<undefined>>
+  .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
+  .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
@@ -137,12 +141,17 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    displayName: string;
     referenceCode: string;
     referralCode: string;
     referredBy: string | null;
     blacklisted: {
         status: boolean;
         reason: string | null;
+    };
+    archived: {
+        status: boolean;
+        at: string | null;
     };
     createdBy: string;
     createdAt: string;
@@ -195,6 +204,8 @@ type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
 };
 
 type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+    relatedId: string;
+    relationshipId: string;
     id: string;
     customerId: string;
     relationship: string;
@@ -217,6 +228,7 @@ interface IGetCustomerInput {
 interface IListCustomersInput {
     search?: string;
     blacklisted?: boolean;
+    archived?: boolean | 'all';
     limit?: number;
     offset?: number;
 }
@@ -233,6 +245,10 @@ new FonderieApiError(reason: string, explanation: string, status: number, detail
   .message: string
   .stack: string
   .cause: unknown
+
+interface ICustomerSectionOptions {
+    read?: boolean;
+}
 
 interface IUseCustomerAddressesReturn {
     addresses: Ref<ICustomerAddressDTO[]>;
@@ -315,6 +331,9 @@ interface IUseCustomerReturn {
         force?: boolean;
     }) => Promise<void>;
     updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
+    deleteCustomer: () => Promise<void>;
+    archiveCustomer: () => Promise<void>;
+    unarchiveCustomer: () => Promise<void>;
 }
 
 interface IUseCustomersReturn {
@@ -331,6 +350,8 @@ interface IUseCustomersReturn {
     deleteCustomer: (customerId: string) => Promise<void>;
     blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
     unblacklistCustomer: (customerId: string) => Promise<void>;
+    archiveCustomer: (customerId: string) => Promise<void>;
+    unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 interface IUseCustomerTagsReturn {
@@ -346,19 +367,19 @@ interface IUseCustomerTagsReturn {
 
 function useCustomer(customerId: MaybeRefOrGetter<string>, depth?: MaybeRefOrGetter<1 | 2> | undefined): IUseCustomerReturn
 
-function useCustomerAddresses(customerId: MaybeRefOrGetter<string>): IUseCustomerAddressesReturn
+function useCustomerAddresses(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerAddressesReturn
 
-function useCustomerEmails(customerId: MaybeRefOrGetter<string>): IUseCustomerEmailsReturn
+function useCustomerEmails(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerEmailsReturn
 
 function useCustomerLabels(type: MaybeRefOrGetter<CustomerLabelType>): IUseCustomerLabelsReturn
 
-function useCustomerNotes(customerId: MaybeRefOrGetter<string>): IUseCustomerNotesReturn
+function useCustomerNotes(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerNotesReturn
 
-function useCustomerPhones(customerId: MaybeRefOrGetter<string>): IUseCustomerPhonesReturn
+function useCustomerPhones(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerPhonesReturn
 
-function useCustomerRelationships(customerId: MaybeRefOrGetter<string>): IUseCustomerRelationshipsReturn
+function useCustomerRelationships(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerRelationshipsReturn
 
 function useCustomers(params?: MaybeRefOrGetter<IListCustomersInput | undefined>): IUseCustomersReturn
 
-function useCustomerTags(customerId: MaybeRefOrGetter<string>): IUseCustomerTagsReturn
+function useCustomerTags(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions | undefined): IUseCustomerTagsReturn
 ```

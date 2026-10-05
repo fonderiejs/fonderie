@@ -134,6 +134,8 @@ test('lookup by email and by id; secrets never leave; unknown is 404; no email l
 	assert.equal(text.includes('secret-hash'), false);
 	assert.equal(text.includes('TOTP-SECRET'), false);
 
+	// The address the user typed, '+tag' and all, finds the account it reaches.
+	assert.equal((await app.handle(req('GET', '/_admin/users?email=Ada%2Bsupport@Example.com'))).status, 200);
 	assert.equal((await app.handle(req('GET', '/_admin/users/u1'))).status, 200);
 	assert.equal((await app.handle(req('GET', '/_admin/users/nope'))).status, 404);
 	assert.equal(

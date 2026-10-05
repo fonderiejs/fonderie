@@ -1,4 +1,6 @@
-import type { FonderieApiError, WorkspacesClient } from '@fonderie/client';
+import type { FonderieApiError, IMemberDTO, UiMessageKey, WorkspacesClient } from '@fonderie/client';
+import { formatPersonName } from '@fonderie/client';
+import { useUiError, useUiLocale, useUiT } from '@fonderie/react';
 import { useMembers } from '@fonderie/react-workspaces';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -7,14 +9,30 @@ export interface ITeamMembersScreenProps {
 	client?: WorkspacesClient;
 	currentUserId: string;
 	onNavigateToInvite?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function TeamMembersScreen({
 	client,
 	currentUserId,
 	onNavigateToInvite,
+	locale,
 }: ITeamMembersScreenProps) {
 	const { members, isLoading, error, removeMember } = useMembers(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	const uiLocale = useUiLocale(client, locale);
+	// The member's name in the order the UI language writes it; their email when
+	// they have no name; the id only as a last resort.
+	const nameOf = (m: IMemberDTO) => formatPersonName(m.firstName, m.lastName, uiLocale) || m.email || m.userId;
+	const rolesOf = (m: IMemberDTO) => (m.roles?.length ? m.roles.map((r) => roleLabel(r.name)) : [roleLabel(m.roleName)]).join(', ');
+	// System roles are translated; a custom role shows its own name.
+	const roleLabel = (roleName: string) => {
+		const key = `workspaces.roles.${roleName}` as UiMessageKey;
+		const text = t(key);
+		return text === key ? roleName : text;
+	};
 	const [isRemoving, setIsRemoving] = useState(false);
 	const [removeError, setRemoveError] = useState<FonderieApiError | null>(null);
 
@@ -32,28 +50,28 @@ export function TeamMembersScreen({
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading team…</p>;
+	if (isLoading) return <p style={styles.status}>{t('workspaces.members.loading')}</p>;
 	// A failed removal also lands in the hook's shared `error`; it's surfaced
 	// inline via `removeError` below, so don't let it replace the list.
 	if (error && !removeError)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
 	return (
 		<div style={styles.container}>
 			<div style={styles.header}>
-				<h1 style={styles.title}>Team members</h1>
+				<h1 style={styles.title}>{t('workspaces.members.title')}</h1>
 				<button type="button" onClick={onNavigateToInvite} style={styles.inviteButton}>
-					Invite
+					{t('workspaces.members.invite')}
 				</button>
 			</div>
 
 			{removeError && (
 				<p style={styles.error} role="alert">
-					{removeError.explanation}
+					{errorText(removeError)}
 				</p>
 			)}
 
@@ -61,17 +79,19 @@ export function TeamMembersScreen({
 				{members.map((member) => (
 					<li key={member.userId} style={styles.row}>
 						<div>
-							<p style={styles.userId}>{member.userId}</p>
-							<p style={styles.role}>{member.roleName}</p>
+							<p style={styles.userId}>{nameOf(member)}</p>
+							{nameOf(member) !== member.email && member.email ? <p style={styles.role}>{member.email}</p> : null}
+							<p style={styles.role}>{rolesOf(member)}</p>
 						</div>
 						{member.userId !== currentUserId && (
 							<button
 								type="button"
 								disabled={isRemoving}
 								onClick={() => handleRemove(member.userId)}
+								aria-label={t('workspaces.members.a11y.remove', { member: nameOf(member) })}
 								style={styles.removeButton}
 							>
-								Remove
+								{t('workspaces.members.remove')}
 							</button>
 						)}
 					</li>

@@ -5,6 +5,7 @@ import type { EventBus } from '@fonderie/events';
 
 import type { IBillingConfig } from '../config';
 import type { ICounterBackend } from '../backends/types';
+import type { IBillingContext } from '../types';
 import { MESSAGE_KEYS, EVENT_KEYS } from '../config';
 import { getSubscription, isWithinDunningGrace } from '../services/subscriptions';
 import { isWorkspaceMember } from '../services/membership';
@@ -22,6 +23,7 @@ import {
 	parseWindowMs,
 	subscriberEventFields,
 	formatWalletAmount,
+	localizedAmounts,
 } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { maybeAutoRecharge } from '../services/auto-recharge';
@@ -57,6 +59,23 @@ export function withBilling(
 			}
 		}
 
+		// The adapter's bridge already ran this middleware for this very request
+		// (see IFonderieContextMeta.bridged): its counters are incremented, its
+		// grant and notices are done. Running again would count every
+		// fonderie-routed request twice — halving every windowed plan limit.
+		// Reuse that context when it is for the same subscriber.
+		const bridged = (ctx.meta['bridged'] as Record<string, unknown> | undefined)?.['billing'] as
+			| IBillingContext
+			| undefined;
+		if (
+			bridged &&
+			bridged.subscriber.type === subscriber.type &&
+			bridged.subscriber.id === subscriber.id
+		) {
+			ctx.meta['billing'] = bridged;
+			return next();
+		}
+
 		// Resolve subscription → plan name (fall back to first plan = free)
 		const subscription = await getSubscription(subscriber.type, subscriber.id, store);
 		const planName = subscription?.plan ?? config.plans[0]?.name ?? 'free';
@@ -72,10 +91,20 @@ export function withBilling(
 		const plan = config.plans.find((p) => p.name === planName) ?? config.plans[0];
 		if (!plan) return next();
 
+		// Entitlements follow PAYMENT, not the row's plan name. A subscription
+		// that is incomplete (checkout never paid), unpaid, paused, or past_due
+		// beyond the dunning grace still names its paid plan — only its status
+		// says it isn't paying — so its features, limits and seats are the free
+		// plan's (config.plans[0]), exactly as for a subscriber with no
+		// subscription. The wallet below keeps the subscribed plan: its currency
+		// is where the subscriber's balance lives, and new grants are already
+		// gated on grantEligible.
+		const entitledPlan = active ? plan : (config.plans[0] ?? plan);
+
 		// Increment windowed (rate-limit) counters and read their current totals
 		const counters: Record<string, number> = {};
 
-		for (const [key, entry] of Object.entries(plan.policy ?? {})) {
+		for (const [key, entry] of Object.entries(entitledPlan.policy ?? {})) {
 			if ('enabled' in entry || !entry.window) continue;
 
 			const windowMs = parseWindowMs(entry.window);
@@ -84,7 +113,8 @@ export function withBilling(
 		}
 
 		// Build and cache billing context on ctx
-		const billingCtx = buildBillingContext({ subscriber, plan, active, counters });
+		const billingCtx = buildBillingContext({ subscriber, plan: entitledPlan, active, counters });
+		billingCtx.subscribedPlan = plan.name;
 		ctx.meta['billing'] = billingCtx;
 
 		// Wallet economics — lazy periodic grant, then a balance snapshot for
@@ -187,6 +217,10 @@ export function withBilling(
 											planWallet.currency,
 											planWallet.precision ?? 2,
 										),
+										...localizedAmounts({
+											balanceDisplay: { amount: balance, currency: planWallet.currency, precision: planWallet.precision ?? 2 },
+											thresholdDisplay: { amount: planWallet.lowBalanceAt, currency: planWallet.currency, precision: planWallet.precision ?? 2 },
+										}),
 									},
 								}),
 							);
@@ -235,6 +269,11 @@ export function withBilling(
 				phone: null,
 				deviceToken: null,
 			};
+			// Limit notices go out on the bus, to whoever resolveRecipient names
+			// for the subscriber — for a workspace, the owner, not whichever member
+			// made the request that crossed the line. Without a resolver + bus they
+			// are left on ctx.meta.messages for the app to send itself.
+			const toSubscriber = !!bus && typeof config.resolveRecipient === 'function';
 
 			for (const [key, status] of Object.entries(billingCtx.statuses)) {
 				if (status.type !== 'counter' || status.limit === null) continue;
@@ -250,7 +289,7 @@ export function withBilling(
 							recipient,
 							data: {
 								key,
-								plan: plan.name,
+								plan: entitledPlan.name,
 								limit: status.limit,
 								used: status.used,
 							},
@@ -265,7 +304,7 @@ export function withBilling(
 							recipient,
 							data: {
 								key,
-								plan: plan.name,
+								plan: entitledPlan.name,
 								limit: status.limit,
 								used: status.used,
 							},
@@ -281,7 +320,18 @@ export function withBilling(
 				}
 			}
 
-			if (toNotify.length > 0) {
+			if (toNotify.length > 0 && toSubscriber) {
+				for (const message of toNotify) {
+					await background(
+						notifyBilling(bus, config, {
+							subscriberType: subscriber.type,
+							subscriberId: subscriber.id,
+							type: message.type,
+							data: message.data ?? {},
+						}),
+					);
+				}
+			} else if (toNotify.length > 0) {
 				const existing = ctx.meta['messages'] as ICourierMessage[] | undefined;
 				ctx.meta['messages'] = [...(existing ?? []), ...toNotify];
 			}

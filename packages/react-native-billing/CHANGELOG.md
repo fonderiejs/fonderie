@@ -1,5 +1,44 @@
 # @fonderie/react-native-billing
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [157004a]
+  - @fonderie/client@3.2.0
+  - @fonderie/react-billing@0.11.0
+
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+- Updated dependencies [87f6e1d]
+  - @fonderie/client@3.1.0
+  - @fonderie/react-billing@0.10.0
+
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-billing@0.9.3
+
+## 0.2.4
+
+### Patch Changes
+
+- 789d775: **Depending on a Fonderie package now actually upgrades the Fonderie packages it uses.**
+  
+  These packages depended on their siblings at `"*"`. npm treats an already-installed version as satisfying `"*"`, so upgrading one package left the packages it builds on at their old versions. For example, `@fonderie/react-native-media` 0.1.1 kept `@fonderie/react-media` at 0.1.0, without the fix the upgrade was for. Nothing reported it.
+  
+  Each internal dependency is now a caret range on the current version (e.g. `^0.2.0`), so installing a package brings its siblings up to what it was built with. Releases keep the ranges current, and a new `check:internal-ranges` gate keeps `"*"` from coming back.
+- Updated dependencies [789d775]
+  - @fonderie/react-billing@0.9.2
+
 ## 0.2.3
 
 ### Patch Changes

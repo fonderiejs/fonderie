@@ -1,4 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useResetPassword } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -8,6 +9,8 @@ export const ResetPasswordScreen = defineComponent({
 	name: 'FonderieResetPasswordScreen',
 	props: {
 		client: { type: Object as PropType<AuthClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 		// Pre-fills the pin input, e.g. when it arrives via a deep link.
 		initialPin: { type: String, required: false },
 	},
@@ -17,6 +20,8 @@ export const ResetPasswordScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const { resetPassword, isLoading, error, done } = useResetPassword(props.client);
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const pin = ref(props.initialPin ?? '');
 		const password = ref('');
 		const confirmPassword = ref('');
@@ -40,32 +45,24 @@ export const ResetPasswordScreen = defineComponent({
 		return () => {
 			if (done.value) {
 				return h('div', { style: styles.container }, [
-					h('h1', { style: [styles.title, { marginBottom: '12px' }] }, 'Password updated'),
-					h(
-						'p',
-						{ style: styles.body },
-						'Your password has been reset. Sign in with your new password.',
-					),
+					h('h1', { style: [styles.title, { marginBottom: '12px' }] }, t('auth.reset.doneTitle')),
+					h('p', { style: styles.body }, t('auth.reset.doneBody')),
 					h(
 						'button',
 						{ type: 'button', style: styles.button, onClick: () => emit('navigate-login') },
-						'Go to sign in',
+						t('auth.reset.goToSignIn'),
 					),
 				]);
 			}
 
 			return h('form', { style: styles.container, onSubmit: handleSubmit }, [
-				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, 'Choose a new password'),
-				h(
-					'p',
-					{ style: styles.body },
-					'Enter the 6-digit code from your email and your new password.',
-				),
+				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, t('auth.reset.title')),
+				h('p', { style: styles.body }, t('auth.reset.lead')),
 				h('input', {
 					style: styles.input,
 					type: 'text',
 					inputmode: 'numeric',
-					placeholder: '6-digit code',
+					placeholder: t('auth.fields.code'),
 					value: pin.value,
 					required: true,
 					autocomplete: 'one-time-code',
@@ -76,7 +73,7 @@ export const ResetPasswordScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'password',
-					placeholder: 'New password',
+					placeholder: t('auth.reset.newPassword'),
 					value: password.value,
 					required: true,
 					autocomplete: 'new-password',
@@ -87,7 +84,7 @@ export const ResetPasswordScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'password',
-					placeholder: 'Confirm new password',
+					placeholder: t('auth.reset.confirmPassword'),
 					value: confirmPassword.value,
 					required: true,
 					autocomplete: 'new-password',
@@ -96,20 +93,20 @@ export const ResetPasswordScreen = defineComponent({
 					},
 				}),
 				mismatch.value
-					? h('p', { style: styles.error, role: 'alert' }, 'Passwords do not match.')
+					? h('p', { style: styles.error, role: 'alert' }, t('auth.reset.mismatch'))
 					: null,
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',
 					{ type: 'submit', disabled: isLoading.value, style: styles.button },
-					isLoading.value ? 'Resetting…' : 'Reset password',
+					isLoading.value ? t('auth.reset.submitting') : t('auth.reset.submit'),
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-login') },
-					'Back to sign in',
+					t('auth.backToSignIn'),
 				),
 			]);
 		};

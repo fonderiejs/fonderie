@@ -1,4 +1,5 @@
 import type { IWebhookDeliveryDTO, WebhooksClient } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useWebhookDeliveries, useWebhookEndpoint } from '@fonderie/vue-webhooks';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref, watch } from 'vue';
@@ -9,11 +10,19 @@ export const WebhookDetailScreen = defineComponent({
 	props: {
 		client: { type: Object as PropType<WebhooksClient>, required: false },
 		endpointId: { type: String, required: true },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		'navigate-list': () => true,
 	},
 	setup(props, { emit }) {
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
+		const statusLabel = (status: string) =>
+			status === 'pending' || status === 'delivered' || status === 'failed'
+				? t(`webhooks.status.${status}`)
+				: status;
 		const { endpoint, isLoading, error, updateEndpoint } = useWebhookEndpoint(
 			props.client,
 			props.endpointId,
@@ -59,22 +68,25 @@ export const WebhookDetailScreen = defineComponent({
 				h(
 					'span',
 					{ style: styles.meta },
-					`${delivery.status} · ${delivery.attempts} attempt${delivery.attempts === 1 ? '' : 's'}${
-						delivery.responseStatus !== null ? ` · HTTP ${delivery.responseStatus}` : ''
-					}`,
+					`${statusLabel(delivery.status)} · ${t(
+						delivery.attempts === 1
+							? 'webhooks.detail.attemptsOne'
+							: 'webhooks.detail.attemptsOther',
+						{ count: delivery.attempts },
+					)}${delivery.responseStatus !== null ? ` · HTTP ${delivery.responseStatus}` : ''}`,
 				),
 			]);
 		}
 
 		return () => {
-			if (isLoading.value) return h('p', { style: styles.status }, 'Loading…');
+			if (isLoading.value) return h('p', { style: styles.status }, t('webhooks.loading'));
 			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Webhook endpoint'),
+				h('h1', { style: styles.title }, t('webhooks.detail.title')),
 				h('form', { style: styles.editForm, onSubmit: handleSubmit }, [
-					h('label', { style: styles.label, for: 'webhook-url' }, 'URL'),
+					h('label', { style: styles.label, for: 'webhook-url' }, t('webhooks.detail.url')),
 					h('input', {
 						id: 'webhook-url',
 						style: styles.input,
@@ -83,7 +95,7 @@ export const WebhookDetailScreen = defineComponent({
 							url.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					h('label', { style: styles.label, for: 'webhook-events' }, 'Events (comma-separated)'),
+					h('label', { style: styles.label, for: 'webhook-events' }, t('webhooks.detail.events')),
 					h('input', {
 						id: 'webhook-events',
 						style: styles.input,
@@ -100,18 +112,18 @@ export const WebhookDetailScreen = defineComponent({
 								enabled.value = (e.target as HTMLInputElement).checked;
 							},
 						}),
-						'Enabled',
+						t('webhooks.enabled'),
 					]),
-					h('button', { type: 'submit', style: styles.button }, 'Save'),
+					h('button', { type: 'submit', style: styles.button }, t('webhooks.detail.save')),
 				]),
-				h('h2', { style: styles.subtitle }, 'Deliveries'),
+				h('h2', { style: styles.subtitle }, t('webhooks.detail.deliveries')),
 				isLoadingDeliveries.value
-					? h('p', { style: styles.status }, 'Loading…')
+					? h('p', { style: styles.status }, t('webhooks.loading'))
 					: h('ul', { style: styles.list }, deliveries.value.map(renderDelivery)),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-list') },
-					'Back to webhooks',
+					t('webhooks.detail.back'),
 				),
 			]);
 		};

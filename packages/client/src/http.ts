@@ -72,18 +72,26 @@ export interface IHttpDeps {
 	// The platform this client runs on, sent as X-Client-Kind so a sign-in gets
 	// that platform's session lifetimes (mobile | desktop | web).
 	clientKind?: 'mobile' | 'desktop' | 'web' | undefined;
+	// The UI language, sent as Accept-Language on every request.
+	getLocale?: (() => string) | undefined;
 	// Whether the server answered: true for any response (an error status
 	// included), false when the request never reached it (network down, DNS,
 	// connection refused). Drives the client's 'offline' session state.
 	onReachability?: ((reachable: boolean) => void) | undefined;
+	// Called after every successful write with the key fragments it affects
+	// (`/<resource>` plus any explicit `invalidate`) — whether or not a
+	// response cache is configured. Drives the query store's invalidation.
+	onWrite?: ((fragments: string[]) => void) | undefined;
 }
 
 export class HttpClient {
 	private clientKind: 'mobile' | 'desktop' | 'web' | undefined;
+	private getLocale: (() => string) | undefined;
 	private cache: ICache | undefined;
 	private defaultTtlMs: number;
 	private refresh: (() => Promise<string | undefined>) | undefined;
 	private onReachability: ((reachable: boolean) => void) | undefined;
+	private onWrite: ((fragments: string[]) => void) | undefined;
 
 	constructor(
 		private baseUrl: string,
@@ -91,9 +99,11 @@ export class HttpClient {
 	) {
 		this.cache = deps.cache;
 		this.clientKind = deps.clientKind;
+		this.getLocale = deps.getLocale;
 		this.defaultTtlMs = deps.defaultTtlMs ?? 60_000;
 		this.refresh = deps.refresh;
 		this.onReachability = deps.onReachability;
+		this.onWrite = deps.onWrite;
 	}
 
 	// Absolute URL for a path on this client's origin — for endpoints a browser
@@ -132,10 +142,11 @@ export class HttpClient {
 		const data = await this.exec<T>(opts);
 
 		// ── Write path: bust the reads this mutation affects ────────────────────
-		if (cache && method !== 'GET') {
+		if (method !== 'GET') {
 			const resource = opts.path.split('?')[0]?.split('/').filter(Boolean)[0];
-			if (resource) cache.invalidate(`/${resource}`);
-			for (const fragment of opts.invalidate ?? []) cache.invalidate(fragment);
+			const fragments = [...(resource ? [`/${resource}`] : []), ...(opts.invalidate ?? [])];
+			if (cache) for (const fragment of fragments) cache.invalidate(fragment);
+			this.onWrite?.(fragments);
 		}
 
 		return data;
@@ -159,6 +170,9 @@ export class HttpClient {
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
 		if (this.clientKind) headers['X-Client-Kind'] = this.clientKind;
+		// The UI language — a CORS-safelisted header, so no preflight is added.
+		const locale = this.getLocale?.();
+		if (locale) headers['Accept-Language'] = locale;
 		Object.assign(headers, opts.headers ?? {});
 
 		const fetchInit: RequestInit = { method: opts.method, headers, credentials: 'include' };

@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/react-native-workspaces-screens",
-	"version": "0.4.1",
-	"description": "Pre-built React Native workspaces screens for Fonderie \u2014 team members, invitations.",
+	"version": "0.5.1",
+	"description": "Pre-built React Native workspaces screens for Fonderie — team members, invitations.",
 	"keywords": [
 		"fonderiejs",
 		"react-native",
@@ -35,8 +35,9 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react-native-workspaces": "*"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/react": "^0.11.0",
+		"@fonderie/react-native-workspaces": "^0.1.5"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",

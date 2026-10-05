@@ -11,7 +11,10 @@ import { generateTotpSecret, generateTotpCode, generateBackupCodes } from '../se
 import { hashPassword, verifyPassword, verifyPasswordForLogin } from '../services/password';
 import { authController } from '../controllers/auth.controller';
 import { mfaController } from '../controllers/mfa.controller';
-import { oauthController } from '../controllers/oauth.controller';
+import { generateKeyPairSync } from 'node:crypto';
+import jwt from 'jsonwebtoken';
+
+import { __resetAppleKeysForTests, oauthController } from '../controllers/oauth.controller';
 import { userController } from '../controllers/user.controller';
 
 const config: IAuthConfig = {
@@ -107,6 +110,21 @@ test('importUser: preserves supplied identity fields, omits the rest', async () 
 	]);
 	// columns NOT supplied must not appear (they take table defaults)
 	assert.doesNotMatch(capturedSql, /first_name|mfa_enabled|locale/);
+});
+
+test("importUser: stores the address the way sign-in looks it up ('+tag' dropped); refuses a non-address", async () => {
+	const { importUser } = await import('../migrate');
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(_sql: string, p?: unknown[]): Promise<T[]> => {
+			params = p ?? [];
+			return [{ id: 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await importUser(store, { email: '  Jane+Legacy@Example.com ' });
+	assert.equal(params[0], 'jane@example.com');
+	await assert.rejects(importUser(store, { email: 'not-an-address' }), /not an email address/);
 });
 
 test('importUser: omitting id lets the table generate one', async () => {
@@ -290,6 +308,11 @@ type AuthStoreOpts = {
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// The reset's one statement (password + spend code + end sessions):
+			// changes a LIVE account only.
+			if (sql.includes('WITH changed AS'))
+				return [{ id: 'user-1' }] as unknown as T[];
+
 			// INSERT is matched FIRST and deliberately: upsertByProvider reads the
 			// pre-insert row in a CTE, so its SQL also contains 'WHERE email = $1'
 			// and a lookup branch above would swallow it — returning no row and
@@ -2358,10 +2381,28 @@ test('deleteMe: emits user.deleted with correct userId', async () => {
 	const bus = makeBus();
 	const ctrl = userController(makeStore(), config, bus as any);
 	await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
-	assert.equal(bus.emitted.length, 1);
 	assert.equal(bus.emitted[0]?.type, EVENT_KEYS.userDeleted);
 	const p = bus.emitted[0]?.payload as any;
 	assert.equal(p.userId, 'user-1');
+});
+
+// The user's other devices used to stay signed in until their next request
+// failed. Deleting the account ends every session and says so live.
+test('deleteMe: ends every session and announces it (sids null, account-deleted)', async () => {
+	const bus = makeBus();
+	const seenSql: string[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			seenSql.push(sql);
+			return [] as unknown as T[];
+		},
+	} as IStoreAdapter;
+	const ctrl = userController(store, config, bus as any);
+	const res = await ctrl.deleteMe(makeCtx({ user: { id: 'user-1', email: 'jane@example.com' } }));
+	assert.equal(res.status, 200);
+	assert.ok(seenSql.some((q) => /DELETE FROM fonderie_sessions WHERE user_id = \$1/.test(q)), 'sessions deleted');
+	const ev = bus.emitted.find((e) => e.type === EVENT_KEYS.sessionRevoked);
+	assert.deepEqual(ev?.payload, { userId: 'user-1', sids: null, reason: 'account-deleted' });
 });
 
 test('changePassword: revokes all of the user sessions', async () => {
@@ -2843,6 +2884,23 @@ test('rate limit: 6th login attempt for one account 429s out of the box', async 
 	assert.ok(last.headers.get('Retry-After'));
 });
 
+test("rate limit: a rotating '+tag' does not buy fresh login attempts on the same account", async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const accountLimit = (login as any[])[4];
+	let last: Response = new Response();
+	for (let i = 0; i < 6; i++) {
+		last = await accountLimit(
+			// target+0@ … target+5@ all sign in to target@ — one account, one bucket.
+			makeCtx({ body: { email: `Target+${i}@Example.com`, password: 'x'.repeat(10) } }),
+			async () => new Response('ok'),
+		);
+	}
+	assert.equal(last.status, 429);
+});
+
 test('rate limit: IP phase (before validation) sheds a flood from one IP', async () => {
 	const { buildAuthRoutes } = await import('../routes');
 	const { MemoryStore } = await import('@fonderie/rate-limit');
@@ -3041,7 +3099,18 @@ test('collectAuthConfigProblems: incomplete google config is an error', async ()
 		jwtSecret: 'kX9mP2qR7vL4wT8nB6yJ3hF5cD1aZ0sQ',
 		google: { clientId: '', clientSecret: 'aRealLookingSecretValue123456', redirectUri: '' },
 	});
-	assert.ok(problems.some((p) => p.severity === 'error' && /clientId, clientSecret, or redirectUri/.test(p.message)));
+	assert.ok(problems.some((p) => p.severity === 'error' && p.reason === 'GOOGLE_INCOMPLETE'));
+});
+
+test('collectAuthConfigProblems: Google is complete as web (secret + redirect) OR native (client ids)', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const google = (g: Record<string, unknown>) =>
+		collectAuthConfigProblems({ ...config, jwtSecret: 'aaaa-bbbb-cccc-dddd-eeee-ffff-gggg-hhhh', google: g as never })
+			.filter((p) => p.reason === 'GOOGLE_INCOMPLETE').length;
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', nativeClientIds: ['android.apps.googleusercontent.com'] }), 0, 'native only');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', clientSecret: 'aRealLookingSecretValue123456', redirectUri: 'https://api.acme.example/auth/google/callback' }), 0, 'web only');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com' }), 1, 'neither flow configured');
+	assert.equal(google({ clientId: 'web.apps.googleusercontent.com', clientSecret: 'aRealLookingSecretValue123456', nativeClientIds: ['x'] }), 1, 'half of the web pair');
 });
 
 test('collectAuthConfigProblems: mfa on without mfaSecretKey warns (plaintext at rest)', async () => {
@@ -3282,6 +3351,7 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 			executed.push({ sql, params: params ?? [] });
 			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return [{ user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }] as unknown as T[];
+			if (sql.includes('WITH changed AS')) return [{ id: 'user-1' }] as unknown as T[];
 			return [] as unknown as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -3291,9 +3361,11 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 		makeCtx({ body: { pin: '123456', password: 'new-password-123' } }),
 	);
 	assert.equal(response.status, 200);
-	const sessionDelete = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
-	assert.ok(sessionDelete, 'all sessions must be revoked on reset');
-	assert.deepEqual(sessionDelete!.params, ['user-1']);
+	// Password, reset code and sessions change in ONE statement (all or nothing).
+	const reset = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
+	assert.ok(reset, 'all sessions must be revoked on reset');
+	assert.match(reset!.sql, /UPDATE fonderie_users SET password_hash[\s\S]*DELETE FROM fonderie_password_resets[\s\S]*DELETE FROM fonderie_sessions/);
+	assert.equal(reset!.params[1], 'user-1');
 });
 
 // ── GET /auth/providers ───────────────────────────────────────────
@@ -3345,4 +3417,154 @@ test('/auth/providers: discloses nothing beyond the provider names', async () =>
 	for (const leak of ['secret-id', 'secret-value', 'https://x/cb']) {
 		assert.ok(!body.includes(leak), `must not disclose ${leak}`);
 	}
+});
+
+// ── OAuth sign-in passes the same gates as a password (2026-10) ───────────
+// A linked Google/Apple account used to skip MFA entirely: the callback issued
+// a full token pair even when the account had a second factor.
+
+const OAUTH_MFA_USER: IUser = { ...BASE_USER, mfaEnabled: true };
+
+test('googleCallback: an account with MFA gets MFA_REQUIRED + a pending token, not a session', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = makeOauth({ insertedId: 'user-1', userById: OAUTH_MFA_USER });
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.equal(body.result.tokens, undefined, 'no session before the second factor');
+	assert.ok(!response.headers.get('set-cookie')?.includes('access_token='), 'no auth cookie either');
+	const pending = verifyToken(body.result.mfaToken, config) as any;
+	assert.equal(pending?.mfaPending, true);
+	assert.equal(pending?.loginMethod, 'google', 'the completed session stays a Google one');
+});
+
+test('googleCallback: a suspended account opens no session', async () => {
+	const fetchMock = mockFetch({ id_token: fakeIdToken(ID_CLAIMS) });
+	const ctrl = makeOauth({ insertedId: 'user-1', userById: { ...BASE_USER, suspended: true } });
+	const response = await ctrl.googleCallback(callbackCtx());
+	fetchMock.mock.restore();
+	assert.equal(response.status, 403);
+	assert.equal(((await response.json()) as any).reason, 'ACCOUNT_SUSPENDED');
+});
+
+test('mfa/verify guard: a pending Google/Apple sign-in may finish; a full OAuth session still may not manage MFA', async () => {
+	const { requireEmailLoginUnlessSigningIn } = await import('../middlewares/require-email-login');
+	const pass = async () => Response.json({ ok: true });
+	for (const loginMethod of ['google', 'apple'] as const) {
+		const pending = await requireEmailLoginUnlessSigningIn(makeCtx({ user: { ...BASE_USER, loginMethod, mfaPending: true } as any }), pass);
+		assert.equal(pending.status, 200, `${loginMethod} pending sign-in completes`);
+		const session = await requireEmailLoginUnlessSigningIn(makeCtx({ user: { ...BASE_USER, loginMethod } as any }), pass);
+		assert.equal(session.status, 403, `${loginMethod} session cannot enable MFA`);
+	}
+});
+
+// ── Native Google sign-in ─────────────────────────────────────────────────
+
+const NATIVE_GOOGLE_CONFIG: IAuthConfig = {
+	...config,
+	providers: ['email', 'google'],
+	google: { clientId: 'web-client.apps.googleusercontent.com', nativeClientIds: ['web-client.apps.googleusercontent.com', 'ios-client.apps.googleusercontent.com'] },
+};
+
+// makeStore plus the single-use table: the first INSERT of a hash wins.
+function withConsumedTokens(base: IStoreAdapter): IStoreAdapter {
+	const seen = new Set<string>();
+	return {
+		...base,
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			if (sql.includes('INSERT INTO fonderie_consumed_tokens')) {
+				const hash = String(params?.[0]);
+				if (seen.has(hash)) return [] as T[];
+				seen.add(hash);
+				return [{ token_hash: hash }] as unknown as T[];
+			}
+			return base.query<T>(sql, params as never);
+		},
+	} as IStoreAdapter;
+}
+
+function googleSigner() {
+	const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+	const kid = `g-${Math.random().toString(36).slice(2)}`;
+	const jwk = { ...(publicKey.export({ format: 'jwk' }) as object), kid, alg: 'RS256', use: 'sig' };
+	const sign = (claims: object, audience = 'web-client.apps.googleusercontent.com', issuer = 'https://accounts.google.com') =>
+		jwt.sign(claims, privateKey, { algorithm: 'RS256', keyid: kid, audience, issuer, expiresIn: '5m' });
+	return { jwk, sign };
+}
+
+const nativeCtx = (idToken: string) => makeCtx({ body: { idToken } } as any);
+
+test('googleNative: a valid Google ID token signs in (same envelope as the web flow)', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: BASE_USER })), NATIVE_GOOGLE_CONFIG);
+	const response = await ctrl.googleNative(nativeCtx(g.sign({ email: 'jane@example.com', email_verified: true, sub: 'g-1' })));
+	fetchMock.mock.restore();
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'GOOGLE_AUTH_SUCCESS');
+	assert.equal((verifyToken(body.result.tokens.access, config) as any)?.loginMethod, 'google');
+});
+
+test('googleNative: rejects another app\'s token, a forgery, an unverified email, and a replay', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const forger = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: BASE_USER })), NATIVE_GOOGLE_CONFIG);
+	const reason = async (token: string) => {
+		const r = await ctrl.googleNative(nativeCtx(token));
+		return `${r.status} ${((await r.json()) as any).reason}`;
+	};
+	const claims = { email: 'jane@example.com', email_verified: true, sub: 'g-1' };
+	assert.equal(await reason(g.sign(claims, 'someone-elses-client.apps.googleusercontent.com')), '401 GOOGLE_AUTH_FAILED', 'wrong audience');
+	assert.equal(await reason(g.sign(claims, undefined, 'https://appleid.apple.com')), '401 GOOGLE_AUTH_FAILED', 'wrong issuer');
+	// Signed by a key Google does not publish, under the published kid.
+	const forged = jwt.sign(claims, generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey, {
+		algorithm: 'RS256', keyid: (g.jwk as any).kid, audience: 'web-client.apps.googleusercontent.com', issuer: 'https://accounts.google.com', expiresIn: '5m',
+	});
+	assert.equal(await reason(forged), '401 GOOGLE_AUTH_FAILED', 'forged signature');
+	assert.equal(await reason(forger.sign(claims)), '401 GOOGLE_AUTH_FAILED', 'unknown key');
+	assert.equal(await reason(g.sign({ ...claims, email_verified: false })), '400 GOOGLE_AUTH_FAILED', 'unverified email cannot link');
+	const once = g.sign(claims, 'ios-client.apps.googleusercontent.com', 'accounts.google.com');
+	assert.equal(await reason(once), '200 GOOGLE_AUTH_SUCCESS', 'iOS client id + bare issuer accepted');
+	assert.equal(await reason(once), '401 GOOGLE_AUTH_FAILED', 'replay refused');
+	fetchMock.mock.restore();
+});
+
+test('googleNative: an account with MFA must present its second factor', async () => {
+	__resetAppleKeysForTests();
+	const g = googleSigner();
+	const fetchMock = mockFetch({ keys: [g.jwk] });
+	const ctrl = oauthController(withConsumedTokens(makeStore({ insertedId: 'user-1', userById: OAUTH_MFA_USER })), NATIVE_GOOGLE_CONFIG);
+	const response = await ctrl.googleNative(nativeCtx(g.sign({ email: 'jane@example.com', email_verified: true, sub: 'g-1' })));
+	fetchMock.mock.restore();
+	const body = (await response.json()) as any;
+	assert.equal(body.reason, 'MFA_REQUIRED');
+	assert.equal(body.result.tokens, undefined);
+});
+
+test('googleNative: 501 without native client ids; the web flow 501s without its secret', async () => {
+	const webOnly = oauthController(makeStore(), GOOGLE_CONFIG);
+	assert.equal((await webOnly.googleNative(nativeCtx('a.b.c'))).status, 501);
+	const nativeOnly = oauthController(makeStore(), NATIVE_GOOGLE_CONFIG);
+	assert.equal((await nativeOnly.googleInit(makeCtx())).status, 501);
+});
+
+test('buildAuthRoutes: google registers POST /auth/google/native with ipLimit + validate', async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const stub: any = { query: async () => [], transaction: async (fn: any) => fn(stub) };
+	const routes = buildAuthRoutes(stub, NATIVE_GOOGLE_CONFIG);
+	const native = routes.find(([m, p]) => m === 'POST' && p === '/auth/google/native');
+	assert.ok(native);
+	assert.equal(native!.slice(2).length, 3);
+});
+
+test('collectAuthConfigProblems: wildcard Google native client ids are an error', async () => {
+	const { collectAuthConfigProblems } = await import('../services/config-guard');
+	const bad = collectAuthConfigProblems({ ...NATIVE_GOOGLE_CONFIG, jwtSecret: 'aaaa-bbbb-cccc-dddd-eeee-ffff-gggg-hhhh', google: { clientId: 'w', nativeClientIds: ['*'] } });
+	assert.ok(bad.some((p) => p.reason === 'GOOGLE_NATIVE_IDS_INVALID'));
 });

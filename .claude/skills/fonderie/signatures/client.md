@@ -20,7 +20,9 @@ interface IFonderieClientOptions {
     baseUrl: string;
     accessToken?: string;
     workspaceId?: string;
+    locale?: string;
     cache?: ICache;
+    queries?: Omit<IQueryStoreOptions, 'owner'>;
     auth?: IClientAuthConfig;
     sse?: {
         fetch?: FetchLike;
@@ -68,11 +70,17 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .queries: QueryStore
   .session: SessionState
   .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .setLocale(tag: string): void
+  .getLocale(): string
+  .onLocaleChange(listener: (tag: string) => void): () => void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
@@ -105,10 +113,17 @@ interface IListAuditEventsInput {
 new AuditClient(http: HttpClient, tokens: TokenStore): AuditClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listEvents(input?: IListAuditEventsInput, opts?: IReadOptions | undefined): Promise<IApiResponse<IAuditPageResult>>
 
 interface IAppleNativeInput {
     identityToken: string;
+    nonce?: string;
+}
+
+interface IGoogleNativeInput {
+    idToken: string;
     nonce?: string;
 }
 
@@ -171,7 +186,8 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .unlinkOauth(provider: string): Promise<IApiResponse<null>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
-  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
+  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
+  .googleNative(input: IGoogleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -194,6 +210,7 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+    skipTrial?: boolean;
     idempotencyKey?: string;
 }
 
@@ -225,6 +242,8 @@ interface IWalletPreferencesInput {
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
@@ -246,7 +265,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
   .savePaymentMethod(input: ISavePaymentMethodInput): Promise<IApiResponse<IPaymentMethodResult>>
   .removePaymentMethod(): Promise<IApiResponse<IPaymentMethodResult>>
-  .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
+  .listInvoices(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface IConfigAdminClientOptions {
     baseUrl: string;
@@ -528,6 +547,7 @@ interface IGetCustomerInput {
 interface IListCustomersInput {
     search?: string;
     blacklisted?: boolean;
+    archived?: boolean | 'all';
     limit?: number;
     offset?: number;
 }
@@ -537,12 +557,16 @@ type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referre
 new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listCustomers(input?: IListCustomersInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerListResult>>
   .createCustomer(input?: ICreateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
+  .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
+  .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unblacklistCustomer(customerId: string): Promise<IApiResponse<undefined>>
   .listEmails(customerId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerEmailListResult>>
   .addEmail(customerId: string, input: IAddEmailInput): Promise<IApiResponse<ICustomerEmailResult>>
@@ -601,6 +625,8 @@ interface IUpdateWebhookEndpointInput {
 new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointListResult>>
   .createEndpoint(input: ICreateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointCreatedDTO>>
   .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
@@ -673,14 +699,31 @@ interface IUpdateWorkspaceInput {
         zip?: string;
         country?: string;
     } | null;
+    legalName?: string | null;
+    email?: string | null;
+    website?: string | null;
+    logoUrl?: string | null;
+    taxRegistrations?: Array<{
+        country: string;
+        type: string;
+        number: string;
+        region?: string | null;
+        label?: string | null;
+    }>;
+    languages?: string[];
 }
 
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listWorkspaces(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceListResult>>
   .createWorkspace(input: ICreateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
+  .getMyPermissions(opts?: IReadOptions | undefined): Promise<IApiResponse<IMyPermissionsResult>>
+  .getPermissionCatalog(opts?: IReadOptions | undefined): Promise<IApiResponse<IPermissionCatalogResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
   .restoreWorkspace(): Promise<IApiResponse<undefined>>
@@ -688,7 +731,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .createRole(input: ICreateRoleInput): Promise<IApiResponse<IRoleResult>>
   .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
-  .removeRole(roleId: string): Promise<IApiResponse<undefined>>
+  .removeRole(roleId: string): Promise<IApiResponse<IRoleDeleteResult>>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
@@ -696,10 +739,15 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
+  .setManager(userId: string): Promise<IApiResponse<void>>
+  .unsetManager(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
-  .acceptInvitation(pin: string): Promise<IApiResponse<IAcceptInvitationResult>>
+  .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
+  .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
@@ -708,6 +756,12 @@ type CustomerLabelType = 'phone' | 'email' | 'address';
 type CustomerSex = 'UNKNOWN' | 'MALE' | 'FEMALE';
 
 type CustomerType = 'individual' | 'business';
+
+type IAcceptInvitationInput = {
+    token: string;
+} | {
+    pin: string;
+};
 
 interface IAcceptInvitationResult {
     workspaceId: string;
@@ -1169,12 +1223,17 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    displayName: string;
     referenceCode: string;
     referralCode: string;
     referredBy: string | null;
     blacklisted: {
         status: boolean;
         reason: string | null;
+    };
+    archived: {
+        status: boolean;
+        at: string | null;
     };
     createdBy: string;
     createdAt: string;
@@ -1260,6 +1319,8 @@ type ICustomerRelationshipExpandedD2DTO = ICustomerRelationshipExpandedDTO & {
 };
 
 type ICustomerRelationshipExpandedDTO = Omit<ICustomerShallowDTO, 'id'> & {
+    relatedId: string;
+    relationshipId: string;
     id: string;
     customerId: string;
     relationship: string;
@@ -1300,6 +1361,7 @@ interface IInvitationDTO {
     status: string;
     expiresAt: string;
     createdAt: string;
+    isExpired: boolean;
 }
 
 interface IInvitationListResult {
@@ -1328,6 +1390,7 @@ interface IInvoiceDTO {
 
 interface IInvoicesResult {
     invoices: IInvoiceDTO[];
+    nextCursor?: string | null;
 }
 
 interface ILoginResult {
@@ -1362,7 +1425,46 @@ interface IMemberDTO {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    roles: IMemberRoleDTO[];
+    isOwner: boolean;
+    isManager: boolean;
 }
+
+interface IMemberRoleDTO {
+    id: string;
+    name: string;
+    isSystem: boolean;
+}
+
+interface IInvitationResult {
+    invitation: IInvitationDTO;
+}
+
+interface IMyPermissionsResult {
+    isOwner: boolean;
+    isManager: boolean;
+    isSuper: boolean;
+    permissions: Record<string, Record<PermissionOperation, boolean>>;
+}
+
+interface IPermissionCatalogEntryDTO {
+    key: string;
+    operations: PermissionOperation[];
+    label: string;
+    description: string;
+}
+
+interface IPermissionCatalogResult {
+    catalog: IPermissionCatalogEntryDTO[];
+    declared: boolean;
+}
+
+interface IRoleDeleteResult {
+    membersAffected: number;
+    movedToDefaultRole: number;
+}
+
+type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
 
 interface IMemberListResult {
     members: IMemberDTO[];
@@ -1386,10 +1488,12 @@ interface IMfaSetupResult {
 }
 
 interface IPaymentMethodDTO {
+    type?: 'card' | 'link';
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email?: string | null;
 }
 
 interface IPaymentMethodResult {
@@ -1589,8 +1693,13 @@ interface ITokens {
 
 interface IUsageResult {
     metric: string;
+    kind?: 'counter' | 'records';
     total: number;
     since: string;
+    limit?: number | null;
+    status?: 'ok' | 'warning' | 'over_limit' | 'blocked' | null;
+    window?: string | null;
+    resetsAt?: string | null;
 }
 
 interface IUserDTO {
@@ -1736,6 +1845,12 @@ interface IWorkspaceDTO {
     phone: string;
     businessType: string;
     address: IWorkspaceAddressDTO;
+    legalName: string;
+    email: string;
+    website: string;
+    logoUrl: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    languages: string[];
     plan: string;
     ownerId: string;
     isPersonal: boolean;
@@ -1744,6 +1859,14 @@ interface IWorkspaceDTO {
     archivedBy: string;
     createdAt: string;
     updatedAt: string;
+}
+
+interface ITaxRegistrationDTO {
+    country: string;
+    type: string;
+    number: string;
+    region: string;
+    label: string;
 }
 
 interface IWorkspaceListResult {
@@ -1870,7 +1993,7 @@ interface IRemoteConfigState {
     error: unknown;
 }
 
-const ADMIN_LOCALES: readonly ["en", "fr", "es"]
+const ADMIN_LOCALES: readonly ["en", "fr", "es", "zh-Hans", "zh-Hant"]
 
 const DEFAULT_ADMIN_LOCALE: AdminLocale
 
@@ -1878,15 +2001,15 @@ const adminLocaleNames: LocaleMap<string>
 
 const adminLocaleTags: LocaleMap<string>
 
-function createAdminT(locale?: "en" | "fr" | "es" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
+function createAdminT(locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined): (key: AdminMessageKey, params?: AdminMessageParams | undefined) => string
 
-function detectAdminLocale(languages?: readonly string[]): "en" | "fr" | "es"
+function detectAdminLocale(languages?: readonly string[]): "en" | "fr" | "es" | "zh-Hans" | "zh-Hant"
 
-function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "es" | undefined, style?: "date" | "datetime" | "time"): string
+function formatAdminDate(value: string | number | Date, locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined, style?: "date" | "datetime" | "time"): string
 
-function isAdminLocale(value: unknown): value is "en" | "fr" | "es"
+function isAdminLocale(value: unknown): value is "en" | "fr" | "es" | "zh-Hans" | "zh-Hant"
 
-function localizeReason(item: IReasonLike, locale?: "en" | "fr" | "es" | undefined): string
+function localizeReason(item: IReasonLike, locale?: "en" | "fr" | "es" | "zh-Hans" | "zh-Hant" | undefined): string
 
 type AdminLocale = (typeof ADMIN_LOCALES)[number];
 
@@ -1906,4 +2029,93 @@ interface IReasonLike {
     domain?: string | undefined;
     metadata?: Readonly<Record<string, string | number>> | undefined;
 }
+
+new QueryStore(opts?: IQueryStoreOptions): QueryStore
+  .staleMs: number
+  .hydrated: Promise<void>
+  .hydrate(): Promise<void>
+  .peek<T>(key: string): IQueryEntry<T>
+  .isStale(key: string, staleMs?: number): boolean
+  .subscribe(key: string, listener: Listener): () => void
+  .fetch<T>(key: string, fetcher: () => Promise<T>, opts?: IQueryFetchOptions): Promise<T | undefined>
+  .set<T>(key: string, data: T): void
+  .invalidate(fragment: string): void
+  .clear(): void
+
+function queryStoreFor(owner: object): QueryStore
+
+function queryParams(params: object | undefined): string
+
+function deepEqual(a: unknown, b: unknown): boolean
+
+interface IQueryEntry<T = unknown> {
+    readonly data: T | undefined;
+    readonly error: unknown;
+    readonly updatedAt: number;
+    readonly isFetching: boolean;
+}
+
+interface IQueryFetchOptions {
+    force?: boolean;
+    staleMs?: number;
+}
+
+interface IQueryPersistOptions {
+    storage: IQueryStorage;
+    filter?: (queryKey: string) => boolean;
+    key?: string;
+    maxEntries?: number;
+    maxAgeMs?: number;
+}
+
+interface IQueryStorage {
+    getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
+    setItem(key: string, value: string): void | Promise<void>;
+}
+
+interface IQueryStoreOptions {
+    staleMs?: number;
+    persist?: IQueryPersistOptions;
+    owner?: () => string | undefined;
+}
+
+const UI_DICTIONARIES: { readonly en: { auth: { fields: { email: string; password: string; firstName: string; lastName: string; code: string; }; backToSignIn: string; login: { title: string; submit: string; submitting: string; forgotPassword: string; noAccount: string; signUp: string; a11y: { email: string; emailHint: string; password: string; passwordHint: string; submit: string; }; }; register: { title: string; submit: string; submitting: string; haveAccount: string; signIn: string; invalidEmail: string; passwordTooShort: string; passwordRule: string; a11y: { firstName: string; lastName: string; email: string; password: string; submit: string; }; }; forgot: { title: string; lead: string; submit: string; submitting: string; sentTitle: string; sentBody: string; a11y: { email: string; submit: string; }; }; reset: { title: string; lead: string; codeLabel: string; newPassword: string; confirmPassword: string; mismatch: string; submit: string; submitting: string; doneTitle: string; doneBody: string; goToSignIn: string; a11y: { code: string; codeHint: string; newPassword: string; newPasswordHint: string; confirm: string; confirmHint: string; submit: string; goToSignIn: string; }; }; verify: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; noCode: string; resend: string; resent: string; a11y: { code: string; codeHint: string; submit: string; }; }; mfa: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; a11y: { code: string; codeHint: string; submit: string; }; }; }; billing: { pricing: { loading: string; monthly: string; yearly: string; perMonth: string; perYear: string; choose: string; redirecting: string; }; subscription: { loading: string; none: string; viewPlans: string; title: string; statusLine: string; statusLineCanceling: string; renews: string; ends: string; manage: string; opening: string; }; paymentMethod: { title: string; loading: string; link: string; linkWithEmail: string; card: string; none: string; add: string; update: string; remove: string; removing: string; }; status: { active: string; trialing: string; past_due: string; unpaid: string; canceled: string; incomplete: string; incomplete_expired: string; paused: string; }; }; customers: { loading: string; fields: { firstName: string; lastName: string; company: string; companyOptional: string; }; list: { title: string; searchPlaceholder: string; create: string; blacklisted: string; a11y: { search: string; firstName: string; lastName: string; company: string; create: string; openCustomer: string; openCustomerHint: string; }; }; detail: { title: string; save: string; emails: string; phones: string; tags: string; notes: string; primary: string; withPrimary: string; makePrimary: string; remove: string; add: string; delete: string; emailPlaceholder: string; phonePlaceholder: string; tagPlaceholder: string; notePlaceholder: string; backToList: string; a11y: { firstName: string; lastName: string; company: string; save: string; newEmail: string; newPhone: string; newTag: string; newNote: string; addEmail: string; addPhone: string; addTag: string; addNote: string; makePrimaryEmail: string; makePrimaryPhone: string; removeEmail: string; removePhone: string; removeTag: string; deleteNote: string; backToList: string; }; }; }; workspaces: { roles: { ADMIN: string; GUEST: string; }; invitationStatus: { PENDING: string; ACCEPTED: string; REJECTED: string; CANCELLED: string; }; members: { title: string; loading: string; invite: string; remove: string; a11y: { invite: string; remove: string; }; }; invite: { title: string; email: string; submit: string; submitShort: string; submitting: string; pending: string; loading: string; cancel: string; backToTeam: string; a11y: { email: string; emailHint: string; submit: string; cancel: string; }; }; accept: { title: string; body: string; submit: string; submitting: string; notNow: string; acceptedTitle: string; acceptedBody: string; a11y: { submit: string; }; }; }; audit: { log: { title: string; eventType: string; actorId: string; filter: string; loading: string; loadMore: string; system: string; a11y: { eventType: string; eventTypeHint: string; actorId: string; actorIdHint: string; filter: string; event: string; eventHint: string; loadMore: string; loadingMore: string; }; }; }; webhooks: { loading: string; enabled: string; disabled: string; status: { pending: string; delivered: string; failed: string; }; list: { title: string; newSecret: string; urlPlaceholder: string; eventsPlaceholder: string; add: string; test: string; delete: string; testOk: string; testFailed: string; a11y: { url: string; urlHint: string; events: string; eventsHint: string; add: string; open: string; test: string; delete: string; }; }; detail: { title: string; url: string; events: string; save: string; deliveries: string; attemptsOne: string; attemptsOther: string; back: string; a11y: { url: string; events: string; enabled: string; save: string; }; }; }; errors: { generic: { validation: string; badRequest: string; unauthorized: string; forbidden: string; notFound: string; conflict: string; paymentRequired: string; tooMany: string; tooLarge: string; server: string; unavailable: string; network: string; }; reasons: { INVALID_CREDENTIALS: string; ACCOUNT_SUSPENDED: string; USER_ALREADY_EXISTS: string; EMAIL_IN_USE: string; PHONE_IN_USE: string; VERIFICATION_FAILED: string; VERIFICATION_COOLDOWN: string; PASSWORD_RESET_FAILED: string; INVALID_CODE: string; INVALID_CREDENTIAL: string; MFA_REQUIRED: string; MFA_NOT_ENABLED: string; EMAIL_NOT_VERIFIED: string; PHONE_NOT_VERIFIED: string; NO_EMAIL_ON_ACCOUNT: string; NO_PHONE_ON_ACCOUNT: string; PASSWORD_REQUIRED: string; EMAIL_LOGIN_REQUIRED: string; GOOGLE_AUTH_FAILED: string; APPLE_AUTH_FAILED: string; NOT_LINKED: string; SEAT_LIMIT_REACHED: string; INVALID_ROLE: string; INVITATION_NOT_FOUND: string; INVITATION_FAILED: string; INVITATION_EXPIRED: string; INVITATION_ALREADY_USED: string; INVITATION_REVOKED: string; INVITATION_EMAIL_MISMATCH: string; INVITATION_ROLE_UNAVAILABLE: string; MEMBER_NOT_FOUND: string; OWNER_CANNOT_LEAVE: string; OWNER_REQUIRED: string; MANAGER_REQUIRED: string; SYSTEM_ROLE: string; LAST_ROLE: string; ROLE_NOT_HELD: string; PLAN_UNCHANGED: string; SUBSCRIPTION_PAST_DUE: string; SUBSCRIPTION_PAUSED: string; SUBSCRIPTION_SCHEDULED_TO_CANCEL: string; PLAN_CHANGE_REQUIRES_CANCEL: string; SUBSCRIPTION_CANCELED: string; SUBSCRIPTION_INACTIVE: string; PLAN_UPGRADE_REQUIRED: string; FEATURE_UNAVAILABLE: string; RATE_LIMIT_EXCEEDED: string; INSUFFICIENT_CREDITS: string; PACKS_BLOCKED: string; NO_CUSTOMER: string; INVALID_PAYMENT_METHOD: string; DUPLICATE_EMAIL: string; DUPLICATE_PHONE: string; DUPLICATE_ADDRESS: string; DUPLICATE_REFERENCE_CODE: string; CUSTOMER_IN_USE: string; EMAIL_NOT_FOUND: string; PHONE_NOT_FOUND: string; ADDRESS_NOT_FOUND: string; RELATIONSHIP_NOT_FOUND: string; LABEL_IN_USE: string; ASSET_TOO_LARGE: string; ASSET_UNSUPPORTED: string; ASSET_NOT_FOUND: string; PAYLOAD_TOO_LARGE: string; }; }; }; readonly fr: { auth: { fields: { email: string; password: string; firstName: string; lastName: string; code: string; }; backToSignIn: string; login: { title: string; submit: string; submitting: string; forgotPassword: string; noAccount: string; signUp: string; a11y: { email: string; emailHint: string; password: string; passwordHint: string; submit: string; }; }; register: { title: string; submit: string; submitting: string; haveAccount: string; signIn: string; invalidEmail: string; passwordTooShort: string; passwordRule: string; a11y: { firstName: string; lastName: string; email: string; password: string; submit: string; }; }; forgot: { title: string; lead: string; submit: string; submitting: string; sentTitle: string; sentBody: string; a11y: { email: string; submit: string; }; }; reset: { title: string; lead: string; codeLabel: string; newPassword: string; confirmPassword: string; mismatch: string; submit: string; submitting: string; doneTitle: string; doneBody: string; goToSignIn: string; a11y: { code: string; codeHint: string; newPassword: string; newPasswordHint: string; confirm: string; confirmHint: string; submit: string; goToSignIn: string; }; }; verify: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; noCode: string; resend: string; resent: string; a11y: { code: string; codeHint: string; submit: string; }; }; mfa: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; a11y: { code: string; codeHint: string; submit: string; }; }; }; billing: { pricing: { loading: string; monthly: string; yearly: string; perMonth: string; perYear: string; choose: string; redirecting: string; }; subscription: { loading: string; none: string; viewPlans: string; title: string; statusLine: string; statusLineCanceling: string; renews: string; ends: string; manage: string; opening: string; }; paymentMethod: { title: string; loading: string; link: string; linkWithEmail: string; card: string; none: string; add: string; update: string; remove: string; removing: string; }; status: { active: string; trialing: string; past_due: string; unpaid: string; canceled: string; incomplete: string; incomplete_expired: string; paused: string; }; }; customers: { loading: string; fields: { firstName: string; lastName: string; company: string; companyOptional: string; }; list: { title: string; searchPlaceholder: string; create: string; blacklisted: string; a11y: { search: string; firstName: string; lastName: string; company: string; create: string; openCustomer: string; openCustomerHint: string; }; }; detail: { title: string; save: string; emails: string; phones: string; tags: string; notes: string; primary: string; withPrimary: string; makePrimary: string; remove: string; add: string; delete: string; emailPlaceholder: string; phonePlaceholder: string; tagPlaceholder: string; notePlaceholder: string; backToList: string; a11y: { firstName: string; lastName: string; company: string; save: string; newEmail: string; newPhone: string; newTag: string; newNote: string; addEmail: string; addPhone: string; addTag: string; addNote: string; makePrimaryEmail: string; makePrimaryPhone: string; removeEmail: string; removePhone: string; removeTag: string; deleteNote: string; backToList: string; }; }; }; workspaces: { roles: { ADMIN: string; GUEST: string; }; invitationStatus: { PENDING: string; ACCEPTED: string; REJECTED: string; CANCELLED: string; }; members: { title: string; loading: string; invite: string; remove: string; a11y: { invite: string; remove: string; }; }; invite: { title: string; email: string; submit: string; submitShort: string; submitting: string; pending: string; loading: string; cancel: string; backToTeam: string; a11y: { email: string; emailHint: string; submit: string; cancel: string; }; }; accept: { title: string; body: string; submit: string; submitting: string; notNow: string; acceptedTitle: string; acceptedBody: string; a11y: { submit: string; }; }; }; audit: { log: { title: string; eventType: string; actorId: string; filter: string; loading: string; loadMore: string; system: string; a11y: { eventType: string; eventTypeHint: string; actorId: string; actorIdHint: string; filter: string; event: string; eventHint: string; loadMore: string; loadingMore: string; }; }; }; webhooks: { loading: string; enabled: string; disabled: string; status: { pending: string; delivered: string; failed: string; }; list: { title: string; newSecret: string; urlPlaceholder: string; eventsPlaceholder: string; add: string; test: string; delete: string; testOk: string; testFailed: string; a11y: { url: string; urlHint: string; events: string; eventsHint: string; add: string; open: string; test: string; delete: string; }; }; detail: { title: string; url: string; events: string; save: string; deliveries: string; attemptsOne: string; attemptsOther: string; back: string; a11y: { url: string; events: string; enabled: string; save: string; }; }; }; errors: { generic: { validation: string; badRequest: string; unauthorized: string; forbidden: string; notFound: string; conflict: string; paymentRequired: string; tooMany: string; tooLarge: string; server: string; unavailable: string; network: string; }; reasons: { INVALID_CREDENTIALS: string; ACCOUNT_SUSPENDED: string; USER_ALREADY_EXISTS: string; EMAIL_IN_USE: string; PHONE_IN_USE: string; VERIFICATION_FAILED: string; VERIFICATION_COOLDOWN: string; PASSWORD_RESET_FAILED: string; INVALID_CODE: string; INVALID_CREDENTIAL: string; MFA_REQUIRED: string; MFA_NOT_ENABLED: string; EMAIL_NOT_VERIFIED: string; PHONE_NOT_VERIFIED: string; NO_EMAIL_ON_ACCOUNT: string; NO_PHONE_ON_ACCOUNT: string; PASSWORD_REQUIRED: string; EMAIL_LOGIN_REQUIRED: string; GOOGLE_AUTH_FAILED: string; APPLE_AUTH_FAILED: string; NOT_LINKED: string; SEAT_LIMIT_REACHED: string; INVALID_ROLE: string; INVITATION_NOT_FOUND: string; INVITATION_FAILED: string; INVITATION_EXPIRED: string; INVITATION_ALREADY_USED: string; INVITATION_REVOKED: string; INVITATION_EMAIL_MISMATCH: string; INVITATION_ROLE_UNAVAILABLE: string; MEMBER_NOT_FOUND: string; OWNER_CANNOT_LEAVE: string; OWNER_REQUIRED: string; MANAGER_REQUIRED: string; SYSTEM_ROLE: string; LAST_ROLE: string; ROLE_NOT_HELD: string; PLAN_UNCHANGED: string; SUBSCRIPTION_PAST_DUE: string; SUBSCRIPTION_PAUSED: string; SUBSCRIPTION_SCHEDULED_TO_CANCEL: string; PLAN_CHANGE_REQUIRES_CANCEL: string; SUBSCRIPTION_CANCELED: string; SUBSCRIPTION_INACTIVE: string; PLAN_UPGRADE_REQUIRED: string; FEATURE_UNAVAILABLE: string; RATE_LIMIT_EXCEEDED: string; INSUFFICIENT_CREDITS: string; PACKS_BLOCKED: string; NO_CUSTOMER: string; INVALID_PAYMENT_METHOD: string; DUPLICATE_EMAIL: string; DUPLICATE_PHONE: string; DUPLICATE_ADDRESS: string; DUPLICATE_REFERENCE_CODE: string; CUSTOMER_IN_USE: string; EMAIL_NOT_FOUND: string; PHONE_NOT_FOUND: string; ADDRESS_NOT_FOUND: string; RELATIONSHIP_NOT_FOUND: string; LABEL_IN_USE: string; ASSET_TOO_LARGE: string; ASSET_UNSUPPORTED: string; ASSET_NOT_FOUND: string; PAYLOAD_TOO_LARGE: string; }; }; }; readonly es: { auth: { fields: { email: string; password: string; firstName: string; lastName: string; code: string; }; backToSignIn: string; login: { title: string; submit: string; submitting: string; forgotPassword: string; noAccount: string; signUp: string; a11y: { email: string; emailHint: string; password: string; passwordHint: string; submit: string; }; }; register: { title: string; submit: string; submitting: string; haveAccount: string; signIn: string; invalidEmail: string; passwordTooShort: string; passwordRule: string; a11y: { firstName: string; lastName: string; email: string; password: string; submit: string; }; }; forgot: { title: string; lead: string; submit: string; submitting: string; sentTitle: string; sentBody: string; a11y: { email: string; submit: string; }; }; reset: { title: string; lead: string; codeLabel: string; newPassword: string; confirmPassword: string; mismatch: string; submit: string; submitting: string; doneTitle: string; doneBody: string; goToSignIn: string; a11y: { code: string; codeHint: string; newPassword: string; newPasswordHint: string; confirm: string; confirmHint: string; submit: string; goToSignIn: string; }; }; verify: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; noCode: string; resend: string; resent: string; a11y: { code: string; codeHint: string; submit: string; }; }; mfa: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; a11y: { code: string; codeHint: string; submit: string; }; }; }; billing: { pricing: { loading: string; monthly: string; yearly: string; perMonth: string; perYear: string; choose: string; redirecting: string; }; subscription: { loading: string; none: string; viewPlans: string; title: string; statusLine: string; statusLineCanceling: string; renews: string; ends: string; manage: string; opening: string; }; paymentMethod: { title: string; loading: string; link: string; linkWithEmail: string; card: string; none: string; add: string; update: string; remove: string; removing: string; }; status: { active: string; trialing: string; past_due: string; unpaid: string; canceled: string; incomplete: string; incomplete_expired: string; paused: string; }; }; customers: { loading: string; fields: { firstName: string; lastName: string; company: string; companyOptional: string; }; list: { title: string; searchPlaceholder: string; create: string; blacklisted: string; a11y: { search: string; firstName: string; lastName: string; company: string; create: string; openCustomer: string; openCustomerHint: string; }; }; detail: { title: string; save: string; emails: string; phones: string; tags: string; notes: string; primary: string; withPrimary: string; makePrimary: string; remove: string; add: string; delete: string; emailPlaceholder: string; phonePlaceholder: string; tagPlaceholder: string; notePlaceholder: string; backToList: string; a11y: { firstName: string; lastName: string; company: string; save: string; newEmail: string; newPhone: string; newTag: string; newNote: string; addEmail: string; addPhone: string; addTag: string; addNote: string; makePrimaryEmail: string; makePrimaryPhone: string; removeEmail: string; removePhone: string; removeTag: string; deleteNote: string; backToList: string; }; }; }; workspaces: { roles: { ADMIN: string; GUEST: string; }; invitationStatus: { PENDING: string; ACCEPTED: string; REJECTED: string; CANCELLED: string; }; members: { title: string; loading: string; invite: string; remove: string; a11y: { invite: string; remove: string; }; }; invite: { title: string; email: string; submit: string; submitShort: string; submitting: string; pending: string; loading: string; cancel: string; backToTeam: string; a11y: { email: string; emailHint: string; submit: string; cancel: string; }; }; accept: { title: string; body: string; submit: string; submitting: string; notNow: string; acceptedTitle: string; acceptedBody: string; a11y: { submit: string; }; }; }; audit: { log: { title: string; eventType: string; actorId: string; filter: string; loading: string; loadMore: string; system: string; a11y: { eventType: string; eventTypeHint: string; actorId: string; actorIdHint: string; filter: string; event: string; eventHint: string; loadMore: string; loadingMore: string; }; }; }; webhooks: { loading: string; enabled: string; disabled: string; status: { pending: string; delivered: string; failed: string; }; list: { title: string; newSecret: string; urlPlaceholder: string; eventsPlaceholder: string; add: string; test: string; delete: string; testOk: string; testFailed: string; a11y: { url: string; urlHint: string; events: string; eventsHint: string; add: string; open: string; test: string; delete: string; }; }; detail: { title: string; url: string; events: string; save: string; deliveries: string; attemptsOne: string; attemptsOther: string; back: string; a11y: { url: string; events: string; enabled: string; save: string; }; }; }; errors: { generic: { validation: string; badRequest: string; unauthorized: string; forbidden: string; notFound: string; conflict: string; paymentRequired: string; tooMany: string; tooLarge: string; server: string; unavailable: string; network: string; }; reasons: { INVALID_CREDENTIALS: string; ACCOUNT_SUSPENDED: string; USER_ALREADY_EXISTS: string; EMAIL_IN_USE: string; PHONE_IN_USE: string; VERIFICATION_FAILED: string; VERIFICATION_COOLDOWN: string; PASSWORD_RESET_FAILED: string; INVALID_CODE: string; INVALID_CREDENTIAL: string; MFA_REQUIRED: string; MFA_NOT_ENABLED: string; EMAIL_NOT_VERIFIED: string; PHONE_NOT_VERIFIED: string; NO_EMAIL_ON_ACCOUNT: string; NO_PHONE_ON_ACCOUNT: string; PASSWORD_REQUIRED: string; EMAIL_LOGIN_REQUIRED: string; GOOGLE_AUTH_FAILED: string; APPLE_AUTH_FAILED: string; NOT_LINKED: string; SEAT_LIMIT_REACHED: string; INVALID_ROLE: string; INVITATION_NOT_FOUND: string; INVITATION_FAILED: string; INVITATION_EXPIRED: string; INVITATION_ALREADY_USED: string; INVITATION_REVOKED: string; INVITATION_EMAIL_MISMATCH: string; INVITATION_ROLE_UNAVAILABLE: string; MEMBER_NOT_FOUND: string; OWNER_CANNOT_LEAVE: string; OWNER_REQUIRED: string; MANAGER_REQUIRED: string; SYSTEM_ROLE: string; LAST_ROLE: string; ROLE_NOT_HELD: string; PLAN_UNCHANGED: string; SUBSCRIPTION_PAST_DUE: string; SUBSCRIPTION_PAUSED: string; SUBSCRIPTION_SCHEDULED_TO_CANCEL: string; PLAN_CHANGE_REQUIRES_CANCEL: string; SUBSCRIPTION_CANCELED: string; SUBSCRIPTION_INACTIVE: string; PLAN_UPGRADE_REQUIRED: string; FEATURE_UNAVAILABLE: string; RATE_LIMIT_EXCEEDED: string; INSUFFICIENT_CREDITS: string; PACKS_BLOCKED: string; NO_CUSTOMER: string; INVALID_PAYMENT_METHOD: string; DUPLICATE_EMAIL: string; DUPLICATE_PHONE: string; DUPLICATE_ADDRESS: string; DUPLICATE_REFERENCE_CODE: string; CUSTOMER_IN_USE: string; EMAIL_NOT_FOUND: string; PHONE_NOT_FOUND: string; ADDRESS_NOT_FOUND: string; RELATIONSHIP_NOT_FOUND: string; LABEL_IN_USE: string; ASSET_TOO_LARGE: string; ASSET_UNSUPPORTED: string; ASSET_NOT_FOUND: string; PAYLOAD_TOO_LARGE: string; }; }; }; readonly "zh-Hans": { auth: { fields: { email: string; password: string; firstName: string; lastName: string; code: string; }; backToSignIn: string; login: { title: string; submit: string; submitting: string; forgotPassword: string; noAccount: string; signUp: string; a11y: { email: string; emailHint: string; password: string; passwordHint: string; submit: string; }; }; register: { title: string; submit: string; submitting: string; haveAccount: string; signIn: string; invalidEmail: string; passwordTooShort: string; passwordRule: string; a11y: { firstName: string; lastName: string; email: string; password: string; submit: string; }; }; forgot: { title: string; lead: string; submit: string; submitting: string; sentTitle: string; sentBody: string; a11y: { email: string; submit: string; }; }; reset: { title: string; lead: string; codeLabel: string; newPassword: string; confirmPassword: string; mismatch: string; submit: string; submitting: string; doneTitle: string; doneBody: string; goToSignIn: string; a11y: { code: string; codeHint: string; newPassword: string; newPasswordHint: string; confirm: string; confirmHint: string; submit: string; goToSignIn: string; }; }; verify: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; noCode: string; resend: string; resent: string; a11y: { code: string; codeHint: string; submit: string; }; }; mfa: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; a11y: { code: string; codeHint: string; submit: string; }; }; }; billing: { pricing: { loading: string; monthly: string; yearly: string; perMonth: string; perYear: string; choose: string; redirecting: string; }; subscription: { loading: string; none: string; viewPlans: string; title: string; statusLine: string; statusLineCanceling: string; renews: string; ends: string; manage: string; opening: string; }; paymentMethod: { title: string; loading: string; link: string; linkWithEmail: string; card: string; none: string; add: string; update: string; remove: string; removing: string; }; status: { active: string; trialing: string; past_due: string; unpaid: string; canceled: string; incomplete: string; incomplete_expired: string; paused: string; }; }; customers: { loading: string; fields: { firstName: string; lastName: string; company: string; companyOptional: string; }; list: { title: string; searchPlaceholder: string; create: string; blacklisted: string; a11y: { search: string; firstName: string; lastName: string; company: string; create: string; openCustomer: string; openCustomerHint: string; }; }; detail: { title: string; save: string; emails: string; phones: string; tags: string; notes: string; primary: string; withPrimary: string; makePrimary: string; remove: string; add: string; delete: string; emailPlaceholder: string; phonePlaceholder: string; tagPlaceholder: string; notePlaceholder: string; backToList: string; a11y: { firstName: string; lastName: string; company: string; save: string; newEmail: string; newPhone: string; newTag: string; newNote: string; addEmail: string; addPhone: string; addTag: string; addNote: string; makePrimaryEmail: string; makePrimaryPhone: string; removeEmail: string; removePhone: string; removeTag: string; deleteNote: string; backToList: string; }; }; }; workspaces: { roles: { ADMIN: string; GUEST: string; }; invitationStatus: { PENDING: string; ACCEPTED: string; REJECTED: string; CANCELLED: string; }; members: { title: string; loading: string; invite: string; remove: string; a11y: { invite: string; remove: string; }; }; invite: { title: string; email: string; submit: string; submitShort: string; submitting: string; pending: string; loading: string; cancel: string; backToTeam: string; a11y: { email: string; emailHint: string; submit: string; cancel: string; }; }; accept: { title: string; body: string; submit: string; submitting: string; notNow: string; acceptedTitle: string; acceptedBody: string; a11y: { submit: string; }; }; }; audit: { log: { title: string; eventType: string; actorId: string; filter: string; loading: string; loadMore: string; system: string; a11y: { eventType: string; eventTypeHint: string; actorId: string; actorIdHint: string; filter: string; event: string; eventHint: string; loadMore: string; loadingMore: string; }; }; }; webhooks: { loading: string; enabled: string; disabled: string; status: { pending: string; delivered: string; failed: string; }; list: { title: string; newSecret: string; urlPlaceholder: string; eventsPlaceholder: string; add: string; test: string; delete: string; testOk: string; testFailed: string; a11y: { url: string; urlHint: string; events: string; eventsHint: string; add: string; open: string; test: string; delete: string; }; }; detail: { title: string; url: string; events: string; save: string; deliveries: string; attemptsOne: string; attemptsOther: string; back: string; a11y: { url: string; events: string; enabled: string; save: string; }; }; }; errors: { generic: { validation: string; badRequest: string; unauthorized: string; forbidden: string; notFound: string; conflict: string; paymentRequired: string; tooMany: string; tooLarge: string; server: string; unavailable: string; network: string; }; reasons: { INVALID_CREDENTIALS: string; ACCOUNT_SUSPENDED: string; USER_ALREADY_EXISTS: string; EMAIL_IN_USE: string; PHONE_IN_USE: string; VERIFICATION_FAILED: string; VERIFICATION_COOLDOWN: string; PASSWORD_RESET_FAILED: string; INVALID_CODE: string; INVALID_CREDENTIAL: string; MFA_REQUIRED: string; MFA_NOT_ENABLED: string; EMAIL_NOT_VERIFIED: string; PHONE_NOT_VERIFIED: string; NO_EMAIL_ON_ACCOUNT: string; NO_PHONE_ON_ACCOUNT: string; PASSWORD_REQUIRED: string; EMAIL_LOGIN_REQUIRED: string; GOOGLE_AUTH_FAILED: string; APPLE_AUTH_FAILED: string; NOT_LINKED: string; SEAT_LIMIT_REACHED: string; INVALID_ROLE: string; INVITATION_NOT_FOUND: string; INVITATION_FAILED: string; INVITATION_EXPIRED: string; INVITATION_ALREADY_USED: string; INVITATION_REVOKED: string; INVITATION_EMAIL_MISMATCH: string; INVITATION_ROLE_UNAVAILABLE: string; MEMBER_NOT_FOUND: string; OWNER_CANNOT_LEAVE: string; OWNER_REQUIRED: string; MANAGER_REQUIRED: string; SYSTEM_ROLE: string; LAST_ROLE: string; ROLE_NOT_HELD: string; PLAN_UNCHANGED: string; SUBSCRIPTION_PAST_DUE: string; SUBSCRIPTION_PAUSED: string; SUBSCRIPTION_SCHEDULED_TO_CANCEL: string; PLAN_CHANGE_REQUIRES_CANCEL: string; SUBSCRIPTION_CANCELED: string; SUBSCRIPTION_INACTIVE: string; PLAN_UPGRADE_REQUIRED: string; FEATURE_UNAVAILABLE: string; RATE_LIMIT_EXCEEDED: string; INSUFFICIENT_CREDITS: string; PACKS_BLOCKED: string; NO_CUSTOMER: string; INVALID_PAYMENT_METHOD: string; DUPLICATE_EMAIL: string; DUPLICATE_PHONE: string; DUPLICATE_ADDRESS: string; DUPLICATE_REFERENCE_CODE: string; CUSTOMER_IN_USE: string; EMAIL_NOT_FOUND: string; PHONE_NOT_FOUND: string; ADDRESS_NOT_FOUND: string; RELATIONSHIP_NOT_FOUND: string; LABEL_IN_USE: string; ASSET_TOO_LARGE: string; ASSET_UNSUPPORTED: string; ASSET_NOT_FOUND: string; PAYLOAD_TOO_LARGE: string; }; }; }; readonly "zh-Hant": { auth: { fields: { email: string; password: string; firstName: string; lastName: string; code: string; }; backToSignIn: string; login: { title: string; submit: string; submitting: string; forgotPassword: string; noAccount: string; signUp: string; a11y: { email: string; emailHint: string; password: string; passwordHint: string; submit: string; }; }; register: { title: string; submit: string; submitting: string; haveAccount: string; signIn: string; invalidEmail: string; passwordTooShort: string; passwordRule: string; a11y: { firstName: string; lastName: string; email: string; password: string; submit: string; }; }; forgot: { title: string; lead: string; submit: string; submitting: string; sentTitle: string; sentBody: string; a11y: { email: string; submit: string; }; }; reset: { title: string; lead: string; codeLabel: string; newPassword: string; confirmPassword: string; mismatch: string; submit: string; submitting: string; doneTitle: string; doneBody: string; goToSignIn: string; a11y: { code: string; codeHint: string; newPassword: string; newPasswordHint: string; confirm: string; confirmHint: string; submit: string; goToSignIn: string; }; }; verify: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; noCode: string; resend: string; resent: string; a11y: { code: string; codeHint: string; submit: string; }; }; mfa: { title: string; lead: string; codeLabel: string; submit: string; submitting: string; a11y: { code: string; codeHint: string; submit: string; }; }; }; billing: { pricing: { loading: string; monthly: string; yearly: string; perMonth: string; perYear: string; choose: string; redirecting: string; }; subscription: { loading: string; none: string; viewPlans: string; title: string; statusLine: string; statusLineCanceling: string; renews: string; ends: string; manage: string; opening: string; }; paymentMethod: { title: string; loading: string; link: string; linkWithEmail: string; card: string; none: string; add: string; update: string; remove: string; removing: string; }; status: { active: string; trialing: string; past_due: string; unpaid: string; canceled: string; incomplete: string; incomplete_expired: string; paused: string; }; }; customers: { loading: string; fields: { firstName: string; lastName: string; company: string; companyOptional: string; }; list: { title: string; searchPlaceholder: string; create: string; blacklisted: string; a11y: { search: string; firstName: string; lastName: string; company: string; create: string; openCustomer: string; openCustomerHint: string; }; }; detail: { title: string; save: string; emails: string; phones: string; tags: string; notes: string; primary: string; withPrimary: string; makePrimary: string; remove: string; add: string; delete: string; emailPlaceholder: string; phonePlaceholder: string; tagPlaceholder: string; notePlaceholder: string; backToList: string; a11y: { firstName: string; lastName: string; company: string; save: string; newEmail: string; newPhone: string; newTag: string; newNote: string; addEmail: string; addPhone: string; addTag: string; addNote: string; makePrimaryEmail: string; makePrimaryPhone: string; removeEmail: string; removePhone: string; removeTag: string; deleteNote: string; backToList: string; }; }; }; workspaces: { roles: { ADMIN: string; GUEST: string; }; invitationStatus: { PENDING: string; ACCEPTED: string; REJECTED: string; CANCELLED: string; }; members: { title: string; loading: string; invite: string; remove: string; a11y: { invite: string; remove: string; }; }; invite: { title: string; email: string; submit: string; submitShort: string; submitting: string; pending: string; loading: string; cancel: string; backToTeam: string; a11y: { email: string; emailHint: string; submit: string; cancel: string; }; }; accept: { title: string; body: string; submit: string; submitting: string; notNow: string; acceptedTitle: string; acceptedBody: string; a11y: { submit: string; }; }; }; audit: { log: { title: string; eventType: string; actorId: string; filter: string; loading: string; loadMore: string; system: string; a11y: { eventType: string; eventTypeHint: string; actorId: string; actorIdHint: string; filter: string; event: string; eventHint: string; loadMore: string; loadingMore: string; }; }; }; webhooks: { loading: string; enabled: string; disabled: string; status: { pending: string; delivered: string; failed: string; }; list: { title: string; newSecret: string; urlPlaceholder: string; eventsPlaceholder: string; add: string; test: string; delete: string; testOk: string; testFailed: string; a11y: { url: string; urlHint: string; events: string; eventsHint: string; add: string; open: string; test: string; delete: string; }; }; detail: { title: string; url: string; events: string; save: string; deliveries: string; attemptsOne: string; attemptsOther: string; back: string; a11y: { url: string; events: string; enabled: string; save: string; }; }; }; errors: { generic: { validation: string; badRequest: string; unauthorized: string; forbidden: string; notFound: string; conflict: string; paymentRequired: string; tooMany: string; tooLarge: string; server: string; unavailable: string; network: string; }; reasons: { INVALID_CREDENTIALS: string; ACCOUNT_SUSPENDED: string; USER_ALREADY_EXISTS: string; EMAIL_IN_USE: string; PHONE_IN_USE: string; VERIFICATION_FAILED: string; VERIFICATION_COOLDOWN: string; PASSWORD_RESET_FAILED: string; INVALID_CODE: string; INVALID_CREDENTIAL: string; MFA_REQUIRED: string; MFA_NOT_ENABLED: string; EMAIL_NOT_VERIFIED: string; PHONE_NOT_VERIFIED: string; NO_EMAIL_ON_ACCOUNT: string; NO_PHONE_ON_ACCOUNT: string; PASSWORD_REQUIRED: string; EMAIL_LOGIN_REQUIRED: string; GOOGLE_AUTH_FAILED: string; APPLE_AUTH_FAILED: string; NOT_LINKED: string; SEAT_LIMIT_REACHED: string; INVALID_ROLE: string; INVITATION_NOT_FOUND: string; INVITATION_FAILED: string; INVITATION_EXPIRED: string; INVITATION_ALREADY_USED: string; INVITATION_REVOKED: string; INVITATION_EMAIL_MISMATCH: string; INVITATION_ROLE_UNAVAILABLE: string; MEMBER_NOT_FOUND: string; OWNER_CANNOT_LEAVE: string; OWNER_REQUIRED: string; MANAGER_REQUIRED: string; SYSTEM_ROLE: string; LAST_ROLE: string; ROLE_NOT_HELD: string; PLAN_UNCHANGED: string; SUBSCRIPTION_PAST_DUE: string; SUBSCRIPTION_PAUSED: string; SUBSCRIPTION_SCHEDULED_TO_CANCEL: string; PLAN_CHANGE_REQUIRES_CANCEL: string; SUBSCRIPTION_CANCELED: string; SUBSCRIPTION_INACTIVE: string; PLAN_UPGRADE_REQUIRED: string; FEATURE_UNAVAILABLE: string; RATE_LIMIT_EXCEEDED: string; INSUFFICIENT_CREDITS: string; PACKS_BLOCKED: string; NO_CUSTOMER: string; INVALID_PAYMENT_METHOD: string; DUPLICATE_EMAIL: string; DUPLICATE_PHONE: string; DUPLICATE_ADDRESS: string; DUPLICATE_REFERENCE_CODE: string; CUSTOMER_IN_USE: string; EMAIL_NOT_FOUND: string; PHONE_NOT_FOUND: string; ADDRESS_NOT_FOUND: string; RELATIONSHIP_NOT_FOUND: string; LABEL_IN_USE: string; ASSET_TOO_LARGE: string; ASSET_UNSUPPORTED: string; ASSET_NOT_FOUND: string; PAYLOAD_TOO_LARGE: string; }; }; }; }
+
+const UI_LANGUAGES: readonly ["en", "fr", "es", "zh-Hans", "zh-Hant"]
+
+function canonicalLocaleTag(tag: string | null | undefined): string | null
+
+function createUiT(locale: string | null | undefined): UiT
+
+function formatPersonName(firstName: string | null | undefined, lastName: string | null | undefined, locale: string | null | undefined): string
+
+function localizeApiError(error: IApiErrorLike | null | undefined, locale: string | null | undefined): string
+
+function resolveUiLanguage(tag: string | null | undefined): "en" | "fr" | "es" | "zh-Hans" | "zh-Hant"
+
+interface IApiErrorLike {
+    reason?: string | undefined;
+    explanation?: string | undefined;
+    status?: number | undefined;
+    details?: unknown;
+}
+
+type UiLanguage = (typeof UI_LANGUAGES)[number];
+
+type UiMessageKey = MessagePath<UiMessages>;
+
+type UiMessageParams = Record<string, string | number>;
+
+type UiMessages = typeof en;
+
+type UiT = (key: UiMessageKey, params?: UiMessageParams) => string;
+
+new UiLocale(initial?: string | undefined): UiLocale
+  .get(): string
+  .set(tag: string): void
+  .on(listener: (tag: string) => void): () => void
+
+function detectDeviceLocale(): string
+
+function uiLocaleFor(owner: object | undefined): UiLocale | undefined
 ```

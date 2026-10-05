@@ -218,6 +218,14 @@ export interface IBillingRecipient {
 	email?: string | null;
 	phone?: string | null;
 	deviceToken?: string | null;
+	/**
+	 * The language to write receipts and notices in, when the app knows it.
+	 * Absent: courier uses the language of the account the address belongs to,
+	 * then `fallbackLocale`, then the system default.
+	 */
+	locale?: string | null;
+	/** Used when neither `locale` nor the recipient's account says — e.g. the workspace's language. */
+	fallbackLocale?: string | null;
 }
 
 export type ResolveRecipient = (
@@ -258,6 +266,15 @@ export interface IBillingConfig {
 	 * never gated by this.
 	 */
 	management?: 'owner-or-admin' | 'any-member';
+	/**
+	 * Who a plan's free trial is "once per". Default 'subscriber': once per
+	 * user or per workspace. 'owner': a WORKSPACE subscriber gets no trial when
+	 * any workspace with the same owner has already had one — per-workspace
+	 * billing otherwise hands one person a trial for every workspace they
+	 * create. Needs the workspaces brick (reads fonderie_workspaces.owner_id).
+	 * User subscribers are unaffected.
+	 */
+	trialScope?: 'subscriber' | 'owner';
 	/**
 	 * System-role NAMES that count as billing managers (default ['ADMIN']).
 	 * Matched only against is_system roles — GUEST is also a system role and

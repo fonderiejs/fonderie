@@ -15,11 +15,17 @@ new FonderieClient(opts: IFonderieClientOptions): FonderieClient
   .media: MediaClient
   .config: ConfigClient
   .sse: SseClient
+  .queries: QueryStore
   .session: SessionState
   .onSessionChange(listener: (state: SessionState) => void): () => void
   .setAccessToken(token: string | undefined): void
   .clearCache(): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .setLocale(tag: string): void
+  .getLocale(): string
+  .onLocaleChange(listener: (tag: string) => void): () => void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .request<T = unknown>(opts: { method: string; path: string; body?: unknown; token?: string | undefined; workspaceId?: string | undefined; cache?: number | false | undefined; bust?: boolean | undefined; invalidate?: string[] | undefined; }): Promise<...>
   .get<T = unknown>(path: string, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
   .post<T = unknown>(path: string, body?: unknown, config?: IRequestConfig | undefined): Promise<IApiResponse<T>>
@@ -32,11 +38,24 @@ interface IFonderieProviderProps {
     children?: ReactNode;
 }
 
+interface IWorkspaceScoped {
+    getWorkspaceId(): string | undefined;
+    onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void;
+}
+
 function FonderieProvider({ client, children }: IFonderieProviderProps): FunctionComponentElement<ProviderProps<FonderieClient | null>>
 
 function useFonderieClient(): FonderieClient
 
 function useFonderieSubClient<T>(explicit: T | undefined, select: (client: FonderieClient) => T, hookName: string): T
+
+function useWorkspaceId(source?: unknown): string | undefined
+
+function useUiError(source?: object | undefined, locale?: string | undefined): (error: IApiErrorLike | null | undefined) => string
+
+function useUiLocale(source?: object | undefined, locale?: string | undefined): string
+
+function useUiT(source?: object | undefined, locale?: string | undefined): UiT
 
 new ConfigClient(http: HttpClient, tokens: TokenStore, sse?: SseClient | undefined, options?: IConfigClientOptions | undefined): ConfigClient
   .ready: Promise<void>
@@ -88,13 +107,78 @@ type SseStatus = 'idle' | 'connecting' | 'open' | 'paused' | 'unavailable';
 
 function isSwitchOn(value: unknown): boolean
 
+type UiMessageKey = MessagePath<UiMessages>;
+
+type UiT = (key: UiMessageKey, params?: UiMessageParams) => string;
+
+function toApiError(err: unknown): FonderieApiError
+
+function useClientQuery<T>(source: object, key: string | null, fetcher: (ctx: { force: boolean; }) => Promise<T>, opts?: IUseClientQueryOptions): IClientQueryResult<T>
+
+function usePagedQuery<Row, Cursor>(source: object, path: string, readFirst: (bust: boolean) => Promise<IPage<Row, Cursor>>, readMore: (next: Cursor) => Promise<IPage<Row, Cursor>>, opts?: IScopedQueryOptions<...> & { ...; }): IPagedQuery<...>
+
 function useRemoteConfig<T>(key: string, fallback: T, client?: ConfigClient | undefined): T
+
+function useScopedQuery<T>(source: object, path: string, read: (bust: boolean) => Promise<T>, opts?: IScopedQueryOptions<T>): IScopedQuery<T>
 
 function useSse(topics: string[], onEvent: (event: ISseClientEvent) => void, options?: IUseSseOptions, client?: SseClient | undefined): void
 
 function useSseStatus(client?: SseClient | undefined): SseStatus
 
+function useWrite(after?: (() => Promise<void>) | undefined): { error: FonderieApiError | null; run: <R>(write: () => Promise<R>) => Promise<R>; }
+
 function withRemoteConfig<P extends object>(key: string, Component: ComponentType<P>, options?: IWithRemoteConfigOptions<P>): ComponentType<P>
+
+interface IPage<Row, Cursor> {
+    rows: Row[];
+    next: Cursor | null;
+    total?: number;
+}
+
+interface IPagedQuery<Row> {
+    rows: Row[];
+    total: number | undefined;
+    hasMore: boolean;
+    isLoading: boolean;
+    isLoadingMore: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    loadMore: () => Promise<void>;
+}
+
+interface IScopedQuery<T> {
+    data: T | undefined;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    adopt: (data: T) => void;
+    key: string;
+}
+
+interface IScopedQueryOptions<T> {
+    normal?: (err: FonderieApiError) => T | undefined;
+    perWorkspace?: boolean;
+    enabled?: boolean;
+}
+
+interface IClientQueryResult<T> {
+    data: T | undefined;
+    error: unknown;
+    isLoading: boolean;
+    isFetching: boolean;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<T | undefined>;
+}
+
+interface IUseClientQueryOptions {
+    staleMs?: number;
+    enabled?: boolean;
+}
 
 interface IUseSseOptions {
     onReset?: () => void;

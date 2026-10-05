@@ -1,7 +1,7 @@
-import type { IRolePermission, IRolePermissionInput } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IRolePermission, IRolePermissionInput } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseRolePermissionsReturn {
 	permissions: IRolePermission[];
@@ -12,6 +12,8 @@ export interface IUseRolePermissionsReturn {
 	// read/write pair lives in one hook so editors can pre-populate.
 	setRolePermissions: (permissions: IRolePermissionInput[]) => Promise<void>;
 }
+
+const NONE: IRolePermission[] = [];
 
 export function useRolePermissions(roleId: string): IUseRolePermissionsReturn;
 export function useRolePermissions(
@@ -26,47 +28,20 @@ export function useRolePermissions(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const roleId = firstIsClient ? (maybeId as string) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useRolePermissions');
-	const [permissions, setPermissions] = useState<IRolePermission[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await workspaces.getRolePermissions(roleId, { bust: opts?.force });
-				setPermissions(result.permissions);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[workspaces, roleId],
+	const q = useScopedQuery(
+		workspaces,
+		`/workspaces/roles/${encodeURIComponent(roleId)}/permissions`,
+		async (bust) => (await workspaces.getRolePermissions(roleId, { bust })).result.permissions,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: !!roleId },
 	);
-
+	const w = useWrite(q.refresh);
 	const setRolePermissions = useCallback(
-		async (input: IRolePermissionInput[]) => {
-			setError(null);
-			try {
+		(input: IRolePermissionInput[]) =>
+			w.run(async () => {
 				await workspaces.setRolePermissions(roleId, input);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[workspaces, roleId, refresh],
+			}),
+		[workspaces, roleId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { permissions, isLoading, error, refresh, setRolePermissions };
+	return { permissions: q.data ?? NONE, isLoading: q.isLoading, error: w.error ?? q.error, refresh: q.refresh, setRolePermissions };
 }

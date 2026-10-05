@@ -1,4 +1,6 @@
 import type { ICache } from './cache';
+import { registerUiLocale, UiLocale } from './ui-locale';
+import { QueryStore, registerQueryStore, type IQueryStoreOptions } from './query-store';
 import { FonderieApiError, HttpClient, isSessionRefusal } from './http';
 import { AuditClient } from './modules/audit';
 import { AuthClient } from './modules/auth';
@@ -52,8 +54,20 @@ export interface IFonderieClientOptions {
 	baseUrl: string;
 	accessToken?: string;
 	workspaceId?: string;
+	/**
+	 * The UI language (BCP 47, e.g. 'fr-CA', 'zh-Hant'): what the prebuilt
+	 * screens are written in and what requests send as Accept-Language.
+	 * Default: the device's language. Change it later with setLocale().
+	 */
+	locale?: string;
 	// Opt-in response cache (see createMemoryCache). Omit for no caching.
 	cache?: ICache;
+	// The screens' read model (client.queries): `staleMs` — how long a fetched
+	// answer counts as current before showing a screen again refetches it in
+	// the background (default 5 minutes); `persist` — keep answers on the
+	// device so a cold start opens screens on their last data. The snapshot is
+	// tied to the signed-in user and wiped when the session ends.
+	queries?: Omit<IQueryStoreOptions, 'owner'>;
 	// Opt-in reactive renew.
 	auth?: IClientAuthConfig;
 	// Server-Sent Events (@fonderie/sse). `fetch` must return a readable body
@@ -112,11 +126,19 @@ export class FonderieClient {
 	private http: HttpClient;
 	private tokens: TokenStore;
 	private workspaceId: string | undefined;
+	private readonly uiLocale: UiLocale;
 	private cache: ICache | undefined;
+	/**
+	 * What every screen reads through: fetched answers shown at once, refreshed
+	 * in the background, never replaced by a spinner (see query-store.ts). The
+	 * frontend hook packages use it; apps rarely touch it directly.
+	 */
+	readonly queries: QueryStore;
 	private authConfig: IClientAuthConfig | undefined;
 	private refreshing: Promise<string | undefined> | null = null;
 	private _session: SessionState;
 	private readonly sessionListeners = new Set<(state: SessionState) => void>();
+	private readonly workspaceListeners = new Set<(workspaceId: string | undefined) => void>();
 
 	constructor(opts: IFonderieClientOptions) {
 		this.tokens = new TokenStore(opts.accessToken);
@@ -124,20 +146,34 @@ export class FonderieClient {
 		// A token appearing (sign-in, restore) makes the session active; one
 		// disappearing without a reason (setAccessToken(undefined)) is a sign-out.
 		this.tokens.onChange(() => {
-			if (this.tokens.get()) this.setSession('active');
-			else if (this._session !== 'revoked') this.setSession('signedOut');
+			if (this.tokens.get()) {
+				this.setSession('active');
+				this.followOwner();
+			} else {
+				// Whatever ended the session (sign-out, revocation), nothing the
+				// screens held for it may show to whoever signs in next.
+				this.queries?.clear();
+				if (this._session !== 'revoked') this.setSession('signedOut');
+			}
 		});
 		this.workspaceId = opts.workspaceId;
+		this.uiLocale = new UiLocale(opts.locale);
 		this.cache = opts.cache;
+		this.queries = new QueryStore({ ...opts.queries, owner: () => tokenSubject(this.tokens.get()) });
+		this.followOwner();
 		this.authConfig = opts.auth;
 		this.http = new HttpClient(opts.baseUrl, {
 			clientKind: opts.clientKind,
+			getLocale: () => this.uiLocale.get(),
 			cache: opts.cache,
 			defaultTtlMs: (opts.cache as { defaultTtlMs?: number } | undefined)?.defaultTtlMs,
 			refresh: opts.auth ? () => this.doRefresh() : undefined,
 			onReachability: (reachable) => {
 				if (!this.tokens.get()) return;
 				this.setSession(reachable ? 'active' : 'offline');
+			},
+			onWrite: (fragments) => {
+				for (const fragment of fragments) this.queries.invalidate(fragment);
 			},
 		});
 		this.auth = new AuthClient(this.http, this.tokens);
@@ -158,6 +194,12 @@ export class FonderieClient {
 			log: opts.log,
 		});
 		this.config = new ConfigClient(this.http, this.tokens, this.sse, { storage: opts.config?.storage, log: opts.log });
+		// Hooks receive the client or one of its sub-clients: each reads the
+		// same store.
+		for (const owner of [this, this.auth, this.billing, this.workspaces, this.audit, this.webhooks, this.customers, this.media, this.config]) {
+			registerQueryStore(owner, this.queries);
+			registerUiLocale(owner, this.uiLocale);
+		}
 
 		// Live sign-out (docs/SESSION-DESIGN.md, Phase 5): only when the app
 		// configured the stream — apps without @fonderie/sse see no change.
@@ -268,14 +310,30 @@ export class FonderieClient {
 		if (!token) this.clearCache();
 	}
 
-	// Drop all cached responses (e.g. on switching accounts).
+	// The user the screens' data belongs to. A token for someone else (another
+	// account signed in without a sign-out in between) wipes what the previous
+	// one saw before anything is shown; the same user (a token refresh) keeps
+	// it. Then the device snapshot, if any, is loaded for that user.
+	private owner: string | undefined;
+	private followOwner(): void {
+		if (!this.queries) return;
+		const sub = tokenSubject(this.tokens.get());
+		if (this.owner !== undefined && sub !== this.owner) this.queries.clear();
+		this.owner = sub;
+		if (sub) void this.queries.hydrate();
+	}
+
+	// Drop all cached responses (e.g. on switching accounts) — and everything
+	// the screens hold, so no session's data survives into the next.
 	clearCache(): void {
 		this.cache?.clear();
+		this.queries.clear();
 	}
 
 	// Default X-Workspace-ID for the generic transport, also propagated to the
 	// workspace-scoped modules so one call configures the whole client.
 	setWorkspaceId(workspaceId: string | undefined): void {
+		const changed = workspaceId !== this.workspaceId;
 		this.workspaceId = workspaceId;
 		this.billing.setWorkspaceId(workspaceId);
 		this.workspaces.setWorkspaceId(workspaceId);
@@ -284,6 +342,49 @@ export class FonderieClient {
 		this.webhooks.setWorkspaceId(workspaceId);
 		// A stream is scoped to the workspace it was opened in.
 		this.sse?.identityChanged();
+		if (!changed) return;
+		for (const listener of this.workspaceListeners) {
+			try {
+				listener(workspaceId);
+			} catch {
+				// A listener's failure must not stop the others.
+			}
+		}
+	}
+
+	/**
+	 * The UI language: what the prebuilt screens are written in, and the
+	 * Accept-Language every request carries. Screens on screen follow a change.
+	 */
+	setLocale(tag: string): void {
+		this.uiLocale.set(tag);
+	}
+
+	/** The UI language (canonical BCP 47). */
+	getLocale(): string {
+		return this.uiLocale.get();
+	}
+
+	/** Called when setLocale changes the language. Returns an unsubscribe function. */
+	onLocaleChange(listener: (tag: string) => void): () => void {
+		return this.uiLocale.on(listener);
+	}
+
+	/** The workspace requests are scoped to (X-Workspace-ID), if any. */
+	getWorkspaceId(): string | undefined {
+		return this.workspaceId;
+	}
+
+	/**
+	 * Called whenever setWorkspaceId changes the workspace, so per-workspace
+	 * data on screen (a subscription, members, invoices) can re-read. Returns
+	 * an unsubscribe function.
+	 */
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void {
+		this.workspaceListeners.add(listener);
+		return () => {
+			this.workspaceListeners.delete(listener);
+		};
 	}
 
 	// ── Generic transport ──────────────────────────────────────────────────────
@@ -389,6 +490,26 @@ function tokenSid(token: string | undefined): string | undefined {
 		const json = typeof atob === 'function' ? atob(payload.replace(/-/g, '+').replace(/_/g, '/')) : '';
 		const sid = (JSON.parse(json) as { sid?: unknown }).sid;
 		return typeof sid === 'string' ? sid : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+// The `sub` claim of a JWT access token — who the data on screen belongs to.
+// Decoded, not verified: it only tells sessions apart for the local store;
+// the server is what checks the token. Undefined when there is none or it is
+// not a readable JWT (then nothing is persisted).
+function tokenSubject(token: string | undefined): string | undefined {
+	const payload = token?.split('.')[1];
+	if (!payload) return undefined;
+	try {
+		const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+		const json =
+			typeof atob === 'function'
+				? atob(b64)
+				: (globalThis as { Buffer?: { from(s: string, e: string): { toString(e: string): string } } }).Buffer?.from(b64, 'base64').toString('binary');
+		const sub = json ? (JSON.parse(json) as { sub?: unknown }).sub : undefined;
+		return typeof sub === 'string' && sub ? sub : undefined;
 	} catch {
 		return undefined;
 	}

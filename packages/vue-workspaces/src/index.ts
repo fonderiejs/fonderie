@@ -1,9 +1,15 @@
 export type {
 	ICreateRoleInput,
 	ICreateWorkspaceInput,
+	IAcceptInvitationInput,
 	IInvitationDTO,
 	IInviteEntry,
 	IMemberDTO,
+	IMemberRoleDTO,
+	IMyPermissionsResult,
+	IPermissionCatalogEntryDTO,
+	IRoleDeleteResult,
+	PermissionOperation,
 	IRoleDTO,
 	IRolePermission,
 	IRolePermissionInput,
@@ -18,9 +24,12 @@ export type {
 
 export { FonderieApiError } from '@fonderie/client';
 export type {
+	IUseCurrentWorkspaceReturn,
 	IUseInvitationsReturn,
 	IUseMemberRolesReturn,
 	IUseMembersReturn,
+	IUsePermissionCatalogReturn,
+	IUsePermissionsReturn,
 	IUseRolePermissionsReturn,
 	IUseRoleReturn,
 	IUseRolesReturn,
@@ -30,9 +39,13 @@ export type {
 	IUseWorkspacesReturn,
 } from './composables';
 export {
+	useCurrentWorkspace,
 	useInvitations,
 	useMemberRoles,
 	useMembers,
+	useCan,
+	usePermissionCatalog,
+	usePermissions,
 	useRole,
 	useRolePermissions,
 	useRoles,

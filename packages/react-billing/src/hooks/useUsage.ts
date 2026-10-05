@@ -1,10 +1,17 @@
-import type { IRecordUsageInput } from '@fonderie/client';
-import { BillingClient, FonderieApiError } from '@fonderie/client';
+import type { IRecordUsageInput, IUsageResult } from '@fonderie/client';
+import { BillingClient, type FonderieApiError } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUseUsageReturn {
+	// Used in the current window for a windowed plan limit (e.g. 'api-calls'),
+	// else recorded this month. null until the first read resolves.
 	total: number | null;
+	// The whole reading: limit, status ('ok' | 'warning' | 'over_limit' |
+	// 'blocked'), window and resetsAt for a windowed plan limit.
+	usage: IUsageResult | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
@@ -21,47 +28,34 @@ export function useUsage(
 	const explicit = firstIsClient ? (clientOrMetric as BillingClient | undefined) : undefined;
 	const metric = firstIsClient ? (maybeMetric as string) : clientOrMetric;
 	const billing = useFonderieSubClient(explicit, (c) => c.billing, 'useUsage');
-	const [total, setTotal] = useState<number | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getUsage(metric, { bust: opts?.force });
-				setTotal(result.total);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[billing, metric],
+	const q = useBillingQuery<IUsageResult>(
+		billing,
+		`/billing/usage/${encodeURIComponent(metric)}`,
+		async (bust) => (await billing.getUsage(metric, { bust })).result,
 	);
+	const [writeError, setWriteError] = useState<FonderieApiError | null>(null);
 
 	const recordUsage = useCallback(
 		async (input: IRecordUsageInput) => {
-			setError(null);
+			setWriteError(null);
 			try {
 				await billing.recordUsage(input);
-				await refresh();
+				await q.refresh();
 			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
+				const apiError = toApiError(err);
+				setWriteError(apiError);
 				throw apiError;
 			}
 		},
-		[billing, refresh],
+		[billing, q.refresh],
 	);
 
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { total, isLoading, error, refresh, recordUsage };
+	return {
+		total: q.data?.total ?? null,
+		usage: q.data ?? null,
+		isLoading: q.isLoading,
+		error: writeError ?? q.error,
+		refresh: q.refresh,
+		recordUsage,
+	};
 }

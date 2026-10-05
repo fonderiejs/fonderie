@@ -48,7 +48,7 @@ function makeStore(
 			}
 
 			// createPersonalWorkspace: INSERT ... ON CONFLICT (owner_id) WHERE is_personal = true
-			if (sql.includes('INSERT INTO fonderie_workspaces') && sql.includes('ON CONFLICT')) {
+			if (sql.includes('INSERT INTO fonderie_workspaces') && sql.includes('ON CONFLICT (owner_id)')) {
 				if (!opts.personalWorkspace) return [] as T[];
 				return [opts.personalWorkspace] as T[];
 			}
@@ -105,6 +105,12 @@ const WS: IWorkspace = {
 	phone: null,
 	businessType: null,
 	address: null,
+	legalName: null,
+	email: null,
+	website: null,
+	logoUrl: null,
+	taxRegistrations: null,
+	languages: null,
 	archivedAt: null,
 	archivedBy: null,
 	createdAt: new Date().toISOString(),
@@ -915,7 +921,12 @@ test('addRoleToMember: returns false when the role is not assignable (no row ins
 
 test('member.addRole: 422 INVALID_ROLE when the role is a system/foreign role', async () => {
 	const { memberController } = await import('../controllers/member.controller');
-	const { store } = captureStore([]);
+	// user-2 IS a member (the membership read answers); the guarded role
+	// insert matches nothing because the role is not assignable.
+	const store = {
+		query: async (sql: string) => (/LIMIT 1/.test(sql) ? [{ userId: 'user-2', workspaceId: 'ws-1' }] : []),
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
 	const ctrl = memberController(store);
 	const res = await ctrl.addRole(
 		makeCtx({
@@ -990,11 +1001,31 @@ test('acceptInvitationByPin: lookup is bound to the accepting email', async () =
 
 	await assert.rejects(
 		acceptInvitationByPin({ pin: '123456', userId: 'u-1', email: 'me@example.com' }, store),
-		/Invalid PIN/,
+		(err: unknown) => (err as { reason?: string }).reason === 'INVITATION_NOT_FOUND',
 	);
 	const lookup = captured[0]!;
-	assert.match(lookup.sql, /lower\(email\)\s*=\s*lower\(\$2\)/i, 'PIN lookup is email-bound');
-	assert.deepEqual(lookup.params, ['123456', 'me@example.com']);
+	assert.match(lookup.sql, /WHERE pin = \$1/i);
+	assert.deepEqual(lookup.params, ['123456']);
+});
+
+test("acceptInvitationByPin: a PIN for SOMEONE ELSE'S invitation redeems nothing", async () => {
+	const { acceptInvitationByPin } = await import('../services/invitations');
+	let redeemed = false;
+	const store = {
+		query: async (sql: string) => {
+			if (sql.includes('WHERE pin = $1')) {
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', email: 'victim@example.com', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+			}
+			if (sql.includes("SET status = 'ACCEPTED'")) redeemed = true;
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	await assert.rejects(
+		acceptInvitationByPin({ pin: '123456', userId: 'u-1', email: 'attacker@example.com' }, store),
+		(err: unknown) => (err as { reason?: string }).reason === 'INVITATION_NOT_FOUND',
+	);
+	assert.equal(redeemed, false);
 });
 
 test('generatePin path: createInvitation mints a CSPRNG 6-digit pin', async () => {
@@ -1019,12 +1050,14 @@ test('invitation.accept: token path admits accounts without an email', async () 
 	const store = {
 		query: async (sql: string) => {
 			if (sql.includes('WHERE token = $1')) {
-				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', status: 'PENDING', email: 'pat@example.com', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
 			}
 			// accept-time role re-check: r-1 is an assignable workspace-local role
 			if (sql.includes('FROM fonderie_roles') && sql.includes("name = 'GUEST'")) {
 				return [{ id: 'r-1' }];
 			}
+			// the single-use claim wins
+			if (sql.includes("SET status = 'ACCEPTED'")) return [{ id: 'inv-1' }];
 			return [];
 		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
@@ -1041,12 +1074,15 @@ test('acceptInvitationByToken: refuses a role that is no longer assignable (syst
 	const store = {
 		query: async (sql: string) => {
 			if (sql.includes('WHERE token = $1'))
-				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'sys-admin', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'sys-admin', status: 'PENDING', email: 'u1@example.com', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
 			return []; // role re-check finds nothing assignable
 		},
 		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
 	} as unknown as IStoreAdapter;
-	await assert.rejects(acceptInvitationByToken('a'.repeat(64), 'u-1', store), /no longer assignable/);
+	await assert.rejects(
+		acceptInvitationByToken('a'.repeat(64), 'u-1', store, { email: 'u1@example.com' }),
+		(err: unknown) => (err as { reason?: string }).reason === 'INVITATION_ROLE_UNAVAILABLE',
+	);
 });
 
 test('invitation.accept: PIN without an account email → 400, not a global redeem', async () => {

@@ -5,6 +5,7 @@ import {
 	createInvitation,
 	listInvitations,
 	cancelInvitation,
+	resendInvitation,
 	acceptInvitationByPin,
 	acceptInvitationByToken,
 } from '../services/invitations';
@@ -20,6 +21,10 @@ export class InvitationModel {
 		return listInvitations(workspaceId, this.store);
 	}
 
+	resend(invitationId: string, workspaceId: string, ttl: string): Promise<IInvitation | null> {
+		return resendInvitation(invitationId, workspaceId, ttl, this.store);
+	}
+
 	cancel(invitationId: string, workspaceId: string): Promise<void> {
 		return cancelInvitation(invitationId, workspaceId, this.store);
 	}
@@ -30,7 +35,11 @@ export class InvitationModel {
 		return acceptInvitationByPin(opts, this.store);
 	}
 
-	acceptByToken(token: string, userId: string): Promise<{ workspaceId: string; roleId: string }> {
-		return acceptInvitationByToken(token, userId, this.store);
+	acceptByToken(
+		token: string,
+		userId: string,
+		account: Parameters<typeof acceptInvitationByToken>[3] = {},
+	): Promise<{ workspaceId: string; roleId: string }> {
+		return acceptInvitationByToken(token, userId, this.store, account);
 	}
 }

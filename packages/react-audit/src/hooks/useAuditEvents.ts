@@ -1,10 +1,11 @@
-import type { IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
-import { AuditClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FonderieApiError, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
+import { AuditClient, queryParams } from '@fonderie/client';
+import { useFonderieSubClient, usePagedQuery } from '@fonderie/react';
+import { useMemo } from 'react';
 
 export interface IUseAuditEventsReturn {
 	events: IAuditEventDTO[];
+	/** Nothing to show yet — never true while a refresh runs behind events shown. */
 	isLoading: boolean;
 	isLoadingMore: boolean;
 	error: FonderieApiError | null;
@@ -26,61 +27,33 @@ export function useAuditEvents(
 	const explicit = firstIsClient ? (clientOrFilters as AuditClient | undefined) : undefined;
 	const rawFilters = (firstIsClient ? maybeFilters : clientOrFilters) ?? {};
 	const audit = useFonderieSubClient(explicit, (c) => c.audit, 'useAuditEvents');
-	// Memoized by value (not reference) — `rawFilters` defaults to a fresh {}
-	// on every render when the caller omits it, which would otherwise refetch
-	// on every render regardless of the dependency list below.
+	// Keyed by content, not identity: callers pass a fresh {} on every render.
+	const key = queryParams({ ...rawFilters, cursor: undefined });
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on content, not identity
-	const filters = useMemo(() => rawFilters, [JSON.stringify(rawFilters)]);
-
-	const [events, setEvents] = useState<IAuditEventDTO[]>([]);
-	const [cursor, setCursor] = useState<string | null>(null);
-	const [hasMore, setHasMore] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				// Refresh resets the cursor to the first page — bust only that fetch.
-				const { result } = await audit.listEvents(filters, { bust: opts?.force });
-				setEvents(result.events);
-				setCursor(result.nextCursor);
-				setHasMore(result.nextCursor !== null);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
+	const filters = useMemo(() => rawFilters, [queryParams(rawFilters)]);
+	const q = usePagedQuery<IAuditEventDTO, string>(
+		audit,
+		`/audit${key}`,
+		// The first page — a refresh always starts from it.
+		async (bust) => {
+			const { result } = await audit.listEvents(filters, { bust });
+			return { rows: result.events, next: result.nextCursor };
 		},
-		[audit, filters],
-	);
-
-	const loadMore = useCallback(async () => {
-		if (!cursor || isLoadingMore) return;
-		setIsLoadingMore(true);
-		setError(null);
-		try {
+		async (cursor) => {
 			const { result } = await audit.listEvents({ ...filters, cursor });
-			setEvents((prev) => [...prev, ...result.events]);
-			setCursor(result.nextCursor);
-			setHasMore(result.nextCursor !== null);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoadingMore(false);
-		}
-	}, [audit, filters, cursor, isLoadingMore]);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { events, isLoading, isLoadingMore, error, hasMore, refresh, loadMore };
+			return { rows: result.events, next: result.nextCursor };
+		},
+		// loadMore here never threw: a list's onEndReached calls it fire-and-forget.
+		// A failed page is reported on `error` only.
+		{ rethrowLoadMore: false },
+	);
+	return {
+		events: q.rows,
+		isLoading: q.isLoading,
+		isLoadingMore: q.isLoadingMore,
+		error: q.error,
+		hasMore: q.hasMore,
+		refresh: q.refresh,
+		loadMore: q.loadMore,
+	};
 }

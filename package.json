@@ -35,6 +35,7 @@
     "check:lockfile": "npm install --package-lock-only --ignore-scripts --no-audit --no-fund && git diff --exit-code package-lock.json",
     "audit:ship": "npm audit --audit-level=high --omit=dev --omit=peer",
     "check:hook-parity": "node scripts/check-hook-parity.mjs",
+		"check:internal-ranges": "node scripts/check-internal-ranges.mjs",
     "brain:completeness": "node scripts/brain-completeness.test.mjs",
     "docs:signatures:index": "node scripts/generate-signatures.mjs",
     "docs:signatures:outcomes": "node scripts/generate-outcomes.mjs",

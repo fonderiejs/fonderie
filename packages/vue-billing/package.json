@@ -1,7 +1,7 @@
 {
 	"name": "@fonderie/vue-billing",
-	"version": "0.10.1",
-	"description": "Vue 3 composables for Fonderie billing \u2014 thin bindings over @fonderie/client.",
+	"version": "0.12.4",
+	"description": "Vue 3 composables for Fonderie billing — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
 		"vue",
@@ -35,14 +35,15 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/vue": "*"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/vue": "^0.11.0"
 	},
 	"peerDependencies": {
 		"vue": ">=3.3.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.3",
+		"happy-dom": "^20.14.5",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3",

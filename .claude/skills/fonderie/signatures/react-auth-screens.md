@@ -8,6 +8,7 @@
 interface IForgotPasswordScreenProps {
     client?: AuthClient;
     onNavigateToLogin?: () => void;
+    locale?: string;
 }
 
 interface ILoginScreenProps {
@@ -16,6 +17,7 @@ interface ILoginScreenProps {
     onMfaRequired?: (mfaToken: string) => void;
     onNavigateToRegister?: () => void;
     onNavigateToForgotPassword?: () => void;
+    locale?: string;
 }
 
 interface IMfaChallengeScreenProps {
@@ -23,12 +25,14 @@ interface IMfaChallengeScreenProps {
     mfaToken: string;
     onLoginSuccess?: (result: ILoginResult) => void;
     onNavigateToLogin?: () => void;
+    locale?: string;
 }
 
 interface IRegisterScreenProps {
     client?: AuthClient;
     onRegisterSuccess?: (result: IRegisterResult) => void;
     onNavigateToLogin?: () => void;
+    locale?: string;
 }
 
 interface IResetPasswordScreenProps {
@@ -36,22 +40,24 @@ interface IResetPasswordScreenProps {
     initialPin?: string;
     onResetSuccess?: () => void;
     onNavigateToLogin?: () => void;
+    locale?: string;
 }
 
 interface IVerifyEmailScreenProps {
     client?: AuthClient;
     onVerified?: (result: IVerifyEmailResult) => void;
+    locale?: string;
 }
 
-function ForgotPasswordScreen({ client, onNavigateToLogin }: IForgotPasswordScreenProps): Element
+function ForgotPasswordScreen({ client, onNavigateToLogin, locale, }: IForgotPasswordScreenProps): Element
 
-function LoginScreen({ client, onLoginSuccess, onMfaRequired, onNavigateToRegister, onNavigateToForgotPassword, }: ILoginScreenProps): Element
+function LoginScreen({ client, onLoginSuccess, onMfaRequired, onNavigateToRegister, onNavigateToForgotPassword, locale, }: ILoginScreenProps): Element
 
-function MfaChallengeScreen({ client, mfaToken, onLoginSuccess, onNavigateToLogin, }: IMfaChallengeScreenProps): Element
+function MfaChallengeScreen({ client, mfaToken, onLoginSuccess, onNavigateToLogin, locale, }: IMfaChallengeScreenProps): Element
 
-function RegisterScreen({ client, onRegisterSuccess, onNavigateToLogin, }: IRegisterScreenProps): Element
+function RegisterScreen({ client, onRegisterSuccess, onNavigateToLogin, locale, }: IRegisterScreenProps): Element
 
-function ResetPasswordScreen({ client, initialPin, onResetSuccess, onNavigateToLogin, }: IResetPasswordScreenProps): Element
+function ResetPasswordScreen({ client, initialPin, onResetSuccess, onNavigateToLogin, locale, }: IResetPasswordScreenProps): Element
 
-function VerifyEmailScreen({ client, onVerified }: IVerifyEmailScreenProps): Element
+function VerifyEmailScreen({ client, onVerified, locale }: IVerifyEmailScreenProps): Element
 ```

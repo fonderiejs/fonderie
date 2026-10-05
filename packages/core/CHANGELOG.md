@@ -1,5 +1,68 @@
 # @fonderie/core
 
+## 0.31.0
+
+### Minor Changes
+
+- 4aca9ac: Every built-in email in Chinese, Simplified and Traditional, and amounts written the way the reader writes them.
+  
+  - **Chinese in both scripts.** All 24 built-in emails (auth 13, billing 10, workspaces 1) ship in `zh-Hans` (Simplified) and `zh-Hant` (Traditional), alongside English, French and Spanish. The Traditional copy is written for Traditional readers (帳戶, 電子郵件, 儲值), not converted character by character.
+  - **The script follows the reader.** `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified, derived from CLDR via `Intl.Locale#maximize` with no hand-kept region list. New in core: `localeScriptTag()` and `localeCopyKeys()`. `localeChain()` now puts the script right after the tag (`zh-HK` → `zh-Hant`), so an app's saved `zh-Hant` template also reaches Hong Kong and Taiwan readers, and never Simplified ones. This applies only to languages written in more than one script.
+  - **Amounts in the reader's language.** Billing formatted every amount as en-US before anyone knew who would read it, so a Québec customer's French receipt said `CA$19.99`. Notices now also carry the raw amount under core's reserved `$format` data key, and courier formats it in the resolved language: `19,99 $` for fr-CA, `$19.99` for en-CA. The plain string is still sent too, so an older courier shows it unchanged. `$format` accepts `{ money: { amount, currency, precision } }` and `{ date, style? }`.
+  - `SHIPPED_TEMPLATE_LANGUAGES` is now `['es', 'fr', 'zh-Hans', 'zh-Hant']`, so the parity checks and `check:template-coverage` require Chinese in every notifying module. The gate's pattern was lower-case only and would have skipped `zh-Hans` while still passing.
+
+## 0.30.0
+
+### Minor Changes
+
+- 7ec4d32: Every email is written in its recipient's language, including the ones sent without a signed-in user.
+  
+  Billing receipts and notices, and workspace invitations, passed no language, so a French- or Chinese-speaking customer got them in the system default (English). Courier now decides in this order:
+  
+  1. the `locale` the sender passed (auth already passes the signed-in user's);
+  2. **the language of the account the recipient's email or phone belongs to** (`@fonderie/auth`'s users, same database);
+  3. the new `fallbackLocale` on the message: the business's language, for someone without an account;
+  4. the system default.
+  
+  - `ICourierMessage.fallbackLocale` (core).
+  - Courier: the account lookup is on by default; `recipientLocaleLookup: false` turns it off (e.g. when accounts live in another database). The message log records the language actually used.
+  - Workspaces: an invitation carries the workspace's language as its fallback, so a Quebec business invites in French. An invitee who already has an account still gets their own language.
+  - Billing: `IBillingRecipient` takes `locale` and `fallbackLocale`, so an app's `resolveRecipient` can say which language to use. Without either, courier uses the recipient's account.
+
+## 0.29.0
+
+### Minor Changes
+
+- 3f521bc: A business profile fit for Canada and the US, and customers that are safe to delete and speak their own language.
+  
+  **Country rules as data: `@fonderie/core/region`.** One registry decides what a valid province, postal code or tax number is, per country. Fonderie ships Canada (English and French names: Québec, Colombie-Britannique…; `A1A 1A1`; GST/HST, QST, PST, BN) and the United States (states and territories; ZIP and ZIP+4; EIN, state sales-tax permits). An app adds any other country with `regions.register({ code: 'MX', … })`. A country without a pack is stored as given, never judged by another country's rules.
+  
+  **Business profile (`PUT /workspaces`)**: `legalName`, `email`, `website`, `logoUrl`, `taxRegistrations` (`{ country, type, number, region?, label? }`, checked and normalized against the country, e.g. `123 456 789 rt 0001` → `123456789RT0001`), and `languages`, the languages the business serves customers in (`['en-CA', 'fr-CA', 'zh-Hant']`). The address is normalized (`Canada`/`Québec`/`h2x1y4` → `CA`/`QC`/`H2X 1Y4`). `businessType` is now one of `SOLE_PROP`, `PARTNERSHIP`, `LLC`, `INC`, `NONPROFIT`, `COOPERATIVE`. Settings check `locale` (BCP 47, canonical), `currency` (ISO 4217) and `timezone` (IANA). Every refusal is a 422 naming the field. Migration `workspaces/005`.
+  
+  **Customers**
+  - **Language**: `locale` is validated and canonical, and defaults to the business's own (workspace settings) instead of `en-US`. `displayName` writes the name in the customer's language's order: `王小明` for Chinese, Japanese and Korean, `Marie Tremblay` otherwise, the company name for a business.
+  - **Archive** (`POST /customers/:id/archive|unarchive`, `archiveCustomer`): hidden from lists and pickers, still readable by id for the documents that name them. Lists exclude archived customers unless `archived: true | 'all'`. Migration `customers/014`.
+  - **Safe delete**: one transaction. A customer still referenced (a database foreign key, or the new `isInUse(customerId, workspaceId)` config hook) is refused with `409 CUSTOMER_IN_USE` and loses nothing. Before, its emails, phones and notes were deleted first and the customer then survived without them.
+  - **Search** also matches any email, and any phone by digits (`514 555` finds `+1 (514) 555-0100`). The count always describes the same rows.
+  - **Primaries can't be lost**: setting a primary email, phone, address or relationship with an id that isn't this customer's now answers 404 and keeps the current primary. Before, it cleared every primary.
+  - **Relationships**: the expanded relationship now has `relatedId` (the related customer) and `relationshipId`. `id`/`customerId` stay as deprecated aliases; `id` was the relationship's id, which apps read as the customer's.
+  - Addresses use the same country rules.
+  
+  **Hooks**
+  - `useCustomer()` gains `deleteCustomer`/`archiveCustomer`/`unarchiveCustomer`; `useCustomers()` gains `archiveCustomer`/`unarchiveCustomer`.
+  - Section hooks take `{ read: false }` for their actions only, so a detail screen makes one request instead of one per section.
+  - `@fonderie/react`: refreshing a disabled query no longer fetches it. A write made through a hook told not to read, or still waiting for an id, used to request that hook's list anyway.
+
+## 0.28.1
+
+### Patch Changes
+
+- 93a26ec: **A request counts once against a plan's rate limit, not twice.** For a request that falls through to a fonderie-owned route (`/auth/*`, `/billing/*`, `/workspaces/*`, …), an adapter runs the global middleware in `bridge()` and again inside `handle()`. Billing's windowed counters (`'api-calls': { limit, window: '1d' }`) were incremented on both passes, so a plan selling 1,000 calls a day blocked at about 500 on those routes. App-owned routes counted once.
+  
+  Adapters now hand `handle()` the first pass's meta as `ctx.meta.bridged` (documented on `IFonderieContextMeta`), and billing reuses its context from there when it is for the same subscriber: no second increment, no second grant or notice. Any global middleware with a per-request side effect can do the same. `withMetrics` and a user-added `.use()` rate limiter still count twice (stricter, never a bypass).
+  
+  **Limit notices for user subscribers are delivered.** A `limit-warning` / `limit-reached` notice for a user subscriber was left on `ctx.meta.messages`, which nothing sends. With `config.resolveRecipient` and an event bus wired, every subscriber's notice now goes out on the bus, as workspace notices already did. Without them, notices stay on `ctx.meta.messages` for the app to send.
+
 ## 0.28.0
 
 ### Minor Changes

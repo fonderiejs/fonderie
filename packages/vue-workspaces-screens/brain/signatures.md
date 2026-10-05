@@ -5,9 +5,9 @@
 ## @fonderie/vue-workspaces-screens
 
 ```ts
-component AcceptInvitationScreen(props: { client, token }) — emits: accepted, navigate-back
+component AcceptInvitationScreen(props: { client, token, locale }) — emits: accepted, navigate-back
 
-component InviteMembersScreen(props: { client }) — emits: navigate-members
+component InviteMembersScreen(props: { client, locale }) — emits: navigate-members
 
-component TeamMembersScreen(props: { client, currentUserId }) — emits: navigate-invite
+component TeamMembersScreen(props: { client, currentUserId, locale }) — emits: navigate-invite
 ```

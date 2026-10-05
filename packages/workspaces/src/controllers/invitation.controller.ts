@@ -5,8 +5,13 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { NOTIFICATION_EVENT } from '@fonderie/events';
 
+import { getWorkspaceSettings } from '../services/workspaces';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
+import { InvitationError } from '../services/invitations';
+import { emailKey as accountKey } from '../services/email-key';
+import type { InvitationAccountMatch } from '../services/invitations';
+import { MemberModel } from '../models/member.model';
 import { toInvitationDTO } from '../dtos/workspace';
 
 // Seat limits are OPTIONAL and owned by @fonderie/billing. Per Fonderie's
@@ -24,8 +29,67 @@ function seatLimitFromMeta(ctx: IFonderieContext): number | null {
 	return status.limit;
 }
 
-export function invitationController(store: IStoreAdapter, ttl: string, bus?: EventBus) {
+const seatKey = (email: string): string => accountKey(email) ?? email.trim().toLowerCase();
+
+export interface IInvitationControllerOptions {
+	// See IWorkspacesConfig.invitationUrl.
+	invitationUrl?: string;
+	// See IWorkspacesConfig.invitationAccountMatch.
+	invitationAccountMatch?: InvitationAccountMatch;
+}
+
+// Who the email says it is from, and which team: an invitation from an
+// unnamed sender to an unnamed workspace reads like phishing.
+async function inviteContext(store: IStoreAdapter, workspaceId: string, userId: string | undefined) {
+	const [row] = await store.query<{ workspaceName: string | null; inviterName: string | null }>(
+		`SELECT w.name AS "workspaceName",
+		        NULLIF(trim(concat_ws(' ', u.first_name, u.last_name)), '') AS "inviterName"
+		 FROM fonderie_workspaces w
+		 LEFT JOIN fonderie_users u ON u.id = $2
+		 WHERE w.id = $1`,
+		[workspaceId, userId ?? null],
+	);
+	return { workspaceName: row?.workspaceName ?? '', inviterName: row?.inviterName ?? '' };
+}
+
+export function invitationController(
+	store: IStoreAdapter,
+	ttl: string,
+	bus?: EventBus,
+	options: IInvitationControllerOptions = {},
+) {
 	const invitations = new InvitationModel(store);
+	const members = new MemberModel(store);
+
+	const acceptUrl = (token: string) =>
+		options.invitationUrl ? options.invitationUrl.replace('{token}', encodeURIComponent(token)) : '';
+
+	const sendInvitationEmail = async (
+		ctx: IFonderieContext,
+		invitation: { email: string; token: string; pin: string | null },
+	) => {
+		const [who, settings] = await Promise.all([
+			inviteContext(store, ctx.workspace!.id, ctx.user?.id),
+			getWorkspaceSettings(ctx.workspace!.id, store),
+		]);
+		// No `locale`: the invitee's own account decides when they have one
+		// (courier looks it up by address). Someone without an account yet gets
+		// the business's language — a Quebec business invites in French — not
+		// the system default.
+		await background(bus
+			?.emit(NOTIFICATION_EVENT, {
+				type: MESSAGE_KEYS.workspaceInvitation,
+				fallbackLocale: settings.locale,
+				recipient: { email: invitation.email, phone: null, deviceToken: null },
+				data: {
+					token: invitation.token,
+					pin: invitation.pin ?? '',
+					acceptUrl: acceptUrl(invitation.token),
+					workspaceName: who.workspaceName,
+					inviterName: who.inviterName,
+				},
+			} satisfies ICourierMessage));
+	};
 
 	return {
 		async list(ctx: IFonderieContext): Promise<Response> {
@@ -64,14 +128,27 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 			// registered (read from ctx.meta['billing']); fail-open when absent.
 			const seatLimit = seatLimitFromMeta(ctx);
 			if (seatLimit !== null) {
-				const [countRow] = await store.query<{ count: string }>(
-					`SELECT COUNT(*) AS count FROM fonderie_role_user_workspaces
-					 WHERE workspace_id = $1 AND removed = false AND suspended = false`,
-					[ctx.workspace.id],
+				// Seats already taken (each person once, plus pending invitations),
+				// and how many of THIS request's addresses would take a new one — an
+				// address already pending or already a member does not.
+				const occupied = await members.countSeats(ctx.workspace.id);
+				const known = new Set(
+					(await store.query<{ email: string }>(
+						`SELECT lower(email) AS email FROM fonderie_workspace_invitations
+						 WHERE workspace_id = $1 AND status = 'PENDING' AND expires_at > now()
+						 UNION
+						 SELECT lower(u.email) FROM fonderie_role_user_workspaces ruw
+						 JOIN fonderie_users u ON u.id = ruw.user_id
+						 WHERE ruw.workspace_id = $1 AND ruw.removed = false AND u.email IS NOT NULL`,
+						[ctx.workspace.id],
+					)).map((r) => seatKey(r.email)),
 				);
-				const total = parseInt(countRow!.count, 10);
-				const occupied = ctx.workspace.isPersonal ? total : Math.max(0, total - 1);
-				if (occupied + entries.length > seatLimit) {
+				// Keyed like accounts (normalizeEmail), so inviting 'ana+crew@' when
+				// 'ana@' is already a member takes no new seat.
+				const adding = new Set(
+					entries.map((e) => seatKey(String(e['email']))).filter((e) => !known.has(e)),
+				).size;
+				if (occupied + adding > seatLimit) {
 					return setApiResponse(
 						HTTP.PAYMENT_REQUIRED,
 						'SEAT_LIMIT_REACHED',
@@ -99,19 +176,21 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				}
 			}
 
-			// An EXPLICIT roleId must obey the same rule as direct role assignment
-			// (addRoleToMember): a role of THIS workspace that is not a system
-			// role. Without this, an invitation smuggled an arbitrary role id —
-			// the system ADMIN, or another workspace's role — straight into the
-			// membership INSERT on accept, bypassing the guarded-assignment path.
-			// The least-privilege default (system GUEST) flows via defaultRoleId.
+			// An EXPLICIT roleId must be one an invitation may target — the same
+			// rule acceptance re-checks (assertRoleAssignable): a non-system role of
+			// THIS workspace, or the least-privilege system GUEST default (naming
+			// it explicitly is the same as omitting roleId). Without this, an
+			// invitation smuggled an arbitrary role id — the system ADMIN, or
+			// another workspace's role — straight into the membership on accept.
 			const explicitRoleIds = [...new Set(
 				entries.map((e) => e['roleId']).filter((r): r is string => typeof r === 'string'),
 			)];
 			if (explicitRoleIds.length > 0) {
 				const rows = await store.query<{ id: string }>(
 					`SELECT id FROM fonderie_roles
-					 WHERE id = ANY($1) AND workspace_id = $2 AND is_system = false`,
+					 WHERE id = ANY($1)
+					   AND ((workspace_id = $2 AND is_system = false)
+					        OR (workspace_id IS NULL AND is_system = true AND name = 'GUEST'))`,
 					[explicitRoleIds, ctx.workspace.id],
 				);
 				const assignable = new Set(rows.map((r) => r.id));
@@ -137,16 +216,7 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 						ttl,
 					});
 
-					// No `locale`: the invitee may not have an account yet, so their
-					// language is unknown at invite time — fall to the neutral default
-					// template rather than guess (e.g. the inviter's locale), which
-					// keeps legal/jurisdictional copy from bleeding across regions.
-					await background(bus
-						?.emit(NOTIFICATION_EVENT, {
-							type: MESSAGE_KEYS.workspaceInvitation,
-							recipient: { email, phone: null, deviceToken: null },
-							data: { token: invitation.token, pin: invitation.pin },
-						} satisfies ICourierMessage));
+					await sendInvitationEmail(ctx, invitation);
 
 					return { invitationId: invitation.id, email };
 				}),
@@ -154,6 +224,23 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 
 			return setApiResponse(HTTP.CREATED, 'INVITATIONS_SENT', 'Invitations sent successfully.', {
 				invitations: results,
+			});
+		},
+
+		async resend(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const params = ctx.meta['params'] as Record<string, string> | undefined;
+			const invitationId = params?.['inviteId'];
+			if (!invitationId)
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'inviteId is required');
+
+			const invitation = await invitations.resend(invitationId, ctx.workspace.id, ttl);
+			if (!invitation) {
+				return setApiResponse(HTTP.NOT_FOUND, 'INVITATION_NOT_FOUND', 'No pending invitation with that id.');
+			}
+			await sendInvitationEmail(ctx, invitation);
+			return setApiResponse(HTTP.OK, 'INVITATION_RESENT', 'Invitation sent again.', {
+				invitation: toInvitationDTO(invitation),
 			});
 		},
 
@@ -179,7 +266,10 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				// Token path (32-byte secret from the email link) — also the route
 				// for accounts without an email address (phone-registered users).
 				if (typeof token === 'string') {
-					const { workspaceId } = await invitations.acceptByToken(token, ctx.user!.id);
+					const { workspaceId } = await invitations.acceptByToken(token, ctx.user!.id, {
+						email: ctx.user!.email ?? null,
+						...(options.invitationAccountMatch ? { match: options.invitationAccountMatch } : {}),
+					});
 					return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', {
 						workspaceId,
 					});
@@ -195,7 +285,7 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 				if (!email) {
 					return setApiResponse(
 						HTTP.BAD_REQUEST,
-						'INVITATION_FAILED',
+						'NO_EMAIL_ON_ACCOUNT',
 						'This account has no email address — use the invitation link instead of the PIN',
 					);
 				}
@@ -205,8 +295,10 @@ export function invitationController(store: IStoreAdapter, ttl: string, bus?: Ev
 					workspaceId,
 				});
 			} catch (err) {
-				const message = err instanceof Error ? err.message : 'Invalid invitation';
-				return setApiResponse(HTTP.BAD_REQUEST, 'INVITATION_FAILED', message);
+				// Each refusal has its own reason (expired / used / revoked / wrong
+				// account / role gone / not found); anything else is a real fault.
+				if (err instanceof InvitationError) return setApiResponse(err.status, err.reason, err.message, err.details);
+				throw err;
 			}
 		},
 	};

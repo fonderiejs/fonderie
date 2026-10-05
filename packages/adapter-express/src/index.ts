@@ -17,6 +17,21 @@ import {
 import type { withWorkspace as _withWorkspace } from '@fonderie/workspaces';
 import type { requirePermission as _requirePermission } from '@fonderie/permissions';
 
+// A Response from ANY realm. `instanceof Response` is false when a host swaps
+// globalThis.Response after @fonderie/core captured its own (node-server hosts
+// do), so a short-circuit built by core would be ignored and the request would
+// carry on as if nothing had refused it. Check the shape, not the identity.
+function isResponse(value: unknown): value is Response {
+	if (value instanceof Response) return true;
+	if (typeof value !== 'object' || value === null) return false;
+	const r = value as { status?: unknown; headers?: { get?: unknown }; arrayBuffer?: unknown };
+	return (
+		typeof r.status === 'number' &&
+		typeof r.headers?.get === 'function' &&
+		typeof r.arrayBuffer === 'function'
+	);
+}
+
 export { OPERATIONS } from '@fonderie/core';
 
 async function loadOptionalPeer<T>(load: () => Promise<T>, pkg: string, api: string): Promise<T> {
@@ -150,7 +165,7 @@ export function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number 
 			// A global middleware short-circuited during context-building (e.g.
 			// the parser's 413) — send that response, don't swallow it.
 			const early = req._fonderie.meta['pipelineResponse'];
-			if (early instanceof Response) {
+			if (isResponse(early)) {
 				await webResponseToExpress(early, res);
 				return;
 			}
@@ -319,7 +334,13 @@ export function mount<T extends ExpressApp>(
 		// client IP. handle() builds a fresh context, so without this seed every
 		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
 		const clientIp = req._fonderie?.meta.clientIp;
-		const webRes = await fonderie.handle(webReq, clientIp ? { meta: { clientIp } } : undefined);
+		// bridged: the bridge pass's meta, so per-request side effects
+		// (billing's request counter) are not repeated inside handle().
+		const bridged = req._fonderie?.meta;
+		const webRes = await fonderie.handle(
+			webReq,
+			bridged ? { meta: { ...(clientIp ? { clientIp } : {}), bridged } } : undefined,
+		);
 		await webResponseToExpress(webRes, res);
 	};
 

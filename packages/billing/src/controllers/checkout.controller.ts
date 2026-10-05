@@ -151,6 +151,8 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 						HTTP.UNPROCESSABLE,
 						'PLAN_UNCHANGED',
 						`Already on ${planName} (${interval}); nothing to change.`,
+						// Values for a client that writes the message in its own language.
+						{ plan: planName, interval },
 					);
 				}
 				if (current.status === 'past_due' || current.status === 'unpaid') {
@@ -269,9 +271,24 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			// this, a canceled subscriber re-entering checkout gets plan.trialDays
 			// applied again every time — farming unlimited free paid-plan access (and,
 			// since trialing is grant-eligible, a fresh wallet grant each period).
+			//
+			// trialScope 'owner' widens "this subscriber" to "anything this person
+			// owns": with per-workspace billing, a new workspace is a new subscriber,
+			// so the per-subscriber ledger alone hands one owner a trial per workspace.
+			//
+			// skipTrial: the caller explicitly asks for a paid checkout with no trial
+			// (e.g. after an app-side gate refused the trial). It never consumes the
+			// trial — it only declines it for this session.
+			const skipTrial = body?.['skipTrial'] === true;
 			if (
 				plan.trialDays !== undefined &&
-				!(await subscriptions.hasConsumedTrial(subscriber.type, subscriber.id))
+				!skipTrial &&
+				!(await subscriptions.hasConsumedTrial(subscriber.type, subscriber.id)) &&
+				!(
+					config.trialScope === 'owner' &&
+					subscriber.type === 'workspace' &&
+					(await subscriptions.hasOwnerConsumedTrial(subscriber.id))
+				)
 			) {
 				sessionOpts.trialDays = plan.trialDays;
 			}

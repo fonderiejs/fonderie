@@ -6,6 +6,8 @@ import type {
 	SubscriberType,
 	WalletLedgerType,
 } from '../types';
+import type { IBillingPlan } from '../config';
+import type { PolicyEntry } from '../types';
 import type { INormalizedCard, INormalizedInvoiceSummary } from '../providers/types';
 
 export interface IPlanDTO {
@@ -61,6 +63,35 @@ export function toPlanDTO(plan: IPlan): IPlanDTO {
 				? (plan.metadata as Record<string, unknown>)
 				: {},
 	};
+}
+
+// A config-declared plan states its entitlements in `policy`, but the stored
+// row's seats/features columns are only ever written by the plan-admin routes —
+// so GET /plans answered `seats: null, features: []` for a plan that limits
+// seats and enables features. Fill those from the configured policy when the row
+// carries none (an operator's explicit seats/features always win).
+export function policyFeatures(policy: Record<string, PolicyEntry> | undefined): IPlanFeature[] {
+	return Object.entries(policy ?? {}).map(([name, entry]) =>
+		'enabled' in entry
+			? { name, description: '', enabled: entry.enabled }
+			: {
+					name,
+					description: '',
+					enabled: entry.limit !== 0,
+					// null = unlimited: no `limit` key at all.
+					...(typeof entry.limit === 'number' ? { limit: entry.limit } : {}),
+				},
+	);
+}
+
+export function applyConfigPolicy(dto: IPlanDTO, plan: IBillingPlan | undefined): IPlanDTO {
+	if (!plan?.policy) return dto;
+	if (dto.features.length === 0) dto.features = policyFeatures(plan.policy);
+	if (dto.seats === null) {
+		const seats = plan.policy['seats'];
+		if (seats && !('enabled' in seats) && typeof seats.limit === 'number') dto.seats = seats.limit;
+	}
+	return dto;
 }
 
 // The pg driver returns TIMESTAMPTZ columns as Date objects (no type-parser
@@ -154,14 +185,25 @@ export function toWalletTransactionDTO(entry: IWalletLedgerEntry): IWalletTransa
 // across accounts, so it is a server-side-only signal (INormalizedCard) that
 // must not reach clients.
 export interface IPaymentMethodDTO {
+	/** 'card' (brand/last4/expiry) or 'link' (Stripe Link: no card details, an `email`). */
+	type: 'card' | 'link';
 	brand: string;
 	last4: string;
 	expMonth: number;
 	expYear: number;
+	/** The Link account's email, for type 'link'; null for a card. */
+	email: string | null;
 }
 
 export function toPaymentMethodDTO(card: INormalizedCard): IPaymentMethodDTO {
-	return { brand: card.brand, last4: card.last4, expMonth: card.expMonth, expYear: card.expYear };
+	return {
+		type: card.type ?? 'card',
+		brand: card.brand,
+		last4: card.last4,
+		expMonth: card.expMonth,
+		expYear: card.expYear,
+		email: card.email ?? null,
+	};
 }
 
 // One invoice for an in-app history list; `hostedInvoiceUrl`/`invoicePdf` link

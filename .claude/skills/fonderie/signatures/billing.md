@@ -38,7 +38,7 @@ new StripeProvider(secretKey: string, webhookSecret: string | undefined, options
   .setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .detachPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .deleteCustomer(customerId: string): Promise<void>
-  .listInvoices(opts: { customerId: string; limit?: number; }): Promise<INormalizedInvoiceSummary[]>
+  .listInvoices(opts: { customerId: string; limit?: number; createdLte?: string; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
 const SUPPORTED_PAYMENT_OPTIONS: { readonly CARD: "card"; readonly LINK: "link"; }
@@ -91,6 +91,7 @@ interface IBillingConfig {
     cancelUrl: string;
     publicUrl?: string;
     management?: 'owner-or-admin' | 'any-member';
+    trialScope?: 'subscriber' | 'owner';
     managerRoles?: string[];
     adminToken?: string;
     planAdminToken?: string;
@@ -186,6 +187,8 @@ interface IBillingRecipient {
     email?: string | null;
     phone?: string | null;
     deviceToken?: string | null;
+    locale?: string | null;
+    fallbackLocale?: string | null;
 }
 
 type ResolveRecipient = (subscriberType: SubscriberType, subscriberId: string) => IBillingRecipient | null | Promise<IBillingRecipient | null>;
@@ -207,9 +210,13 @@ new MemoryCounterBackend(): MemoryCounterBackend
   .increment(key: string, windowMs: number | null, quantity?: number): Promise<number>
   .get(key: string, windowMs: number | null): Promise<number>
 
-new DBCounterBackend(store: IStoreAdapter): DBCounterBackend
+new DBCounterBackend(store: IStoreAdapter, opts?: { opportunisticPurge?: boolean; }): DBCounterBackend
   .increment(key: string, windowMs: number | null, quantity?: number): Promise<number>
   .get(key: string, windowMs: number | null): Promise<number>
+
+function purgeUsageCounters(store: IStoreAdapter, opts?: { now?: Date; }): Promise<number>
+
+function counterWindow(windowMs: number | null, now?: number): { start: Date; expiresAt: Date | null; }
 
 interface ICounterBackend {
     increment(key: string, windowMs: number | null, quantity?: number): Promise<number>;
@@ -335,6 +342,7 @@ interface IBillingProvider {
     listInvoices?(opts: {
         customerId: string;
         limit?: number;
+        createdLte?: string;
     }): Promise<INormalizedInvoiceSummary[]>;
     createPortalSession(opts: {
         customerId: string;
@@ -407,6 +415,8 @@ interface INormalizedInvoiceSummary {
 }
 
 interface INormalizedCard {
+    type?: 'card' | 'link';
+    email?: string | null;
     brand: string;
     last4: string;
     expMonth: number;
@@ -547,6 +557,7 @@ interface IBillingContext {
         id: string;
     };
     plan: string;
+    subscribedPlan?: string;
     active: boolean;
     statuses: Record<string, IPolicyStatus>;
     wallet?: IWalletContext;
@@ -607,10 +618,12 @@ interface IWalletTransactionDTO {
 }
 
 interface IPaymentMethodDTO {
+    type: 'card' | 'link';
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email: string | null;
 }
 
 interface IInvoiceDTO {

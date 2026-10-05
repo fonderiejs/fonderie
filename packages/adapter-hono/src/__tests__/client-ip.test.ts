@@ -32,3 +32,35 @@ test('hono: the client IP reaches a fonderie-routed handler', async () => {
 	const body = (await res.json()) as { ip: string | null };
 	assert.equal(body.ip, '198.51.100.42', 'a fonderie route must see the client IP');
 });
+
+// The global stack runs in bridge() AND again inside handle() for a fonderie
+// route. mount() must hand handle() the first pass's meta as `bridged`, or a
+// per-request side effect — billing's request counter — happens twice.
+test('hono: a fonderie-routed request carries the bridge pass meta (side effects run once)', async () => {
+	const fonderie = new FonderieApp(defineConfig({ basePath: '', db: { url: 'postgres://unused/test' } }));
+	// A global middleware with a per-request side effect (like billing's request
+	// counter), written the documented way: skip when the bridge pass already did it.
+	let sideEffects = 0;
+	fonderie.use(async (ctx, next) => {
+		if (!ctx.meta.bridged) {
+			sideEffects++;
+			ctx.meta['stamp'] = 'first-pass';
+		}
+		return next();
+	});
+	fonderie.addRoute('GET', '/once', async (ctx) =>
+		Response.json({ bridgedStamp: ctx.meta.bridged?.['stamp'] ?? null }),
+	);
+	await fonderie.boot();
+
+	const hono = new Hono();
+	hono.use('*', bridge(fonderie));
+	mount(hono, fonderie);
+
+	const res = await hono.request('http://localhost/once');
+	{
+		const body = (await res.json()) as { bridgedStamp: string | null };
+		assert.equal(body.bridgedStamp, 'first-pass', 'the route sees the bridge pass meta');
+		assert.equal(sideEffects, 1, 'one request, one side effect — not one per pass');
+	}
+});

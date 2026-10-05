@@ -1,4 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useMfaLogin } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -9,6 +10,8 @@ export interface IMfaChallengeScreenProps {
 	mfaToken: string;
 	onLoginSuccess?: (result: ILoginResult) => void;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function MfaChallengeScreen({
@@ -16,8 +19,11 @@ export function MfaChallengeScreen({
 	mfaToken,
 	onLoginSuccess,
 	onNavigateToLogin,
+	locale,
 }: IMfaChallengeScreenProps) {
 	const { verifyLogin, isLoading, error } = useMfaLogin(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async (event: FormEvent) => {
@@ -32,18 +38,18 @@ export function MfaChallengeScreen({
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Two-factor authentication</h1>
-			<p style={styles.body}>Enter the 6-digit code from your authenticator app.</p>
+			<h1 style={styles.title}>{t('auth.mfa.title')}</h1>
+			<p style={styles.body}>{t('auth.mfa.lead')}</p>
 
 			<label htmlFor="fonderie-mfa-code" style={styles.visuallyHidden}>
-				Authentication code
+				{t('auth.mfa.codeLabel')}
 			</label>
 			<input
 				id="fonderie-mfa-code"
 				style={styles.input}
 				type="text"
 				inputMode="numeric"
-				placeholder="6-digit code"
+				placeholder={t('auth.fields.code')}
 				value={code}
 				onChange={(event) => setCode(event.target.value)}
 				autoComplete="one-time-code"
@@ -52,16 +58,16 @@ export function MfaChallengeScreen({
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Verifying…' : 'Verify'}
+				{isLoading ? t('auth.mfa.submitting') : t('auth.mfa.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateToLogin} style={styles.link}>
-				Back to sign in
+				{t('auth.backToSignIn')}
 			</button>
 		</form>
 	);

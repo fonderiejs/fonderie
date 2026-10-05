@@ -1,4 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useMfaLogin } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -16,6 +17,8 @@ export interface IMfaChallengeScreenProps {
 	mfaToken: string;
 	onLoginSuccess?: (result: ILoginResult) => void;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function MfaChallengeScreen({
@@ -23,8 +26,11 @@ export function MfaChallengeScreen({
 	mfaToken,
 	onLoginSuccess,
 	onNavigateToLogin,
+	locale,
 }: IMfaChallengeScreenProps) {
 	const { verifyLogin, isLoading, error } = useMfaLogin(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [code, setCode] = useState('');
 
 	const handleSubmit = async () => {
@@ -38,23 +44,23 @@ export function MfaChallengeScreen({
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Two-factor authentication</Text>
-			<Text style={styles.body}>Enter the 6-digit code from your authenticator app.</Text>
+			<Text style={styles.title}>{t('auth.mfa.title')}</Text>
+			<Text style={styles.body}>{t('auth.mfa.lead')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="6-digit code"
+				placeholder={t('auth.fields.code')}
 				value={code}
 				onChangeText={setCode}
 				autoCapitalize="none"
 				keyboardType="number-pad"
-				accessibilityLabel="Authentication code input"
-				accessibilityHint="Enter the 6-digit code from your authenticator app"
+				accessibilityLabel={t('auth.mfa.a11y.code')}
+				accessibilityHint={t('auth.mfa.a11y.codeHint')}
 			/>
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 
@@ -62,18 +68,18 @@ export function MfaChallengeScreen({
 				onPress={handleSubmit}
 				disabled={isLoading}
 				style={styles.button}
-				accessibilityLabel="Verify button"
+				accessibilityLabel={t('auth.mfa.a11y.submit')}
 				accessibilityRole="button"
 			>
 				{isLoading ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Verify</Text>
+					<Text style={styles.buttonText}>{t('auth.mfa.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
 			<TouchableOpacity onPress={onNavigateToLogin}>
-				<Text style={styles.link}>Back to sign in</Text>
+				<Text style={styles.link}>{t('auth.backToSignIn')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

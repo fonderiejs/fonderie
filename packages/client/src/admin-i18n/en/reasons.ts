@@ -20,13 +20,15 @@ const reasons = {
 		INSECURE_COOKIES:
 			'secureCookies is off — sign-in cookies may travel over plain HTTP in production.',
 		GOOGLE_INCOMPLETE:
-			'Google sign-in is configured but the client ID, client secret or redirect URI is missing.',
+			'Google sign-in is configured but incomplete: set the client ID, plus the client secret and redirect URI (web sign-in) and/or the native client IDs (app sign-in).',
 		GOOGLE_SECRET_PLACEHOLDER:
 			'The Google client secret looks like a placeholder or development value.',
 		APPLE_INCOMPLETE:
 			'Sign in with Apple is configured but the client ID, team ID, key ID, private key or redirect URI is missing.',
 		APPLE_KEY_NOT_PEM:
 			'The Apple private key is not a PEM .p8 key (expected -----BEGIN PRIVATE KEY-----).',
+		GOOGLE_NATIVE_IDS_INVALID:
+			'Google native client IDs must be exact client IDs — empty or wildcard entries would accept tokens issued to other apps.',
 		APPLE_NATIVE_IDS_INVALID:
 			'Apple native client IDs must be exact bundle IDs — empty or wildcard entries would accept tokens issued to other apps.',
 		MFA_KEY_MISSING:
@@ -104,6 +106,7 @@ const reasons = {
 		TRANSPORT_NOT_STARTED: 'The event transport has not started yet.',
 		EVENT_TAMPERED: 'Event {event} no longer matches its signature — it was changed.',
 		EVENTS_UNSIGNED: '{count} event(s) predate signing and cannot be verified.',
+		EVENTS_RETIRED_KEY: '{count} event(s) were signed with a retired key, before it was rotated — authentic.',
 		EVENT_DEAD: '{type} ({consumer}) failed every retry and will never be delivered: {error}',
 		BACKLOG_STALE: '{consumer}: {waiting} waiting, the oldest for {minutes} min.',
 	},

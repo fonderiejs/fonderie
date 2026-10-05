@@ -11,6 +11,14 @@ export interface IWorkspaceAddress {
 	country?: string;
 }
 
+export interface ITaxRegistration {
+	country: string;
+	type: string;
+	number: string;
+	region?: string | null;
+	label?: string | null;
+}
+
 export interface IWorkspace {
 	id: string;
 	name: string;
@@ -21,6 +29,19 @@ export interface IWorkspace {
 	phone: string | null;
 	businessType: string | null;
 	address: IWorkspaceAddress | null;
+	legalName: string | null;
+	email: string | null;
+	website: string | null;
+	logoUrl: string | null;
+	taxRegistrations: ITaxRegistration[] | null;
+	languages: string[] | null;
+	/**
+	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
+	 * workspace is created and never maintained — nothing writes it when the
+	 * workspace subscribes, upgrades or cancels. Read the subscription from
+	 * @fonderie/billing instead (GET /billing/subscription with the
+	 * X-Workspace-ID header; `useSubscription()` in the frontend packages).
+	 */
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;
@@ -50,6 +71,18 @@ export interface IMember {
 	lastName: string | null;
 	email: string | null;
 	profileImageUrl: string | null;
+	/** Every role this person holds here, earliest first (listMembers only). */
+	roles?: IMemberRole[];
+	/** The workspace owner (listMembers only). */
+	isOwner?: boolean;
+	/** The owner, or a holder of a manager system role (listMembers only). */
+	isManager?: boolean;
+}
+
+export interface IMemberRole {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitation {

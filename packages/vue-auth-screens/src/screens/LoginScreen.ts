@@ -1,5 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useLogin } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -9,6 +10,8 @@ export const LoginScreen = defineComponent({
 	name: 'FonderieLoginScreen',
 	props: {
 		client: { type: Object as PropType<AuthClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		'login-success': (_result: ILoginResult) => true,
@@ -18,6 +21,8 @@ export const LoginScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const { login, isLoading, error } = useLogin(props.client);
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const email = ref('');
 		const password = ref('');
 
@@ -37,11 +42,11 @@ export const LoginScreen = defineComponent({
 
 		return () =>
 			h('form', { style: styles.container, onSubmit: handleSubmit }, [
-				h('h1', { style: styles.title }, 'Sign In'),
+				h('h1', { style: styles.title }, t('auth.login.title')),
 				h('input', {
 					style: styles.input,
 					type: 'email',
-					placeholder: 'Email',
+					placeholder: t('auth.fields.email'),
 					value: email.value,
 					required: true,
 					autocomplete: 'email',
@@ -52,7 +57,7 @@ export const LoginScreen = defineComponent({
 				h('input', {
 					style: styles.input,
 					type: 'password',
-					placeholder: 'Password',
+					placeholder: t('auth.fields.password'),
 					value: password.value,
 					required: true,
 					autocomplete: 'current-password',
@@ -61,22 +66,22 @@ export const LoginScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',
 					{ type: 'submit', disabled: isLoading.value, style: styles.button },
-					isLoading.value ? 'Signing in…' : 'Sign In',
+					isLoading.value ? t('auth.login.submitting') : t('auth.login.submit'),
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-forgot-password') },
-					'Forgot password?',
+					t('auth.login.forgotPassword'),
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-register') },
-					"Don't have an account? Sign up",
+					`${t('auth.login.noAccount')} ${t('auth.login.signUp')}`,
 				),
 			]);
 	},

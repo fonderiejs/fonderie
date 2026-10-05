@@ -13,7 +13,8 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .unlinkOauth(provider: string): Promise<IApiResponse<null>>
   .register(input: IRegisterInput): Promise<IApiResponse<IRegisterResult>>
   .login(input: ILoginInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
-  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult>>
+  .appleNative(input: IAppleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
+  .googleNative(input: IGoogleNativeInput): Promise<IApiResponse<ILoginResult | IMfaRequiredResult>>
   .refreshTokens(refreshToken?: string | undefined): Promise<IApiResponse<IRefreshResult>>
   .forgotPassword(email: string): Promise<IApiResponse<undefined>>
   .resetPassword(input: IResetPasswordInput): Promise<IApiResponse<undefined>>
@@ -35,6 +36,11 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
 
 interface IAppleNativeInput {
     identityToken: string;
+    nonce?: string;
+}
+
+interface IGoogleNativeInput {
+    idToken: string;
     nonce?: string;
 }
 
@@ -219,7 +225,14 @@ interface IUseLoginReturn {
 }
 
 interface IUseAppleSignInReturn {
-    signIn: (input: IAppleNativeInput) => Promise<ILoginResult>;
+    signIn: (input: IAppleNativeInput) => Promise<ILoginResult | IMfaRequiredResult>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    data: ILoginResult | null;
+}
+
+interface IUseGoogleSignInReturn {
+    signIn: (input: IGoogleNativeInput) => Promise<ILoginResult | IMfaRequiredResult>;
     isLoading: boolean;
     error: FonderieApiError | null;
     data: ILoginResult | null;
@@ -348,6 +361,8 @@ function useForgotPassword(client?: AuthClient | undefined): IUseForgotPasswordR
 function useLogin(client?: AuthClient | undefined): IUseLoginReturn
 
 function useAppleSignIn(client?: AuthClient | undefined): IUseAppleSignInReturn
+
+function useGoogleSignIn(client?: AuthClient | undefined): IUseGoogleSignInReturn
 
 function useLogout(client?: AuthClient | undefined): IUseLogoutReturn
 

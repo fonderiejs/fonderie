@@ -1,5 +1,247 @@
 # @fonderie/client
 
+## 3.13.0
+
+### Minor Changes
+
+- 8d1aa7d: Accepting an invitation now says WHY it failed, and a link only joins the
+  account it was sent to.
+  
+  - Every refusal was `400 INVITATION_FAILED` with an English sentence, so apps
+    told "expired" from "already used" by parsing text. Each now has its own
+    reason: `INVITATION_NOT_FOUND` (404 — also a link replaced by a resend),
+    `INVITATION_EXPIRED` (410), `INVITATION_REVOKED` (410), `INVITATION_ALREADY_USED`
+    (409), `INVITATION_ROLE_UNAVAILABLE` (409), `INVITATION_EMAIL_MISMATCH` (403),
+    and `NO_EMAIL_ON_ACCOUNT` for a PIN on an account without email. Unexpected
+    errors are 500s instead of a misleading 400.
+  - **Behaviour change:** an invitation link accepted by a signed-in account whose
+    email is not the invited one is refused (`INVITATION_EMAIL_MISMATCH`, with
+    `details.email` a masked hint such as `a***@acme.example`), and the link stays
+    usable by the invitee. Accounts with no email (phone sign-up) still accept with
+    the link. Configure with `invitationAccountMatch`: `'email-when-present'`
+    (default), `'email'` (also refuse accounts without email) or `'any'` (previous
+    behaviour).
+  - **'+tag' addresses are the same person.** Accounts are stored under
+    `normalizeEmail` (lowercase, `+tag` dropped), but invitations compared the
+    typed address by case only — so an invite to `ana+crew@acme.example` could
+    never be accepted by PIN by Ana's account `ana@acme.example` (and would not
+    have matched the new link check either), and inviting an alias of an existing
+    member counted a new seat. Invitations now compare with the same rule
+    (pinned to auth's `normalizeEmail` by a test). The email still goes to the
+    address as typed.
+  - `@fonderie/client` translates the new reasons in en, fr, es, zh-Hans and zh-Hant.
+
+## 3.12.0
+
+### Minor Changes
+
+- 2686f16: Error messages in the reader's language. The screens showed the server's English sentence to everyone; a wrong password now reads « Le courriel ou le mot de passe est incorrect. » for a fr-CA user, 「電子郵件或密碼不正確。」 for zh-TW.
+  
+  - **`localizeApiError(error, locale)`** (client):
+    - English readers keep the server's exact sentence.
+    - Every other language gets the message for the error's reason code, filled from its `details`.
+    - If the code is unknown or a value is missing, they get the generic message for the status, never a half-filled sentence.
+    - An offline failure reads "couldn't reach the server" in every language, instead of "TypeError: Failed to fetch".
+    - Covers 57 user-facing reason codes (sign-in, teams, billing, customers, uploads) plus 12 generic messages, in en/fr/es/zh-Hans/zh-Hant.
+  - **`useUiError(source?, locale?)`** in `@fonderie/react` and `@fonderie/vue` returns that function in the app's UI language, following `setLocale()`.
+  - **Every prebuilt screen** (all 18 packages) shows errors through it.
+  - **Server:** `PLAN_UNCHANGED` (`plan`, `interval`), `FEATURE_UNAVAILABLE` (`feature`), `ASSET_TOO_LARGE` (`maxBytes`, `maxMegabytes`) and `ASSET_UNSUPPORTED` (`allowed`) now send their values in `details`, like the other messages that name a value. The English sentences are unchanged.
+
+## 3.11.0
+
+### Minor Changes
+
+- 09e227e: The prebuilt screens speak the app's language: English, French, Spanish, and Chinese in Simplified and Traditional.
+  
+  - **One UI language per client.** `new FonderieClient({ locale: 'fr-CA' })`, `client.setLocale()`, `getLocale()`, `onLocaleChange()`; the default is the device's language. Every sub-client shares it, so a screen handed only `client.auth` follows it too. Requests now carry it as `Accept-Language`, a CORS-safelisted header, so no preflight is added.
+  - **The screens' words** live in `@fonderie/client` (`ui-i18n/<domain>/<language>.ts`), shared by React, React Native and Vue: auth, billing, customers, workspaces, audit and webhooks, about 225 keys including React Native's screen-reader labels. Every language is typed against English, so a missing key won't compile. A parity test checks every string is non-empty with the same `{placeholders}`, and that Traditional is not the Simplified copy. French is written for Canada (« courriel »). `zh-TW`/`zh-HK`/`zh-MO` get Traditional and `zh`/`zh-CN`/`zh-SG` Simplified; other languages fall back to English.
+  - **Hooks:** `useUiT(source?, locale?)` and `useUiLocale(source?, locale?)` in `@fonderie/react` (React and React Native) and `@fonderie/vue`. They follow `setLocale()` live.
+  - **Every screen in the 18 packages** takes an optional `locale` prop (one screen in another language) and has no English left in it.
+  - **Formatting follows the language too:** prices (were hard-coded `en-US`), renewal dates and audit timestamps. Server status words (subscription status, roles, invitation status, webhook delivery status) are translated, and an unknown value shows as-is.
+  - **Fixes found on the way:**
+    - The register screens send the UI language, so a new account starts in the language it signed up in (it always defaulted to en-US).
+    - The team screens show each member's name (in the language's name order, e.g. 王小明), email and all their roles, instead of the user id.
+    - React Native's subscription screen shows a Stripe Link payment method (it showed an empty card line; React and Vue were fixed in #605).
+    - A subscription set to cancel says "Ends {date}", not "Renews {date}".
+    - `formatPersonName()` in client.
+
+## 3.10.0
+
+### Minor Changes
+
+- 8f45758: The admin console in Chinese, Simplified (简体中文) and Traditional (繁體中文).
+  
+  - All 609 console strings in `zh-Hans` and `zh-Hant`, alongside English, French and Spanish. The language menu lists both. The Traditional copy uses Taiwan/Hong Kong software terms (使用者, 設定, 範本, 權杖, 工作階段), not a character conversion of the Simplified copy.
+  - `detectAdminLocale` picks the script from the browser's language: `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified.
+  - `ADMIN_LOCALES` is now `['en', 'fr', 'es', 'zh-Hans', 'zh-Hant']`. The parity test checks both scripts for empty strings and dropped `{placeholders}`, and checks that Traditional is not a copy of Simplified.
+  - `@fonderie/admin` bumps so the console it ships includes the new language.
+
+## 3.9.0
+
+### Minor Changes
+
+- 3f521bc: A business profile fit for Canada and the US, and customers that are safe to delete and speak their own language.
+  
+  **Country rules as data: `@fonderie/core/region`.** One registry decides what a valid province, postal code or tax number is, per country. Fonderie ships Canada (English and French names: Québec, Colombie-Britannique…; `A1A 1A1`; GST/HST, QST, PST, BN) and the United States (states and territories; ZIP and ZIP+4; EIN, state sales-tax permits). An app adds any other country with `regions.register({ code: 'MX', … })`. A country without a pack is stored as given, never judged by another country's rules.
+  
+  **Business profile (`PUT /workspaces`)**: `legalName`, `email`, `website`, `logoUrl`, `taxRegistrations` (`{ country, type, number, region?, label? }`, checked and normalized against the country, e.g. `123 456 789 rt 0001` → `123456789RT0001`), and `languages`, the languages the business serves customers in (`['en-CA', 'fr-CA', 'zh-Hant']`). The address is normalized (`Canada`/`Québec`/`h2x1y4` → `CA`/`QC`/`H2X 1Y4`). `businessType` is now one of `SOLE_PROP`, `PARTNERSHIP`, `LLC`, `INC`, `NONPROFIT`, `COOPERATIVE`. Settings check `locale` (BCP 47, canonical), `currency` (ISO 4217) and `timezone` (IANA). Every refusal is a 422 naming the field. Migration `workspaces/005`.
+  
+  **Customers**
+  - **Language**: `locale` is validated and canonical, and defaults to the business's own (workspace settings) instead of `en-US`. `displayName` writes the name in the customer's language's order: `王小明` for Chinese, Japanese and Korean, `Marie Tremblay` otherwise, the company name for a business.
+  - **Archive** (`POST /customers/:id/archive|unarchive`, `archiveCustomer`): hidden from lists and pickers, still readable by id for the documents that name them. Lists exclude archived customers unless `archived: true | 'all'`. Migration `customers/014`.
+  - **Safe delete**: one transaction. A customer still referenced (a database foreign key, or the new `isInUse(customerId, workspaceId)` config hook) is refused with `409 CUSTOMER_IN_USE` and loses nothing. Before, its emails, phones and notes were deleted first and the customer then survived without them.
+  - **Search** also matches any email, and any phone by digits (`514 555` finds `+1 (514) 555-0100`). The count always describes the same rows.
+  - **Primaries can't be lost**: setting a primary email, phone, address or relationship with an id that isn't this customer's now answers 404 and keeps the current primary. Before, it cleared every primary.
+  - **Relationships**: the expanded relationship now has `relatedId` (the related customer) and `relationshipId`. `id`/`customerId` stay as deprecated aliases; `id` was the relationship's id, which apps read as the customer's.
+  - Addresses use the same country rules.
+  
+  **Hooks**
+  - `useCustomer()` gains `deleteCustomer`/`archiveCustomer`/`unarchiveCustomer`; `useCustomers()` gains `archiveCustomer`/`unarchiveCustomer`.
+  - Section hooks take `{ read: false }` for their actions only, so a detail screen makes one request instead of one per section.
+  - `@fonderie/react`: refreshing a disabled query no longer fetches it. A write made through a hook told not to read, or still waiting for an id, used to request that hook's list anyway.
+
+## 3.8.0
+
+### Minor Changes
+
+- 64aefa4: Permissions work end to end, from one declared list to the button a member sees.
+  
+  - **One catalog**: `new PermissionsModule(store, { catalog: [{ key: 'jobs' }, { key: 'reports', operations: ['read'] }] })`. A role editor reads it (`GET /workspaces/permissions/catalog`, `usePermissionCatalog`). Saving a role refuses a key outside it (`422 UNKNOWN_PERMISSION`) or an operation the resource does not have (`422 UNSUPPORTED_OPERATION`), so no switch can promise a restriction the server never checks.
+  - **Rights for the built-in roles, from config**: `systemGrants: { GUEST: { jobs: ['read'] } }`. The system roles are shared by every workspace, so their rights are read from config at check time: every workspace, existing ones included, has them at once, with no seeding or backfill. A workspace's own role named `GUEST` gets none of them. A `systemGrants` key missing from the catalog stops the app at boot.
+  - **What may I do here?** `GET /workspaces/current/permissions` returns `isOwner`, `isManager`, `isSuper` and per-resource rights (the union across all the member's roles). `usePermissions()` / `useCan(op, resource)` in React, React Native and Vue answer **no until the server has answered**, and re-read on a workspace switch and after any workspace write (a role change).
+  - **Customers obey permissions**: `new CustomersModule(store, { permission: 'customers' })`. Reads need `read`; creating a customer `create`; deleting one `delete`; every other write (emails, notes, tags, blacklist…) `update`. Unset: unchanged.
+  - **Deleting a role** now also removes its assignments and grants (before, they were left pointing at nothing). Anyone for whom it was the only role stays on the team with the default role, and the response (and `useRoles().removeRole`) says `{ membersAffected, movedToDefaultRole }`.
+  - Hooks taking an id (`useRole`, `useRolePermissions`, `useMemberRoles`, `useWorkspace`) wait instead of requesting with an empty one.
+
+## 3.7.0
+
+### Minor Changes
+
+- cb678f7: Members and invitations work end to end.
+  
+  - **Invite without picking a role**: the person joins with the default role; the default role named explicitly is accepted, a manager role is refused.
+  - **Accept by link**: set `invitationUrl` (e.g. `https://app.example.com/invite/{token}`) and the invitation email carries the link, the workspace name and who invited, with the PIN as fallback. `client.workspaces.acceptInvitation({ token } | { pin })`; a bare string is still a PIN. The prebuilt accept screens sent the link's token as a PIN, so they could never succeed; they now send it as a token.
+  - **The invitation email** (en/fr/es) shows the link when one is configured, the workspace name and who invited, and always the PIN. Courier migration `006` upgrades the seeded `workspace-invitation` row to the same copy, but only if nobody edited it; the change is recorded as a revision the console can roll back. Without it, existing installs would keep sending the PIN-only email.
+  - **A link joins one person**: accepting is single-use, even when two people race for one forwarded link.
+  - **One pending invitation per address**, whatever the case: re-inviting refreshes it instead of stacking a duplicate (migration `004` adds the unique index and cancels existing duplicates). `resendInvitation` sends a new link and PIN; invitations past expiry are listed with `isExpired`.
+  - **Seats** count each person once, plus pending invitations, never the owner. Adding a role never makes someone a member.
+  - **Members list**: one row per person, with `roles[]`, `isOwner` and `isManager`.
+  - **Manager path**: the owner can make a member a manager (`setManager` / `unsetManager`), hand over the workspace (`transferOwnership`; the previous owner stays as a manager), and any member can `leaveWorkspace` (the owner must hand over first).
+  - **`GET /workspaces/current`** and `useCurrentWorkspace()` (React / React Native / Vue): the selected workspace from the shared cache, so an app needs no store copy.
+  - Updating one workspace setting keeps the others (it replaced the whole settings object).
+
+## 3.6.0
+
+### Minor Changes
+
+- 5f3355a: **A customer who paid with Stripe Link has a payment method on file.** `GET /billing/payment-method` reported cards only, so a customer whose saved method is Link (`type: 'link'`, no card details) saw "No card on file" right after paying, even though Link is what their subscription is charged with. The payment method is now reported for what it is:
+  
+  - `IPaymentMethodDTO` gains `type` (`'card'` | `'link'`) and `email` (the Link account's, for `'link'`; null for a card). A Link method has `brand: 'link'`, an empty `last4` and a 0 expiry. Show it as "Link · ana@acme.example". In `@fonderie/client` both fields are optional, because servers that predate them do not send them: treat an absent `type` as `'card'`.
+  - Which method is shown: the consented id, then the customer's default (card or Link), then the newest card, then a saved Link method. A card is still preferred when there is no default.
+  - A Link method carries no card fingerprint: for fraud composition it is a missing signal, never a clean one.
+  - The prebuilt subscription screens (React and Vue) show "Link · email".
+
+## 3.5.0
+
+### Minor Changes
+
+- f09da28: **A cold start opens screens on their last data.** `queries: { persist: { storage } }` (AsyncStorage, localStorage, or any `getItem`/`setItem` pair) keeps the shared read model on the device. After an app restart every screen shows what it showed last, at once, then refreshes it behind what is shown. Restored entries count as unconfirmed, so the first screen that asks refetches them even if they were saved a minute ago. `client.queries.hydrated` resolves once the snapshot is loaded, for an app that wants to hold its splash screen on it; hooks do not need to wait.
+  
+  Safe by construction, because the snapshot holds whatever the screens showed:
+  - **Tied to the signed-in user**: the `sub` of the access token, decoded locally, never verified client-side. A snapshot loads only for the user who saved it. A token for a different user (signed in without a sign-out in between) wipes what the previous one saw before anything is shown. A token refresh for the same user keeps it.
+  - **Wiped when the session ends**: sign-out, revocation and `clearCache()` empty the device copy as well as the screens. Nothing is saved or loaded without a signed-in user.
+  - **Opt-in, with `filter(queryKey)`** to choose what may sit on the device (keys start with `GET /<path>`). For example, keep billing and workspace data but not customers' personal data.
+  - **Bounded**: `maxEntries` (default 200, most recently confirmed first) and `maxAgeMs` (default 7 days). An answer fetched while the snapshot loads is never replaced by the saved one. An unreadable or malformed snapshot is ignored.
+
+## 3.4.0
+
+### Minor Changes
+
+- 90963c4: **Customer, audit and webhook screens open on their data and follow a workspace switch.** `useCustomers` and the customer sub-resource hooks (emails, phones, addresses, notes, tags, relationships, labels), `useAuditEvents` and the webhook hooks loaded once per mount on a spinner. The selected-workspace reads among them never re-read after a switch. They now go through the client's shared store like the billing and workspaces hooks: data on the first frame when seen before, refreshes behind what is shown, no redraw when the answer is unchanged, a write under the same resource refreshes them everywhere, and a workspace switch reads the other workspace's entry without showing the previous one. Return shapes and `refresh({ force })` semantics are unchanged.
+  
+  - `@fonderie/react` / `@fonderie/vue`: `usePagedQuery(source, path, readFirst, readMore, opts)` for cursor- or offset-paginated lists. The first page is the cached read, and pages appended by `loadMore` belong to the exact first page they extend: an unchanged refresh keeps them, a changed first page re-anchors the list. `rethrowLoadMore: false` reports a failed page on `error` only. `customers` and `audit` use it, because their `loadMore` never threw. Vue `useScopedQuery` gains `enabled`, as React's already had.
+  - `@fonderie/client`: `queryParams(params)`, a stable key fragment for a filter object (property order and undefined values do not change it).
+  - Lists filtered by params (customers, audit) are keyed by the filters' content, so the same filters on two screens share one entry.
+
+## 3.3.0
+
+### Minor Changes
+
+- ab62ea4: **Workspace screens open on their data, and follow a workspace switch.** `useMembers`, `useRoles`, `useInvitations`, `useWorkspaceSettings` and the other workspace reads loaded once on mount and never again. After the user switched workspace they kept showing the previous workspace's members and roles, and every visit opened on a spinner. They now read through the client's shared store (`client.queries`), like the billing hooks: data on the first frame when it was seen before, refreshes behind the data, no redraw when the answer is unchanged, and a workspace switch reads the other workspace's entry (instantly when seen before) without ever showing the previous one. Return shapes are unchanged.
+  
+  - `@fonderie/client`: the `workspaces`, `customers`, `audit` and `webhooks` sub-clients now report their scope, `getWorkspaceId()` and `onWorkspaceChange(listener)`, as `billing` already did. They held the workspace id silently, so no hook could follow a switch. Instances built without the constructor (test doubles) still work.
+  - `@fonderie/react` / `@fonderie/vue`: `useScopedQuery(source, path, read, { normal, perWorkspace })`, the one read every hook package makes (keyed by path and, for per-workspace data, the selected workspace), plus `useWrite(after)` for the write → re-read → keep-the-error pattern, and `toApiError`.
+  - `refresh({ force })` keeps its documented meaning in every migrated hook: it always re-reads, and `force: true` also bypasses the HTTP response cache. The billing hooks released in the previous version bypassed it on every `refresh()`; that is restored too.
+
+## 3.2.0
+
+### Minor Changes
+
+- 157004a: **Screens open on their data, not on a spinner — and a refresh never flickers.** Every hook used to start each mount with no data and `isLoading: true`, then wait for the network, even for data the previous screen had just fetched. A refresh that came back with the same answer still replaced the screen's data. The client's response cache could not help: it honours the server's `Cache-Control`, and an API answering `max-age=0` is cached for 0 ms.
+  
+  - `@fonderie/client`: `client.queries`, one shared read model per client (`QueryStore`). Fetched answers can be read synchronously and are observed by every screen showing them. A fetch happens only when an answer is missing or older than `staleMs` (option `queries: { staleMs }`, default 5 minutes; `Infinity` = only when asked), or on an explicit refresh. A refresh never removes data, and an answer equal to what is shown keeps the same object. A failed refresh keeps the data and reports the error. A write marks the reads under its resource stale (the same fragments the HTTP cache evicts), so screens showing them refetch in the background. Sign-out and revocation clear it.
+  - `@fonderie/react` / `@fonderie/vue`: `useClientQuery(source, key, fetcher)`, the one way a hook reads server data. `isLoading` means "nothing to show yet", never "a refresh is running" (that is `isFetching`). In Vue, requests wait for mount, so SSR never fetches.
+  - `@fonderie/react-billing` / `@fonderie/vue-billing`: every read (`useSubscription`, `usePaymentMethod`, `useInvoices`, `useUsage`, `useWallet`, `useWalletTransactions`, `useWalletPreferences`, `usePlans`, `usePlan`) goes through it. Returning to a screen, or switching back to a workspace already seen, shows its data on the first frame with no request. `useWallet` and `useWalletPreferences` share one request. Pages loaded with `loadMore` survive a refresh that returns the same first page. Return shapes are unchanged. Two behaviour differences: a failed refresh now keeps the last data shown instead of clearing it, and `refresh()` always bypasses the HTTP cache.
+  
+  `@fonderie/react-native-billing` re-exports `@fonderie/react-billing`, so React Native apps get this too.
+
+## 3.1.1
+
+### Patch Changes
+
+- c8157b2: **Rotating the integrity key no longer makes history look tampered.** The event log was verified against one key, so after a rotation every row signed before it failed: the `events.integrity` check reported authentic events as tampered. New `retiredIntegrityKeys` (on the `pg` transport config and `PGTransport`; `retiredKeys` on `startIntegrityCheck`): keys used to VERIFY older rows only, never to sign. Such rows are counted as `retiredKey` in the report, shown as advice (`EVENTS_RETIRED_KEY`), and never as tampered. A row that matches no key is still tampered: a retired key does not launder an edit.
+  
+  **No delivery is silently lost in limbo.** Claiming requires `attempts < maxRetries`, and only a handler that throws on its last attempt marked a row `dead`. A row whose last attempt never finished (the instance was killed mid-send) stayed `processing` forever: not retried, not dead, missing from both the dead-letter list and the backlog. Rows an older release reset to `failed` with spent attempts were stuck the same way. Each poll now marks those rows `dead`, with a recorded reason, once their lease has expired. Rows that still have attempts left are untouched.
+  
+  **Dead deliveries have a way out.** `PGTransport.retryDead(eventId, consumer)` gives a dead row a full set of attempts; `dismissDead(eventId, consumer)` retires it for good, keeping its error for the record. Migration `005_event_consumers_dismissed.sql` adds the `dismissed` status (additive). Operator routes, mounted by `@fonderie/admin`: `GET /_admin/events/dead`, `POST /_admin/events/dead/:eventId/:consumer/retry` and `…/dismiss`. Before this, a dead row kept the outbox check failing until someone edited the table by hand.
+
+## 3.1.0
+
+### Minor Changes
+
+- 87f6e1d: **The invoice list no longer stops at 20.** `GET /billing/invoices` returned the newest 20 invoices and silently dropped everything older. It now pages newest first by keyset (`?limit=` 1–100, default 20; `?cursor=`) and answers `nextCursor`. `client.billing.listInvoices({ cursor, limit })`; `useInvoices()` gains `nextCursor`, `hasMore` and `loadMore()` (React and Vue), like `useWalletTransactions`. Providers receive an optional `createdLte` bound; one that ignores it still never repeats a row.
+  
+  **A usage screen can show the rate limit.** `GET /billing/usage/:metric` only summed usage records, so a windowed plan limit such as `'api-calls': { limit, window: '1d' }` — a counter, not records — always read 0. For such a metric it now answers from the live counter: `kind: 'counter'`, `total` used in the current window, `limit`, `status` (`ok` | `warning` | `over_limit` | `blocked`), `window`, `since` and `resetsAt`. Other metrics keep the records sum (`kind: 'records'`) and also report the plan's `limit`. `useUsage()` returns the whole reading as `usage` alongside `total` (React and Vue); `IUsageResult` is re-exported by the hook packages.
+- 87f6e1d: **One free trial per owner, not per workspace.** With per-workspace billing every new workspace is a new subscriber, so the per-subscriber trial ledger let one person start a fresh trial in every workspace they created. New `config.trialScope: 'owner'` (default `'subscriber'`, today's behaviour): a workspace gets no trial when any workspace with the same owner has already had one. Needs the workspaces brick.
+  
+  **Checkout can decline the trial.** `POST /billing/checkout` accepts `skipTrial: true` (`ICheckoutInput.skipTrial` in `@fonderie/client`) for a paid checkout from day one — the retry an app offers after refusing a trial. It declines the trial for that checkout only; it never consumes it.
+- 87f6e1d: **Billing screens follow a workspace switch.** With workspace billing the subscriber is the selected workspace, but the billing hooks only loaded on mount — a screen that stayed open across a switch kept showing the previous workspace's subscription, card, invoices or wallet.
+  
+  - `@fonderie/client`: `client.getWorkspaceId()` and `client.onWorkspaceChange(listener)` (returns an unsubscribe); the billing sub-client has the same pair. Listeners fire only when the id actually changes.
+  - `@fonderie/react` / `@fonderie/vue`: `useWorkspaceId(source?)` — the current workspace id, re-rendering (React) or as a Ref (Vue) when it changes. Follows the provided client, or the sub-client you pass.
+  - `@fonderie/react-billing` / `@fonderie/vue-billing`: `useSubscription`, `usePaymentMethod`, `useInvoices`, `useWallet`, `useWalletTransactions`, `useWalletPreferences` and `useUsage` clear what they showed and re-read on a switch, and a slow answer for the previous workspace can no longer land on top of the new one. `usePlans` / `usePlan` are not per-workspace and are unchanged.
+  
+  `@fonderie/react-native-billing` re-exports `@fonderie/react-billing`, so React Native apps get this too.
+
+### Patch Changes
+
+- 87f6e1d: **`workspace.plan` is marked deprecated.** The field is set to `'free'` when a workspace is created and nothing ever updates it — not a subscription, an upgrade or a cancellation — so an app reading it shows "free" for a paying workspace. It is now documented as such; read the workspace's subscription from `@fonderie/billing` (`GET /billing/subscription` with `X-Workspace-ID`, `useSubscription()` in the frontend packages). No behaviour change.
+
+## 3.0.0
+
+### Major Changes
+
+- bd033f5: **Sign in with Google from a native app, and social sign-in now asks for the second factor.**
+  
+  **`@fonderie/auth`:**
+  - **`POST /auth/google/native`:** the app posts the ID token the Google SDK gave it. The server checks the token the same way it checks Apple's: signature against Google's published keys (shared hardened key cache), issuer, audience against `google.nativeClientIds`, expiry, a verified email, and single use.
+  - **Native-only setups:** `google.clientSecret` and `google.redirectUri` are now optional, so a setup can use native sign-in only. The web flow returns 501 without them.
+  - **New env var:** `GOOGLE_NATIVE_CLIENT_IDS`.
+  - **Security fix, social sign-in skipped two-factor:**
+    - A linked Google or Apple account received a full session even when it had a second factor.
+    - Every OAuth sign-in (Google web and native, Apple web and native) now answers `MFA_REQUIRED` with an `mfaToken` when the account has MFA, exactly like a password sign-in.
+    - `/auth/mfa/verify` accepts that pending token from any sign-in method. Enabling, disabling and backup codes still require an email sign-in.
+    - Suspended accounts are refused on social sign-in too.
+  - **Docs fix:** the documented Google callback path is now `/auth/google/callback`, not `/auth/oauth/google/callback`.
+  
+  **`@fonderie/client` (major):**
+  - New: `auth.googleNative({ idToken, nonce? })`.
+  - **Breaking:** `auth.appleNative` now returns `ILoginResult | IMfaRequiredResult`, because the server can ask for the second factor. Check `isMfaRequired(result)` before reading `result.tokens`.
+  
+  **`@fonderie/react-native-auth`:**
+  - New: `useGoogleSignIn`.
+  - `useAppleSignIn` and `useGoogleSignIn` return `{ mfaToken }` without storing a session when the account has MFA. Finish with `useMfaLogin`.
+
 ## 2.5.0
 
 ### Minor Changes

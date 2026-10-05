@@ -1,17 +1,22 @@
 import type { BillingClient, IPlanDTO } from '@fonderie/client';
+import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useCheckout, usePlans } from '@fonderie/vue-billing';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
 import { styles } from '../styles';
 
-function formatPrice(cents: number, currency: string): string {
-	return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+// In the UI language (undefined = the runtime's default), never a hard-coded one.
+function formatPrice(cents: number, currency: string, locale: string | undefined): string {
+	return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
 }
 
 export const PricingScreen = defineComponent({
 	name: 'FonderiePricingScreen',
 	props: {
 		client: { type: Object as PropType<BillingClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		'checkout-start': (_url: string) => true,
@@ -20,6 +25,10 @@ export const PricingScreen = defineComponent({
 		const { plans, isLoading, error } = usePlans(props.client);
 		const { checkout, isLoading: isCheckingOut, error: checkoutError } = useCheckout(props.client);
 		const interval = ref<'month' | 'year'>('month');
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
+		// Read at render: t() re-renders on a language change, so this follows it.
+		const formatLocale = () => canonicalLocaleTag(props.locale) ?? uiLocaleFor(props.client)?.get();
 
 		async function handleChoose(planName: string) {
 			try {
@@ -36,8 +45,14 @@ export const PricingScreen = defineComponent({
 				h('h2', { style: styles.planName }, plan.name),
 				h('p', { style: styles.planDescription }, plan.description),
 				h('p', { style: styles.price }, [
-					formatPrice(price, plan.pricing.currency),
-					h('span', { style: styles.priceInterval }, `/${interval.value}`),
+					formatPrice(price, plan.pricing.currency, formatLocale()),
+					h(
+						'span',
+						{ style: styles.priceInterval },
+						interval.value === 'year'
+							? t('billing.pricing.perYear')
+							: t('billing.pricing.perMonth'),
+					),
 				]),
 				h(
 					'ul',
@@ -54,15 +69,17 @@ export const PricingScreen = defineComponent({
 						style: styles.button,
 						onClick: () => handleChoose(plan.name),
 					},
-					isCheckingOut.value ? 'Redirecting…' : `Choose ${plan.name}`,
+					isCheckingOut.value
+						? t('billing.pricing.redirecting')
+						: t('billing.pricing.choose', { plan: plan.name }),
 				),
 			]);
 		}
 
 		return () => {
-			if (isLoading.value) return h('p', { style: styles.status }, 'Loading plans…');
+			if (isLoading.value) return h('p', { style: styles.status }, t('billing.pricing.loading'));
 			if (error.value)
-				return h('p', { style: styles.error, role: 'alert' }, error.value.explanation);
+				return h('p', { style: styles.error, role: 'alert' }, errorText(error.value));
 
 			return h('div', { style: styles.container }, [
 				h('div', { style: styles.toggle }, [
@@ -75,7 +92,7 @@ export const PricingScreen = defineComponent({
 								interval.value = 'month';
 							},
 						},
-						'Monthly',
+						t('billing.pricing.monthly'),
 					),
 					h(
 						'button',
@@ -86,11 +103,11 @@ export const PricingScreen = defineComponent({
 								interval.value = 'year';
 							},
 						},
-						'Yearly',
+						t('billing.pricing.yearly'),
 					),
 				]),
 				checkoutError.value
-					? h('p', { style: styles.error, role: 'alert' }, checkoutError.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(checkoutError.value))
 					: null,
 				h('div', { style: styles.grid }, plans.value.map(renderPlanCard)),
 			]);

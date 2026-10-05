@@ -1,79 +1,65 @@
-import type { ICreateWorkspaceInput, IWorkspaceDTO, WorkspacesClient } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type {
+	FonderieApiError,
+	IAcceptInvitationInput,
+	ICreateWorkspaceInput,
+	IWorkspaceDTO,
+	WorkspacesClient,
+} from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseWorkspacesReturn {
 	workspaces: IWorkspaceDTO[];
+	/** Nothing to show yet — never true while a refresh runs behind data. */
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	createWorkspace: (input: ICreateWorkspaceInput) => Promise<IWorkspaceDTO>;
-	acceptInvitation: (pin: string) => Promise<string>;
+	/** Join with the link's `{ token }` or the email's PIN (`{ pin }` or a bare string); resolves to the workspace id. */
+	acceptInvitation: (code: string | IAcceptInvitationInput) => Promise<string>;
+	/**
+	 * Leave the SELECTED workspace (the owner must transfer ownership first).
+	 * The list refreshes; switch the app to another workspace afterwards.
+	 */
+	leaveWorkspace: () => Promise<void>;
 }
 
+const NONE: IWorkspaceDTO[] = [];
+
 export function useWorkspaces(client?: WorkspacesClient): IUseWorkspacesReturn {
-	// Named `resolved` (not `workspaces`) to avoid shadowing the list state below.
+	// Named `resolved` (not `workspaces`) to avoid shadowing the list below.
 	const resolved = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaces');
-	const [workspaces, setWorkspaces] = useState<IWorkspaceDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await resolved.listWorkspaces({ bust: opts?.force });
-				setWorkspaces(result.workspaces);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[resolved],
+	// The signed-in user's own list: the same whichever workspace is selected.
+	const q = useScopedQuery(
+		resolved,
+		'/workspaces',
+		async (bust) => (await resolved.listWorkspaces({ bust })).result.workspaces,
+		{ perWorkspace: false },
 	);
-
+	const w = useWrite(q.refresh);
 	const createWorkspace = useCallback(
-		async (input: ICreateWorkspaceInput) => {
-			setError(null);
-			try {
-				const { result } = await resolved.createWorkspace(input);
-				await refresh();
-				return result.workspace;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[resolved, refresh],
+		(input: ICreateWorkspaceInput) => w.run(async () => (await resolved.createWorkspace(input)).result.workspace),
+		[resolved, w.run],
 	);
-
 	const acceptInvitation = useCallback(
-		async (pin: string) => {
-			setError(null);
-			try {
-				const { result } = await resolved.acceptInvitation(pin);
-				await refresh();
-				return result.workspaceId;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[resolved, refresh],
+		(code: string | IAcceptInvitationInput) =>
+			w.run(async () => (await resolved.acceptInvitation(code)).result.workspaceId),
+		[resolved, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { workspaces, isLoading, error, refresh, createWorkspace, acceptInvitation };
+	const leaveWorkspace = useCallback(
+		() =>
+			w.run(async () => {
+				await resolved.leaveWorkspace();
+			}),
+		[resolved, w.run],
+	);
+	return {
+		workspaces: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		createWorkspace,
+		acceptInvitation,
+		leaveWorkspace,
+	};
 }

@@ -1,7 +1,7 @@
-import type { BillingClient, IPaymentMethodDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IPaymentMethodDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUsePaymentMethodReturn {
 	// The card on file (brand/last4/expiry), or null when none is stored or the
@@ -16,34 +16,12 @@ export interface IUsePaymentMethodReturn {
 // /billing/payment-method.
 export function usePaymentMethod(client?: BillingClient): IUsePaymentMethodReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'usePaymentMethod');
-	const [paymentMethod, setPaymentMethod] = useState<IPaymentMethodDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getPaymentMethod({ bust: opts?.force });
-				setPaymentMethod(result.paymentMethod);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				// 501 = the provider can't retrieve a card — a normal "no card on
-				// file" state for a UI, not an error banner.
-				if (apiError.status !== 501) setError(apiError);
-				setPaymentMethod(null);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[billing],
+	const q = useBillingQuery<IPaymentMethodDTO | null>(
+		billing,
+		'/billing/payment-method',
+		async (bust) => (await billing.getPaymentMethod({ bust })).result.paymentMethod,
+		// 501 = the provider can't retrieve a card — "no card on file", not an error.
+		{ normal: (err) => (err.status === 501 ? null : undefined) },
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { paymentMethod, isLoading, error, refresh };
+	return { paymentMethod: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

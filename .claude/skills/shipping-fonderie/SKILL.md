@@ -11,7 +11,7 @@ has a bot quirk that stalls silently**.
 
 ## 1. Run what CI runs — all of it
 
-CI runs **fifteen** gates. Running `typecheck` and `test` locally passes about a
+CI runs **twenty-odd** gates, and the count grows. Running `typecheck` and `test` locally passes about a
 quarter of them. There is no composite script, so run them in CI's order:
 
 **Never pipe a gate through `head`/`tail` inside an `&&` chain.** A pipeline
@@ -20,9 +20,11 @@ the chain sails on — you get a "green" report for a gate that failed, and CI
 tells you hours later. Run each one and check `$?`:
 
 ```bash
-for g in lint:ci audit:ship typecheck audit:validation check:evidence \
-         check:hook-coverage check:hook-parity check:routes \
-         check:template-coverage check:reasons brain:test brain:project-test; do
+# Read the list from ci.yml — a hand-kept list drifted by four gates
+# (check:ci-env, check:env-declarations, check:lockfile, check:internal-ranges)
+# and cost a CI cycle.
+for g in $(grep -oE 'run: npm run [a-z:-]+' .github/workflows/ci.yml | awk '{print $4}' \
+           | grep -vE '^(build|test|docs:)'); do
   npm run "$g" >/dev/null 2>&1 && echo "  PASS $g" || echo "  FAIL $g"
 done
 ```

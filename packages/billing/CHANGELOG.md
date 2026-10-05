@@ -1,5 +1,124 @@
 # @fonderie/billing
 
+## 10.8.1
+
+### Patch Changes
+
+- 2686f16: Error messages in the reader's language. The screens showed the server's English sentence to everyone; a wrong password now reads « Le courriel ou le mot de passe est incorrect. » for a fr-CA user, 「電子郵件或密碼不正確。」 for zh-TW.
+  
+  - **`localizeApiError(error, locale)`** (client):
+    - English readers keep the server's exact sentence.
+    - Every other language gets the message for the error's reason code, filled from its `details`.
+    - If the code is unknown or a value is missing, they get the generic message for the status, never a half-filled sentence.
+    - An offline failure reads "couldn't reach the server" in every language, instead of "TypeError: Failed to fetch".
+    - Covers 57 user-facing reason codes (sign-in, teams, billing, customers, uploads) plus 12 generic messages, in en/fr/es/zh-Hans/zh-Hant.
+  - **`useUiError(source?, locale?)`** in `@fonderie/react` and `@fonderie/vue` returns that function in the app's UI language, following `setLocale()`.
+  - **Every prebuilt screen** (all 18 packages) shows errors through it.
+  - **Server:** `PLAN_UNCHANGED` (`plan`, `interval`), `FEATURE_UNAVAILABLE` (`feature`), `ASSET_TOO_LARGE` (`maxBytes`, `maxMegabytes`) and `ASSET_UNSUPPORTED` (`allowed`) now send their values in `details`, like the other messages that name a value. The English sentences are unchanged.
+
+## 10.8.0
+
+### Minor Changes
+
+- 4aca9ac: Every built-in email in Chinese, Simplified and Traditional, and amounts written the way the reader writes them.
+  
+  - **Chinese in both scripts.** All 24 built-in emails (auth 13, billing 10, workspaces 1) ship in `zh-Hans` (Simplified) and `zh-Hant` (Traditional), alongside English, French and Spanish. The Traditional copy is written for Traditional readers (帳戶, 電子郵件, 儲值), not converted character by character.
+  - **The script follows the reader.** `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified, derived from CLDR via `Intl.Locale#maximize` with no hand-kept region list. New in core: `localeScriptTag()` and `localeCopyKeys()`. `localeChain()` now puts the script right after the tag (`zh-HK` → `zh-Hant`), so an app's saved `zh-Hant` template also reaches Hong Kong and Taiwan readers, and never Simplified ones. This applies only to languages written in more than one script.
+  - **Amounts in the reader's language.** Billing formatted every amount as en-US before anyone knew who would read it, so a Québec customer's French receipt said `CA$19.99`. Notices now also carry the raw amount under core's reserved `$format` data key, and courier formats it in the resolved language: `19,99 $` for fr-CA, `$19.99` for en-CA. The plain string is still sent too, so an older courier shows it unchanged. `$format` accepts `{ money: { amount, currency, precision } }` and `{ date, style? }`.
+  - `SHIPPED_TEMPLATE_LANGUAGES` is now `['es', 'fr', 'zh-Hans', 'zh-Hant']`, so the parity checks and `check:template-coverage` require Chinese in every notifying module. The gate's pattern was lower-case only and would have skipped `zh-Hans` while still passing.
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+
+## 10.7.0
+
+### Minor Changes
+
+- 7ec4d32: Every email is written in its recipient's language, including the ones sent without a signed-in user.
+  
+  Billing receipts and notices, and workspace invitations, passed no language, so a French- or Chinese-speaking customer got them in the system default (English). Courier now decides in this order:
+  
+  1. the `locale` the sender passed (auth already passes the signed-in user's);
+  2. **the language of the account the recipient's email or phone belongs to** (`@fonderie/auth`'s users, same database);
+  3. the new `fallbackLocale` on the message: the business's language, for someone without an account;
+  4. the system default.
+  
+  - `ICourierMessage.fallbackLocale` (core).
+  - Courier: the account lookup is on by default; `recipientLocaleLookup: false` turns it off (e.g. when accounts live in another database). The message log records the language actually used.
+  - Workspaces: an invitation carries the workspace's language as its fallback, so a Quebec business invites in French. An invitee who already has an account still gets their own language.
+  - Billing: `IBillingRecipient` takes `locale` and `fallbackLocale`, so an app's `resolveRecipient` can say which language to use. Without either, courier uses the recipient's account.
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
+## 10.6.1
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
+## 10.6.0
+
+### Minor Changes
+
+- 5f3355a: **A customer who paid with Stripe Link has a payment method on file.** `GET /billing/payment-method` reported cards only, so a customer whose saved method is Link (`type: 'link'`, no card details) saw "No card on file" right after paying, even though Link is what their subscription is charged with. The payment method is now reported for what it is:
+  
+  - `IPaymentMethodDTO` gains `type` (`'card'` | `'link'`) and `email` (the Link account's, for `'link'`; null for a card). A Link method has `brand: 'link'`, an empty `last4` and a 0 expiry. Show it as "Link · ana@acme.example". In `@fonderie/client` both fields are optional, because servers that predate them do not send them: treat an absent `type` as `'card'`.
+  - Which method is shown: the consented id, then the customer's default (card or Link), then the newest card, then a saved Link method. A card is still preferred when there is no default.
+  - A Link method carries no card fingerprint: for fraud composition it is a missing signal, never a clean one.
+  - The prebuilt subscription screens (React and Vue) show "Link · email".
+
+## 10.5.2
+
+### Patch Changes
+
+- e727b31: **A subscription payment is listed once, not twice.** `GET /billing/invoices` lists the customer's invoices and also its bare charges, so a credit-pack purchase (a charge, never an invoice) has a record. It skipped charges that pay an invoice with `!charge.invoice`, but since Stripe's basil API version a Charge has no `invoice` field. On the pinned dahlia version, every subscription payment showed twice: as its numbered invoice and as an unnumbered "paid" row. Only billing's own pack charges are listed now, recognised by `metadata.packId`, which billing sets on every pack payment and Stripe copies to the charge.
+  
+  **A customer who just paid has a card on file.** Hosted Checkout (subscriptions and credit packs) never restricted payment methods, so Stripe also offered Link and Klarna. A subscription paid with Link saves a `type: 'link'` method with no card details, and the billing screen reported "no card on file" right after payment. Checkout now offers the same methods as in-app card entry, `setupPaymentMethodTypes` (default card only), so whatever a customer pays with can be shown. To offer wallets, add them to that option, accepting that they won't render as a card.
+
+## 10.5.1
+
+### Patch Changes
+
+- 93a26ec: **A request counts once against a plan's rate limit, not twice.** For a request that falls through to a fonderie-owned route (`/auth/*`, `/billing/*`, `/workspaces/*`, …), an adapter runs the global middleware in `bridge()` and again inside `handle()`. Billing's windowed counters (`'api-calls': { limit, window: '1d' }`) were incremented on both passes, so a plan selling 1,000 calls a day blocked at about 500 on those routes. App-owned routes counted once.
+  
+  Adapters now hand `handle()` the first pass's meta as `ctx.meta.bridged` (documented on `IFonderieContextMeta`), and billing reuses its context from there when it is for the same subscriber: no second increment, no second grant or notice. Any global middleware with a per-request side effect can do the same. `withMetrics` and a user-added `.use()` rate limiter still count twice (stricter, never a bypass).
+  
+  **Limit notices for user subscribers are delivered.** A `limit-warning` / `limit-reached` notice for a user subscriber was left on `ctx.meta.messages`, which nothing sends. With `config.resolveRecipient` and an event bus wired, every subscriber's notice now goes out on the bus, as workspace notices already did. Without them, notices stay on `ctx.meta.messages` for the app to send.
+
+## 10.5.0
+
+### Minor Changes
+
+- 87f6e1d: **The `'db'` rate-limit backend is fit for per-request counters.** It used to insert one `fonderie_usage_records` row per request and sum the whole window on every request, with nothing ever deleting a row — a 100k/day limit meant summing up to 100k rows per request, forever growing. `'memory'` is no alternative on serverless, where each instance counts alone and resets on every cold start.
+  
+  Windowed counters now live in a new table, `fonderie_usage_counters` (migration `015_usage_counters.sql` — run your migrations): one row per subscriber, metric and window, updated by a single atomic upsert that returns the new total, so concurrent requests never lose a count. Windows are the fixed, epoch-aligned periods `resetsAt` already advertised (a `'1d'` limit resets at 00:00 UTC). Ended windows are dead weight: call the new `purgeUsageCounters(store)` from a cron (the backend also purges opportunistically, at most every 10 minutes per process). `counterWindow(windowMs)` is exported for tests and tooling.
+  
+  Counts held under the old scheme are not carried over — each counter starts at zero in the current window after the upgrade. `recordUsage` / `getUsage` (`POST`/`GET /billing/usage`) are unchanged and still use `fonderie_usage_records`.
+- 87f6e1d: **A subscription that isn't paying no longer unlocks its plan.** A checkout that was never paid (`incomplete`), an `unpaid` or `paused` subscription, or one `past_due` beyond the dunning grace still names its paid plan — and `withBilling` used to hand out that plan's features, limits and seats anyway. Entitlements now follow payment: such a subscriber gets the free plan (`config.plans[0]`), exactly like a subscriber with no subscription, and gets the paid plan back the moment it pays. `IBillingContext.plan` is the plan in force; the new `IBillingContext.subscribedPlan` is the plan the subscription names.
+  
+  **A workspace's limit notices go to the workspace owner.** A `limit-warning` / `limit-reached` notice for a workspace subscriber used to go to whichever member's request crossed the line. With `config.resolveRecipient` and an event bus wired (as production readiness already requires), it now goes to the subscriber's resolved contact — the owner — like every other billing notice.
+- 87f6e1d: **The invoice list no longer stops at 20.** `GET /billing/invoices` returned the newest 20 invoices and silently dropped everything older. It now pages newest first by keyset (`?limit=` 1–100, default 20; `?cursor=`) and answers `nextCursor`. `client.billing.listInvoices({ cursor, limit })`; `useInvoices()` gains `nextCursor`, `hasMore` and `loadMore()` (React and Vue), like `useWalletTransactions`. Providers receive an optional `createdLte` bound; one that ignores it still never repeats a row.
+  
+  **A usage screen can show the rate limit.** `GET /billing/usage/:metric` only summed usage records, so a windowed plan limit such as `'api-calls': { limit, window: '1d' }` — a counter, not records — always read 0. For such a metric it now answers from the live counter: `kind: 'counter'`, `total` used in the current window, `limit`, `status` (`ok` | `warning` | `over_limit` | `blocked`), `window`, `since` and `resetsAt`. Other metrics keep the records sum (`kind: 'records'`) and also report the plan's `limit`. `useUsage()` returns the whole reading as `usage` alongside `total` (React and Vue); `IUsageResult` is re-exported by the hook packages.
+- 87f6e1d: **`GET /plans` says what each plan includes.** A plan configured with `policy: { seats: { limit: 5 }, analytics: { enabled: true }, … }` was served as `seats: null, features: []` — the stored row's columns are only written by the plan-admin routes — so a pricing page had nothing to show but a name and a price. The DTO now fills `seats` and `features` (name, enabled, limit) from the configured policy when the row carries none; an operator's explicit values still win.
+  
+  With `pricing.hydration`, the free plan also adopts the currency every priced plan shares, instead of showing `USD` next to plans hydrated to `CAD`.
+- 87f6e1d: **One free trial per owner, not per workspace.** With per-workspace billing every new workspace is a new subscriber, so the per-subscriber trial ledger let one person start a fresh trial in every workspace they created. New `config.trialScope: 'owner'` (default `'subscriber'`, today's behaviour): a workspace gets no trial when any workspace with the same owner has already had one. Needs the workspaces brick.
+  
+  **Checkout can decline the trial.** `POST /billing/checkout` accepts `skipTrial: true` (`ICheckoutInput.skipTrial` in `@fonderie/client`) for a paid checkout from day one — the retry an app offers after refusing a trial. It declines the trial for that checkout only; it never consumes it.
+
+### Patch Changes
+
+- 87f6e1d: **Billing webhooks refuse unverifiable deliveries on every host.** Node-server hosts (local, Docker, Cloud Run) replace `globalThis.Response` after `@fonderie/core` has loaded, so the webhook routes' `instanceof Response` check missed core's own refusal. A delivery with no webhook secret configured, no signature, or an invalid signature was then treated as a verified event and answered `200 {"received":true}` instead of 500/400. The signature check now returns a tagged result that no host can confuse; the same request served in-process was never affected.
+  
+  The adapters had the same hazard for pipeline short-circuits (a parser 413, a guard's refusal): they now recognise a Response by its shape, not its global identity, so the refusal is sent instead of the request carrying on.
+
 ## 10.4.6
 
 ### Patch Changes

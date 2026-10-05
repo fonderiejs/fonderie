@@ -1,6 +1,9 @@
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
+
+import type { ICustomerSectionOptions } from './section-options';
 
 export interface IUseCustomerTagsReturn {
 	tags: string[];
@@ -11,77 +14,53 @@ export interface IUseCustomerTagsReturn {
 	removeTag: (tag: string) => Promise<void>;
 }
 
-export function useCustomerTags(customerId: string): IUseCustomerTagsReturn;
+const NONE: string[] = [];
+
+// One customer's tags: shown at once when seen before, refreshed behind
+// what is shown; any write under /customers marks it stale everywhere.
+export function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerTagsReturn;
 export function useCustomerTags(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerTagsReturn;
 export function useCustomerTags(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerTagsReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerTags');
-	const [tags, setTags] = useState<string[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.listTags(customerId, { bust: opts?.force });
-			setTags(result.tags);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId]);
-
+	const q = useScopedQuery(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}/tags`,
+		async (bust) => (await customers.listTags(customerId, { bust })).result.tags,
+		// Nothing to read until there is a customer.
+		{ enabled: !!customerId && read },
+	);
+	const w = useWrite(q.refresh);
 	const addTag = useCallback(
-		async (tag: string) => {
-			setError(null);
-			try {
+		(tag: string) =>
+			w.run(async () => {
 				await customers.addTag(customerId, tag);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const removeTag = useCallback(
-		async (tag: string) => {
-			setError(null);
-			try {
+		(tag: string) =>
+			w.run(async () => {
 				await customers.removeTag(customerId, tag);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { tags, isLoading, error, refresh, addTag, removeTag };
+	return {
+		tags: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		addTag, removeTag,
+	};
 }

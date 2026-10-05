@@ -11,6 +11,17 @@ export interface IWorkspaceAddressDTO {
 	country: string;
 }
 
+export interface ITaxRegistrationDTO {
+	/** ISO 3166-1, e.g. 'CA'. */
+	country: string;
+	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'EIN'. */
+	type: string;
+	number: string;
+	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
+	region: string;
+	label: string;
+}
+
 export interface IWorkspaceDTO {
 	id: string;
 	name: string;
@@ -21,6 +32,22 @@ export interface IWorkspaceDTO {
 	phone: string;
 	businessType: string;
 	address: IWorkspaceAddressDTO;
+	/** Registered name, when it differs from the display name. */
+	legalName: string;
+	email: string;
+	website: string;
+	logoUrl: string;
+	/** GST/HST, QST, PST, EIN, state sales-tax permits… — normalized. */
+	taxRegistrations: ITaxRegistrationDTO[];
+	/** The languages the business serves customers in (BCP 47), e.g. ['en-CA', 'fr-CA']. */
+	languages: string[];
+	/**
+	 * @deprecated Not the workspace's billing plan. Set to 'free' when the
+	 * workspace is created and never maintained — nothing writes it when the
+	 * workspace subscribes, upgrades or cancels. Read the subscription from
+	 * @fonderie/billing instead (GET /billing/subscription with the
+	 * X-Workspace-ID header; `useSubscription()` in the frontend packages).
+	 */
 	plan: string;
 	ownerId: string;
 	isPersonal: boolean;
@@ -60,6 +87,18 @@ export interface IMemberDTO {
 	firstName: string;
 	lastName: string;
 	profileImageUrl: string;
+	/** Every role this person holds here, earliest first. */
+	roles: IMemberRoleDTO[];
+	/** The workspace owner. */
+	isOwner: boolean;
+	/** The owner, or a holder of a manager role — may manage the team. */
+	isManager: boolean;
+}
+
+export interface IMemberRoleDTO {
+	id: string;
+	name: string;
+	isSystem: boolean;
 }
 
 export interface IInvitationDTO {
@@ -71,6 +110,8 @@ export interface IInvitationDTO {
 	status: string;
 	expiresAt: string;
 	createdAt: string;
+	/** Past its expiry: still listed so a manager can resend it, but no longer acceptable. */
+	isExpired: boolean;
 }
 
 export interface IWorkspaceSettingsDTO {
@@ -100,6 +141,18 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			zip: stringOrEmpty(addr.zip),
 			country: stringOrEmpty(addr.country),
 		},
+		legalName: stringOrEmpty(ws.legalName),
+		email: stringOrEmpty(ws.email),
+		website: stringOrEmpty(ws.website),
+		logoUrl: stringOrEmpty(ws.logoUrl),
+		taxRegistrations: (Array.isArray(ws.taxRegistrations) ? ws.taxRegistrations : []).map((r) => ({
+			country: stringOrEmpty(r.country),
+			type: stringOrEmpty(r.type),
+			number: stringOrEmpty(r.number),
+			region: stringOrEmpty(r.region),
+			label: stringOrEmpty(r.label),
+		})),
+		languages: Array.isArray(ws.languages) ? ws.languages.map(String) : [],
 		plan: stringOrEmpty(ws.plan),
 		ownerId: stringOrEmpty(ws.ownerId),
 		isPersonal: booleanOrFalse(ws.isPersonal),
@@ -134,6 +187,11 @@ export function toMemberDTO(m: IMember): IMemberDTO {
 		firstName: stringOrEmpty(m.firstName),
 		lastName: stringOrEmpty(m.lastName),
 		profileImageUrl: stringOrEmpty(m.profileImageUrl),
+		roles: Array.isArray(m.roles)
+			? m.roles.map((r) => ({ id: stringOrEmpty(r.id), name: stringOrEmpty(r.name), isSystem: booleanOrFalse(r.isSystem) }))
+			: m.roleId ? [{ id: stringOrEmpty(m.roleId), name: stringOrEmpty(m.roleName), isSystem: false }] : [],
+		isOwner: booleanOrFalse(m.isOwner),
+		isManager: booleanOrFalse(m.isManager),
 	};
 }
 
@@ -151,6 +209,7 @@ export function toInvitationDTO(inv: IInvitation): IInvitationDTO {
 		status: stringOrEmpty(inv.status),
 		expiresAt: dateOrEmpty(inv.expiresAt),
 		createdAt: dateOrEmpty(inv.createdAt),
+		isExpired: !!inv.expiresAt && new Date(inv.expiresAt).getTime() <= Date.now(),
 	};
 }
 

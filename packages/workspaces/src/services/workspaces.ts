@@ -1,6 +1,8 @@
+import { randomBytes } from 'node:crypto';
+
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
+import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
 
 const SELECT_WS = `
 	id,
@@ -12,6 +14,12 @@ const SELECT_WS = `
 	phone,
 	business_type AS "businessType",
 	address,
+	legal_name AS "legalName",
+	email,
+	website,
+	logo_url AS "logoUrl",
+	tax_registrations AS "taxRegistrations",
+	languages,
 	plan,
 	owner_id    AS "ownerId",
 	is_personal AS "isPersonal",
@@ -31,6 +39,12 @@ const SELECT_WS_W = `
 	w.phone,
 	w.business_type AS "businessType",
 	w.address,
+	w.legal_name AS "legalName",
+	w.email,
+	w.website,
+	w.logo_url AS "logoUrl",
+	w.tax_registrations AS "taxRegistrations",
+	w.languages,
 	w.plan,
 	w.owner_id    AS "ownerId",
 	w.is_personal AS "isPersonal",
@@ -79,22 +93,30 @@ export async function createWorkspace(
 	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace> {
-	const [workspace] = await store.query<IWorkspace>(
-		`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 RETURNING ${SELECT_WS}`,
-		[
-			opts.name,
-			opts.slug,
-			opts.ownerId,
-			opts.type ?? 'ORGANIZATION',
-			opts.description ?? null,
-			opts.plan ?? 'free',
-		],
-	);
-
-	if (!workspace) throw new Error('Failed to create workspace');
-	return workspace;
+	// Slugs are unique among live workspaces, but names are not: two
+	// businesses called "Acme Plumbing", or two whose name has no Latin letters
+	// (水管公司 slugs to ''), must both be able to sign up. A taken slug gets a
+	// short random suffix instead of failing the request with a 500.
+	const base = opts.slug || 'workspace';
+	for (let attempt = 0; attempt < 6; attempt++) {
+		const slug = attempt === 0 ? base : `${base}-${randomBytes(3).toString('hex')}`;
+		const [workspace] = await store.query<IWorkspace>(
+			`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
+			 VALUES ($1, $2, $3, $4, $5, $6)
+			 ON CONFLICT (slug) WHERE archived_at IS NULL DO NOTHING
+			 RETURNING ${SELECT_WS}`,
+			[
+				opts.name,
+				slug,
+				opts.ownerId,
+				opts.type ?? 'ORGANIZATION',
+				opts.description ?? null,
+				opts.plan ?? 'free',
+			],
+		);
+		if (workspace) return workspace;
+	}
+	throw new Error('Failed to create workspace: no free slug');
 }
 
 // Returns the new workspace, or null if the personal workspace already exists (idempotent).
@@ -135,6 +157,12 @@ export async function updateWorkspace(
 		phone?: string | null;
 		businessType?: string | null;
 		address?: IWorkspaceAddress | null;
+		legalName?: string | null;
+		email?: string | null;
+		website?: string | null;
+		logoUrl?: string | null;
+		taxRegistrations?: ITaxRegistration[];
+		languages?: string[];
 	},
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
@@ -168,6 +196,20 @@ export async function updateWorkspace(
 	if (opts.address !== undefined) {
 		params.push(JSON.stringify(opts.address ?? {}));
 		sets.push(`address = $${params.length}::jsonb`);
+	}
+	for (const [key, col] of [['legalName', 'legal_name'], ['email', 'email'], ['website', 'website'], ['logoUrl', 'logo_url']] as const) {
+		if (opts[key] !== undefined) {
+			params.push(opts[key]);
+			sets.push(`${col} = $${params.length}`);
+		}
+	}
+	if (opts.taxRegistrations !== undefined) {
+		params.push(JSON.stringify(opts.taxRegistrations));
+		sets.push(`tax_registrations = $${params.length}::jsonb`);
+	}
+	if (opts.languages !== undefined) {
+		params.push(opts.languages);
+		sets.push(`languages = $${params.length}::text[]`);
 	}
 
 	const [row] = await store.query<IWorkspace>(
@@ -239,7 +281,12 @@ export async function updateWorkspaceSettings(
 ): Promise<IWorkspaceSettings> {
 	await store.query(
 		`UPDATE fonderie_workspaces
-		 SET settings   = settings || jsonb_build_object('settings', $2::jsonb),
+		 -- Merge into the nested object: '||' at the top level replaced the
+		 -- whole 'settings' key, so saving one setting erased the others.
+		 SET settings   = jsonb_set(
+		                    settings, '{settings}',
+		                    COALESCE(settings->'settings', '{}'::jsonb) || $2::jsonb
+		                  ),
 		     updated_at = now()
 		 WHERE id = $1`,
 		[id, JSON.stringify(settings)],

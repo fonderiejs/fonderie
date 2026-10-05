@@ -139,7 +139,9 @@ export function customerAddressController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'addrId must be a valid UUID');
 			}
 
-			await addresses.setPrimary(addrId, r.customer.id);
+			if (!(await addresses.setPrimary(addrId, r.customer.id))) {
+				return setApiResponse(HTTP.NOT_FOUND, 'ADDRESS_NOT_FOUND', 'Not found on this customer.');
+			}
 			return setApiResponse(HTTP.OK, 'ADDRESS_PRIMARY_SET', 'Primary address updated successfully.');
 		},
 

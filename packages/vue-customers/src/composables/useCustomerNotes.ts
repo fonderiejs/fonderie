@@ -1,8 +1,10 @@
 import type { ICustomerNoteDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
+
+import type { ICustomerSectionOptions } from './section-options';
 
 export interface IUseCustomerNotesReturn {
 	notes: Ref<ICustomerNoteDTO[]>;
@@ -14,90 +16,46 @@ export interface IUseCustomerNotesReturn {
 	deleteNote: (noteId: string) => Promise<void>;
 }
 
-export function useCustomerNotes(customerId: MaybeRefOrGetter<string>): IUseCustomerNotesReturn;
+export function useCustomerNotes(customerId: MaybeRefOrGetter<string>, opts?: ICustomerSectionOptions): IUseCustomerNotesReturn;
 export function useCustomerNotes(
 	client: CustomersClient | undefined,
 	customerId: MaybeRefOrGetter<string>,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerNotesReturn;
 export function useCustomerNotes(
 	clientOrCustomerId: CustomersClient | MaybeRefOrGetter<string> | undefined,
-	maybeCustomerId?: MaybeRefOrGetter<string>,
+	maybeCustomerIdOrOpts?: MaybeRefOrGetter<string> | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerNotesReturn {
 	const firstIsClient =
 		clientOrCustomerId === undefined || clientOrCustomerId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrCustomerId as CustomersClient | undefined) : undefined;
 	const customerId = firstIsClient
-		? (maybeCustomerId as MaybeRefOrGetter<string>)
+		? (maybeCustomerIdOrOpts as MaybeRefOrGetter<string>)
 		: clientOrCustomerId;
+	const read = ((firstIsClient ? maybeOpts : maybeCustomerIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerNotes');
-	const notes = ref<ICustomerNoteDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		if (!toValue(customerId)) {
-			isLoading.value = false;
-			return;
-		}
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customers.listNotes(toValue(customerId), { bust: opts?.force });
-			notes.value = result.notes;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function createNote(body: string) {
-		error.value = null;
-		try {
-			const { result } = await customers.createNote(toValue(customerId), body);
-			await refresh();
-			return result.note;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function updateNote(noteId: string, body: string) {
-		error.value = null;
-		try {
-			await customers.updateNote(toValue(customerId), noteId, body);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function deleteNote(noteId: string) {
-		error.value = null;
-		try {
-			await customers.deleteNote(toValue(customerId), noteId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(customerId),
-		() => void refresh(),
+	// The key follows the id; an empty id reads nothing (not loading).
+	const q = useScopedQuery(
+		customers,
+		() => `/customers/${encodeURIComponent(toValue(customerId))}/notes`,
+		async (bust) => (await customers.listNotes(toValue(customerId), { bust })).result.notes,
+		{ enabled: () => read && !!toValue(customerId) },
 	);
-
-	return { notes, isLoading, error, refresh, createNote, updateNote, deleteNote };
+	const w = useWrite(() => q.refresh());
+	return {
+		notes: computed(() => q.data.value ?? []),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		createNote: (body) => w.run(async () => (await customers.createNote(toValue(customerId), body)).result.note),
+		updateNote: (noteId, body) =>
+			w.run(async () => {
+				await customers.updateNote(toValue(customerId), noteId, body);
+			}),
+		deleteNote: (noteId) =>
+			w.run(async () => {
+				await customers.deleteNote(toValue(customerId), noteId);
+			}),
+	};
 }

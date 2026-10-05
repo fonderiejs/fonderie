@@ -1,60 +1,82 @@
-import type { BillingClient, IWalletTransactionDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IWalletTransactionDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { ComputedRef, Ref } from 'vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
+
+import { toApiError, useBillingQuery } from './workspace';
 
 export interface IUseWalletTransactionsReturn {
 	transactions: Ref<IWalletTransactionDTO[]>;
+	// Opaque cursor for the next page, or null when there is none.
 	nextCursor: Ref<string | null>;
 	hasMore: ComputedRef<boolean>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	// Appends the next page. No-op when there is no further page. A failed
+	// page keeps the rows already shown and rethrows (for a toast).
 	loadMore: () => Promise<void>;
 }
+
+interface IPage {
+	rows: IWalletTransactionDTO[];
+	nextCursor: string | null;
+}
+
+const NONE: IWalletTransactionDTO[] = [];
 
 // The wallet ledger, newest first — each entry carries a running balanceAfter.
 // Cursor-paginated: `loadMore` appends the next page.
 export function useWalletTransactions(client?: BillingClient): IUseWalletTransactionsReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useWalletTransactions');
-	const transactions = ref<IWalletTransactionDTO[]>([]);
-	const nextCursor = ref<string | null>(null);
-	const hasMore = computed(() => nextCursor.value !== null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
+	// The first page is the shared, cached read: shown at once on every visit.
+	const q = useBillingQuery<IPage>(
+		billing,
+		'/billing/wallet/transactions',
+		async (bust) => {
+			const { result } = await billing.getWalletTransactions({ bust });
+			return { rows: result.transactions, nextCursor: result.nextCursor ?? null };
+		},
+	);
 
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await billing.getWalletTransactions({ bust: opts?.force });
-			transactions.value = result.transactions;
-			nextCursor.value = result.nextCursor;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
+	// Pages appended by loadMore belong to the exact first page they extend: an
+	// unchanged refresh keeps the same object (and so the extra pages); a
+	// different one (new rows, another workspace) re-anchors the list.
+	const more = shallowRef<{ base: IPage; rows: IWalletTransactionDTO[]; cursor: string | null } | null>(null);
+	const pageError = ref<FonderieApiError | null>(null);
+	const extra = computed(() => (more.value && more.value.base === q.data.value ? more.value : null));
+	const rows = computed(() => {
+		const first = q.data.value;
+		if (!first) return NONE;
+		return extra.value ? [...first.rows, ...extra.value.rows] : first.rows;
+	});
+	const nextCursor = computed(() => (extra.value ? extra.value.cursor : (q.data.value?.nextCursor ?? null)));
 
 	async function loadMore() {
-		if (!nextCursor.value) return;
-		error.value = null;
+		const base = q.data.value;
+		const cursor = nextCursor.value;
+		if (!base || !cursor) return;
+		pageError.value = null;
 		try {
-			const { result } = await billing.getWalletTransactions({ cursor: nextCursor.value });
-			transactions.value = [...transactions.value, ...result.transactions];
-			nextCursor.value = result.nextCursor;
+			const { result } = await billing.getWalletTransactions({ cursor });
+			if (q.data.value !== base) return;
+			const prev = more.value && more.value.base === base ? more.value.rows : [];
+			more.value = { base, rows: [...prev, ...result.transactions], cursor: result.nextCursor ?? null };
 		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
+			if (q.data.value !== base) return;
+			const apiError = toApiError(err);
+			pageError.value = apiError;
 			throw apiError;
 		}
 	}
 
-	onMounted(() => void refresh());
-	return { transactions, nextCursor, hasMore, isLoading, error, refresh, loadMore };
+	return {
+		transactions: rows,
+		nextCursor,
+		hasMore: computed(() => nextCursor.value !== null),
+		isLoading: q.isLoading,
+		error: computed(() => pageError.value ?? q.error.value),
+		refresh: q.refresh,
+		loadMore,
+	};
 }

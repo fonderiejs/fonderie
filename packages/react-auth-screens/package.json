@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-auth-screens",
-	"version": "0.4.1",
+	"version": "0.5.1",
 	"description": "Pre-built React Web auth screens for Fonderie — login, register, forgot password.",
 	"keywords": [
 		"fonderiejs",
@@ -29,13 +29,15 @@
 		"build": "tsup",
 		"dev": "tsup --watch",
 		"typecheck": "tsc --noEmit",
+		"test": "tsx --test src/__tests__/*.test.tsx",
 		"lint": "biome lint src",
 		"format": "biome format --write src",
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react-auth": "*"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/react": "^0.11.0",
+		"@fonderie/react-auth": "^0.11.9"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
@@ -44,7 +46,9 @@
 		"@types/node": "^26.6.3",
 		"@types/react": "^19.3.0",
 		"react": "^19.3.0",
+		"react-dom": "^19.3.0",
 		"tsup": "^8.5.1",
+		"tsx": "^4.23.15",
 		"typescript": "^6.0.3"
 	},
 	"publishConfig": {

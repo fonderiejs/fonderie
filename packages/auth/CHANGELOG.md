@@ -1,5 +1,94 @@
 # @fonderie/auth
 
+## 7.22.1
+
+### Patch Changes
+
+- 647f1bd: Every place that matches a typed email to an account now uses the same rule
+  accounts are stored under (`normalizeEmail`: lowercase, `+tag` dropped).
+  
+  - **Login / password-reset limits:** the per-account bucket was keyed on the
+    lower-cased address, so `jane+1@`, `jane+2@`… — all the same account — each got
+    a fresh bucket, walking past the 5-per-15-min login limit and the
+    3-per-hour reset-email limit. `byBodyField` takes an optional `normalize`, and
+    auth passes `normalizeEmailSafe`.
+  - **`importUser`:** stored the address lower-cased only. An imported
+    `Jane+Legacy@x.com` could never sign in (sign-in looks up `jane@x.com`), and the
+    base address could register a second account beside it. It is now stored
+    normalized; a value that is not an address is refused.
+  - **Console user search** (`GET /_admin/users?email=`) finds the account from the
+    address as the user typed it.
+  - **Login history:** a replayed Google/Apple token records the normalized address,
+    like every other login event.
+- Updated dependencies [647f1bd]
+  - @fonderie/rate-limit@4.1.0
+
+## 7.22.0
+
+### Minor Changes
+
+- 4aca9ac: Every built-in email in Chinese, Simplified and Traditional, and amounts written the way the reader writes them.
+  
+  - **Chinese in both scripts.** All 24 built-in emails (auth 13, billing 10, workspaces 1) ship in `zh-Hans` (Simplified) and `zh-Hant` (Traditional), alongside English, French and Spanish. The Traditional copy is written for Traditional readers (帳戶, 電子郵件, 儲值), not converted character by character.
+  - **The script follows the reader.** `zh-TW`, `zh-HK` and `zh-MO` get Traditional; `zh`, `zh-CN` and `zh-SG` get Simplified, derived from CLDR via `Intl.Locale#maximize` with no hand-kept region list. New in core: `localeScriptTag()` and `localeCopyKeys()`. `localeChain()` now puts the script right after the tag (`zh-HK` → `zh-Hant`), so an app's saved `zh-Hant` template also reaches Hong Kong and Taiwan readers, and never Simplified ones. This applies only to languages written in more than one script.
+  - **Amounts in the reader's language.** Billing formatted every amount as en-US before anyone knew who would read it, so a Québec customer's French receipt said `CA$19.99`. Notices now also carry the raw amount under core's reserved `$format` data key, and courier formats it in the resolved language: `19,99 $` for fr-CA, `$19.99` for en-CA. The plain string is still sent too, so an older courier shows it unchanged. `$format` accepts `{ money: { amount, currency, precision } }` and `{ date, style? }`.
+  - `SHIPPED_TEMPLATE_LANGUAGES` is now `['es', 'fr', 'zh-Hans', 'zh-Hant']`, so the parity checks and `check:template-coverage` require Chinese in every notifying module. The gate's pattern was lower-case only and would have skipped `zh-Hans` while still passing.
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+  - @fonderie/rate-limit@4.0.34
+
+## 7.21.2
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+  - @fonderie/rate-limit@4.0.33
+
+## 7.21.1
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+  - @fonderie/rate-limit@4.0.32
+
+## 7.21.0
+
+### Minor Changes
+
+- bd033f5: **Sign in with Google from a native app, and social sign-in now asks for the second factor.**
+  
+  **`@fonderie/auth`:**
+  - **`POST /auth/google/native`:** the app posts the ID token the Google SDK gave it. The server checks the token the same way it checks Apple's: signature against Google's published keys (shared hardened key cache), issuer, audience against `google.nativeClientIds`, expiry, a verified email, and single use.
+  - **Native-only setups:** `google.clientSecret` and `google.redirectUri` are now optional, so a setup can use native sign-in only. The web flow returns 501 without them.
+  - **New env var:** `GOOGLE_NATIVE_CLIENT_IDS`.
+  - **Security fix, social sign-in skipped two-factor:**
+    - A linked Google or Apple account received a full session even when it had a second factor.
+    - Every OAuth sign-in (Google web and native, Apple web and native) now answers `MFA_REQUIRED` with an `mfaToken` when the account has MFA, exactly like a password sign-in.
+    - `/auth/mfa/verify` accepts that pending token from any sign-in method. Enabling, disabling and backup codes still require an email sign-in.
+    - Suspended accounts are refused on social sign-in too.
+  - **Docs fix:** the documented Google callback path is now `/auth/google/callback`, not `/auth/oauth/google/callback`.
+  
+  **`@fonderie/client` (major):**
+  - New: `auth.googleNative({ idToken, nonce? })`.
+  - **Breaking:** `auth.appleNative` now returns `ILoginResult | IMfaRequiredResult`, because the server can ask for the second factor. Check `isMfaRequired(result)` before reading `result.tokens`.
+  
+  **`@fonderie/react-native-auth`:**
+  - New: `useGoogleSignIn`.
+  - `useAppleSignIn` and `useGoogleSignIn` return `{ mfaToken }` without storing a session when the account has MFA. Finish with `useMfaLogin`.
+
+## 7.20.0
+
+### Minor Changes
+
+- 149a2dc: **Deleting an account signs out its other devices straight away.** `DELETE /users` now ends every session and emits `fonderie.session.revoked` with `{ sids: null, reason: 'account-deleted' }`, the same live sign-out a password change uses.
+  
+  Before, the user's other devices stayed signed in until their next request failed, and nothing told them why. `ISessionRevokedEvent['reason']` gains `'account-deleted'`.
+
 ## 7.19.2
 
 ### Patch Changes

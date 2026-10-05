@@ -7,6 +7,7 @@ export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
 	IAppleNativeInput,
+	IGoogleNativeInput,
 	IChangePasswordInput,
 	IGetLoginHistoryInput,
 	ILoginInput,
@@ -97,6 +98,7 @@ export type {
 	CustomerLabelType,
 	CustomerSex,
 	CustomerType,
+	IAcceptInvitationInput,
 	IAcceptInvitationResult,
 	IAddressDTO,
 	IApiError,
@@ -189,6 +191,13 @@ export type {
 	IMediaAssetDTO,
 	IMediaAssetResult,
 	IMemberDTO,
+	IMemberRoleDTO,
+	IInvitationResult,
+	IMyPermissionsResult,
+	IPermissionCatalogEntryDTO,
+	IPermissionCatalogResult,
+	IRoleDeleteResult,
+	PermissionOperation,
 	IMemberListResult,
 	IMeResult,
 	IMfaEnabledResult,
@@ -240,6 +249,7 @@ export type {
 	IWebhookEndpointListResult,
 	IWorkspaceAddressDTO,
 	IWorkspaceDTO,
+	ITaxRegistrationDTO,
 	IWorkspaceListResult,
 	IWorkspaceResult,
 	IWorkspaceSettingsDTO,
@@ -282,3 +292,13 @@ export type {
 	AdminT,
 	IReasonLike,
 } from './admin-i18n';
+
+// The screens' shared read model (client.queries).
+export { QueryStore, queryStoreFor, queryParams, deepEqual } from './query-store';
+export type { IQueryEntry, IQueryFetchOptions, IQueryPersistOptions, IQueryStorage, IQueryStoreOptions } from './query-store';
+
+// The prebuilt screens' words in en / fr / es / zh-Hans / zh-Hant, and the UI
+// language every client carries (setLocale / getLocale / onLocaleChange).
+export { UI_DICTIONARIES, UI_LANGUAGES, canonicalLocaleTag, createUiT, formatPersonName, localizeApiError, resolveUiLanguage } from './ui-i18n';
+export type { IApiErrorLike, UiLanguage, UiMessageKey, UiMessageParams, UiMessages, UiT } from './ui-i18n';
+export { UiLocale, detectDeviceLocale, uiLocaleFor } from './ui-locale';

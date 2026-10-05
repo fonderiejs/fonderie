@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react",
-	"version": "0.5.1",
+	"version": "0.11.0",
 	"description": "Shared React context for Fonderie — provide one FonderieClient at the root, resolve it from any @fonderie/react-* hook.",
 	"keywords": [
 		"fonderiejs",
@@ -34,7 +34,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*"
+		"@fonderie/client": "^3.12.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

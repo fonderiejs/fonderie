@@ -1,4 +1,5 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useMfaLogin } from '@fonderie/vue-auth';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -8,6 +9,8 @@ export const MfaChallengeScreen = defineComponent({
 	name: 'FonderieMfaChallengeScreen',
 	props: {
 		client: { type: Object as PropType<AuthClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 		// The temporary token from a login that returned MFA_REQUIRED.
 		mfaToken: { type: String, required: true },
 	},
@@ -17,6 +20,8 @@ export const MfaChallengeScreen = defineComponent({
 	},
 	setup(props, { emit }) {
 		const { verifyLogin, isLoading, error } = useMfaLogin(props.client);
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const code = ref('');
 
 		async function handleSubmit(event: Event) {
@@ -31,13 +36,13 @@ export const MfaChallengeScreen = defineComponent({
 
 		return () =>
 			h('form', { style: styles.container, onSubmit: handleSubmit }, [
-				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, 'Two-factor authentication'),
-				h('p', { style: styles.body }, 'Enter the 6-digit code from your authenticator app.'),
+				h('h1', { style: [styles.title, { marginBottom: '12px' }] }, t('auth.mfa.title')),
+				h('p', { style: styles.body }, t('auth.mfa.lead')),
 				h('input', {
 					style: styles.input,
 					type: 'text',
 					inputmode: 'numeric',
-					placeholder: '6-digit code',
+					placeholder: t('auth.fields.code'),
 					value: code.value,
 					required: true,
 					autocomplete: 'one-time-code',
@@ -46,17 +51,17 @@ export const MfaChallengeScreen = defineComponent({
 					},
 				}),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				h(
 					'button',
 					{ type: 'submit', disabled: isLoading.value, style: styles.button },
-					isLoading.value ? 'Verifying…' : 'Verify',
+					isLoading.value ? t('auth.mfa.submitting') : t('auth.mfa.submit'),
 				),
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-login') },
-					'Back to sign in',
+					t('auth.backToSignIn'),
 				),
 			]);
 	},

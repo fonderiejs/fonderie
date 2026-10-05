@@ -1,87 +1,87 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.4.4",
-    "adapter-hono": "6.3.2",
-    "adapter-koa": "5.4.5",
-    "admin": "1.7.7",
-    "audit": "5.2.14",
-    "auth": "7.19.2",
-    "billing": "10.4.6",
-    "client": "2.5.0",
-    "config": "6.6.4",
-    "core": "0.28.0",
-    "courier": "7.13.6",
-    "customers": "6.3.3",
-    "events": "5.11.6",
-    "geo": "0.5.9",
-    "logger": "0.3.4",
-    "media": "0.2.28",
-    "permissions": "5.0.32",
-    "rate-limit": "4.0.31",
-    "react": "0.5.1",
-    "react-admin": "1.2.0",
-    "react-admin-screens": "1.7.0",
-    "react-audit": "0.3.1",
-    "react-audit-screens": "0.2.1",
-    "react-auth": "0.11.1",
-    "react-auth-screens": "0.4.1",
-    "react-billing": "0.9.1",
-    "react-billing-screens": "0.3.2",
-    "react-config-admin": "0.3.2",
-    "react-config-admin-screens": "0.8.0",
-    "react-courier-admin": "0.5.1",
-    "react-courier-admin-screens": "0.11.0",
-    "react-customers": "0.4.1",
-    "react-customers-screens": "0.2.1",
-    "react-media": "0.1.0",
-    "react-native-audit": "0.1.1",
-    "react-native-audit-screens": "0.2.1",
-    "react-native-auth": "0.12.1",
-    "react-native-auth-screens": "0.4.1",
-    "react-native-billing": "0.2.3",
-    "react-native-billing-screens": "0.3.2",
-    "react-native-customers": "0.1.1",
-    "react-native-customers-screens": "0.2.1",
-    "react-native-media": "0.1.0",
-    "react-native-webhooks": "0.1.1",
-    "react-native-webhooks-screens": "0.3.1",
-    "react-native-workspaces": "0.1.1",
-    "react-native-workspaces-screens": "0.4.1",
-    "react-webhooks": "0.4.1",
-    "react-webhooks-screens": "0.3.1",
-    "react-workspaces": "0.6.1",
-    "react-workspaces-screens": "0.4.1",
-    "risk": "0.3.6",
-    "sse": "0.2.5",
-    "storage": "0.1.27",
+    "adapter-express": "5.4.9",
+    "adapter-hono": "6.3.7",
+    "adapter-koa": "5.4.10",
+    "admin": "1.7.11",
+    "audit": "5.2.17",
+    "auth": "7.22.1",
+    "billing": "10.8.1",
+    "client": "3.13.0",
+    "config": "6.6.7",
+    "core": "0.31.0",
+    "courier": "7.15.0",
+    "customers": "6.5.2",
+    "events": "5.12.3",
+    "geo": "0.5.12",
+    "logger": "0.3.8",
+    "media": "0.3.4",
+    "permissions": "5.1.3",
+    "rate-limit": "4.1.0",
+    "react": "0.11.0",
+    "react-admin": "1.2.2",
+    "react-admin-screens": "1.7.2",
+    "react-audit": "0.4.2",
+    "react-audit-screens": "0.3.1",
+    "react-auth": "0.11.9",
+    "react-auth-screens": "0.5.1",
+    "react-billing": "0.11.4",
+    "react-billing-screens": "0.4.1",
+    "react-config-admin": "0.3.4",
+    "react-config-admin-screens": "0.8.2",
+    "react-courier-admin": "0.5.3",
+    "react-courier-admin-screens": "0.11.2",
+    "react-customers": "0.6.2",
+    "react-customers-screens": "0.3.1",
+    "react-media": "0.2.8",
+    "react-native-audit": "0.1.4",
+    "react-native-audit-screens": "0.3.1",
+    "react-native-auth": "0.13.6",
+    "react-native-auth-screens": "0.5.1",
+    "react-native-billing": "0.2.7",
+    "react-native-billing-screens": "0.4.1",
+    "react-native-customers": "0.1.5",
+    "react-native-customers-screens": "0.3.1",
+    "react-native-media": "0.1.3",
+    "react-native-webhooks": "0.1.4",
+    "react-native-webhooks-screens": "0.4.1",
+    "react-native-workspaces": "0.1.6",
+    "react-native-workspaces-screens": "0.5.1",
+    "react-webhooks": "0.5.2",
+    "react-webhooks-screens": "0.4.1",
+    "react-workspaces": "0.9.2",
+    "react-workspaces-screens": "0.5.1",
+    "risk": "0.3.9",
+    "sse": "0.2.8",
+    "storage": "0.1.30",
     "store": "0.7.2",
-    "vue": "0.5.1",
-    "vue-admin": "1.2.0",
-    "vue-admin-screens": "1.7.0",
-    "vue-audit": "0.4.1",
-    "vue-audit-screens": "0.2.1",
-    "vue-auth": "0.12.1",
-    "vue-auth-screens": "0.4.1",
-    "vue-billing": "0.10.1",
-    "vue-billing-screens": "0.3.2",
-    "vue-config-admin": "0.3.2",
-    "vue-config-admin-screens": "0.8.0",
-    "vue-courier-admin": "0.5.1",
-    "vue-courier-admin-screens": "0.11.0",
-    "vue-customers": "0.5.1",
-    "vue-customers-screens": "0.2.1",
-    "vue-media": "0.1.0",
-    "vue-webhooks": "0.5.1",
-    "vue-webhooks-screens": "0.3.1",
-    "vue-workspaces": "0.7.1",
-    "vue-workspaces-screens": "0.4.1",
-    "webhooks": "6.0.5",
-    "workspaces": "6.1.7"
+    "vue": "0.11.0",
+    "vue-admin": "1.2.2",
+    "vue-admin-screens": "1.7.2",
+    "vue-audit": "0.5.2",
+    "vue-audit-screens": "0.3.1",
+    "vue-auth": "0.12.9",
+    "vue-auth-screens": "0.5.1",
+    "vue-billing": "0.12.4",
+    "vue-billing-screens": "0.4.1",
+    "vue-config-admin": "0.3.4",
+    "vue-config-admin-screens": "0.8.2",
+    "vue-courier-admin": "0.5.3",
+    "vue-courier-admin-screens": "0.11.2",
+    "vue-customers": "0.7.2",
+    "vue-customers-screens": "0.3.1",
+    "vue-media": "0.2.8",
+    "vue-webhooks": "0.6.2",
+    "vue-webhooks-screens": "0.4.1",
+    "vue-workspaces": "0.10.2",
+    "vue-workspaces-screens": "0.5.1",
+    "webhooks": "6.0.8",
+    "workspaces": "6.7.0"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.4.4",
+      "version": "5.4.9",
       "stability": "stable",
       "requires": [
         "core",
@@ -104,7 +104,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.3.2",
+      "version": "6.3.7",
       "stability": "stable",
       "requires": [
         "core",
@@ -127,7 +127,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.4.5",
+      "version": "5.4.10",
       "stability": "stable",
       "requires": [
         "core",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.7.7",
+      "version": "1.7.11",
       "stability": "experimental",
       "requires": [
         "core",
@@ -317,7 +317,7 @@
       "hasOutcomes": true
     },
     "audit": {
-      "version": "5.2.14",
+      "version": "5.2.17",
       "stability": "stable",
       "requires": [
         "core",
@@ -351,7 +351,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.19.2",
+      "version": "7.22.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -386,12 +386,12 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 38,
+      "routeCount": 39,
       "routes": [
         {
           "method": "GET",
           "path": "/_admin/users",
-          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; const email = params.get('email')?.trim().toLowerCase(); if (email) { const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); } const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const deleted = params.get('deleted') === '1' || params.get('deleted') === 'true'; const page = await users.list({ limit, ...(cursor ? { cursor } : {}), ...(deleted ? { deleted } : {}), }); return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page)); }"
+          "mw": "async (ctx) => { const params = new URL(ctx.request.url).searchParams; // Accounts are stored under normalizeEmail: a search for the address a // user typed ('Jane+work@x.com') finds the account ('jane@x.com'). const raw = params.get('email')?.trim(); const email = raw ? normalizeEmailSafe(raw) ?? raw.toLowerCase() : undefined; if (email) { const user = await users.findByEmail(email); return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND(); } const rawLimit = Number(params.get('limit') ?? 50); const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 200) : 50; const cursorParam = params.get('cursor'); const cursor = cursorParam ? decodeLoginCursor(cursorParam) : null; if (cursorParam && !cursor) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor'); const deleted = params.get('deleted') === '1' || params.get('deleted') === 'true'; const page = await users.list({ limit, ...(cursor ? { cursor } : {}), ...(deleted ? { deleted } : {}), }); return setApiResponse(HTTP.OK, 'USERS', 'Users', toAdminUserPageDTO(page)); }"
         },
         {
           "method": "GET",
@@ -460,6 +460,11 @@
         },
         {
           "method": "POST",
+          "path": "/auth/google/native",
+          "mw": "ipLimit('login') → validate(googleNativeSchema) → oauth.googleNative"
+        },
+        {
+          "method": "POST",
           "path": "/auth/login",
           "mw": "ipLimit('login') → validate(loginSchema) → acctLimit('login') → auth.login"
         },
@@ -491,7 +496,7 @@
         {
           "method": "POST",
           "path": "/auth/mfa/verify",
-          "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLogin → requireVerified → validate(mfaTokenSchema) → mfa.verify"
+          "mw": "ipLimit('mfaVerify') → requireAnyAuth → requireEmailLoginUnlessSigningIn → requireVerified → validate(mfaTokenSchema) → mfa.verify"
         },
         {
           "method": "DELETE",
@@ -589,7 +594,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.4.6",
+      "version": "10.8.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -632,6 +637,7 @@
         "fonderie_plans",
         "fonderie_subscription_trials",
         "fonderie_subscriptions",
+        "fonderie_usage_counters",
         "fonderie_usage_records",
         "fonderie_wallet_balances",
         "fonderie_wallet_customers",
@@ -799,7 +805,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "2.5.0",
+      "version": "3.13.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -824,7 +830,11 @@
         "ConfigClient",
         "SseClient",
         "ADMIN_LOCALES",
-        "DEFAULT_ADMIN_LOCALE"
+        "DEFAULT_ADMIN_LOCALE",
+        "QueryStore",
+        "UI_DICTIONARIES",
+        "UI_LANGUAGES",
+        "UiLocale"
       ],
       "subpaths": [],
       "tables": [],
@@ -835,7 +845,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "6.6.4",
+      "version": "6.6.7",
       "stability": "stable",
       "requires": [
         "core",
@@ -939,12 +949,13 @@
       "hasOutcomes": true
     },
     "core": {
-      "version": "0.28.0",
+      "version": "0.31.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
       "exports": [
         "OPERATIONS",
+        "COURIER_FORMAT_KEY",
         "FonderieApp",
         "DEFAULT_MAX_BODY_BYTES",
         "DEFAULT_SYSTEM_LOCALE",
@@ -962,6 +973,7 @@
         "@fonderie/core/types",
         "@fonderie/core/middlewares",
         "@fonderie/core/parser",
+        "@fonderie/core/region",
         "@fonderie/core/response",
         "@fonderie/core/env.json"
       ],
@@ -989,7 +1001,7 @@
       "hasOutcomes": true
     },
     "courier": {
-      "version": "7.13.6",
+      "version": "7.15.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1091,7 +1103,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.3.3",
+      "version": "6.5.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -1127,7 +1139,7 @@
         "fonderie_customer_tags",
         "fonderie_customers"
       ],
-      "routeCount": 35,
+      "routeCount": 37,
       "routes": [
         {
           "method": "GET",
@@ -1178,6 +1190,11 @@
           "method": "PUT",
           "path": "/customers/:customerId/addresses/:addrId/primary",
           "mw": "requireAuth → wsCtx → address.setPrimary"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/:customerId/archive",
+          "mw": "requireAuth → wsCtx → customer.archive"
         },
         {
           "method": "POST",
@@ -1291,6 +1308,11 @@
         },
         {
           "method": "POST",
+          "path": "/customers/:customerId/unarchive",
+          "mw": "requireAuth → wsCtx → customer.unarchive"
+        },
+        {
+          "method": "POST",
           "path": "/customers/:customerId/unblacklist",
           "mw": "requireAuth → wsCtx → customer.unblacklist"
         },
@@ -1313,7 +1335,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.11.6",
+      "version": "5.12.3",
       "stability": "maturing",
       "requires": [
         "core",
@@ -1341,7 +1363,7 @@
       "hasOutcomes": true
     },
     "geo": {
-      "version": "0.5.9",
+      "version": "0.5.12",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1367,7 +1389,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.3.4",
+      "version": "0.3.8",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [
@@ -1392,7 +1414,7 @@
       "hasOutcomes": false
     },
     "media": {
-      "version": "0.2.28",
+      "version": "0.3.4",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1420,7 +1442,7 @@
         {
           "method": "POST",
           "path": "/media",
-          "mw": "requireAuth → async (ctx) => { const userId = ctx.user!.id; const body = (ctx.meta['body'] ?? {}) as { dataBase64?: unknown; ownerType?: unknown; ownerId?: unknown; purpose?: unknown; }; if (typeof body.dataBase64 !== 'string' || body.dataBase64.length === 0) { return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 (a base64 string) is required.', ); } // Reject oversized uploads BEFORE decoding — base64 inflates ~4/3, so a // string longer than maxBytes*1.4 cannot fit the cap. Bounds the decode // allocation instead of materializing a huge buffer only to reject it. // (A request-body-size limit at the adapter is the complementary guard.) if (body.dataBase64.length > Math.ceil(maxBytes * 1.4)) { return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`, ); } let bytes: Uint8Array; try { bytes = decodeBase64(body.dataBase64); } catch { return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 is not valid base64.', ); } if (bytes.byteLength === 0) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'The image is empty.'); } if (bytes.byteLength > maxBytes) { return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`, ); } const contentType = sniffImageType(bytes); if (!contentType || !allowed.includes(contentType)) { return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_UNSUPPORTED', `Unsupported image type. Allowed: ${allowed.join(', ')}.`, ); } const ownerType = typeof body.ownerType === 'string' ? body.ownerType : 'user'; const ownerId = typeof body.ownerId === 'string' ? body.ownerId : userId; const purpose = typeof body.purpose === 'string' ? body.purpose : 'avatar'; // Authorize the target owner. Default policy: self-owned user assets // only; a consumer opts into other owners (workspace logos, customer // photos) via config.authorizeOwner. const authorized = config.authorizeOwner ? await config.authorizeOwner(ctx, { ownerType, ownerId }) : ownerType === 'user' && ownerId === userId; if (!authorized) { return setApiResponse( HTTP.FORBIDDEN, 'FORBIDDEN', 'Not allowed to upload for that owner.', ); } const { ref } = await config.provider.put({ bytes, contentType }); let asset: Awaited<ReturnType<typeof assets.create>>; try { asset = await assets.create({ ownerType, ownerId, purpose, contentType, byteSize: bytes.byteLength, storageRef: ref, createdBy: userId, }); } catch (err) { // Metadata insert failed — don't orphan the bytes we just stored. await config.provider.delete(ref).catch(() => {}); throw err; } // Build the URL at whatever prefix this route is mounted under // (e.g. '/v1/media/:id'), derived from the request path. // Normalize first: '/v1/media/' must still yield the '/v1' basePath. const basePath = normalizeRequestPath(new URL(ctx.request.url).pathname).replace( /\\/media$/, '', ); return setApiResponse(HTTP.OK, 'ASSET_CREATED', 'Asset uploaded.', { asset: toMediaAssetDTO(asset, basePath), }); }"
+          "mw": "requireAuth → async (ctx) => { const userId = ctx.user!.id; const body = (ctx.meta['body'] ?? {}) as { dataBase64?: unknown; ownerType?: unknown; ownerId?: unknown; purpose?: unknown; }; if (typeof body.dataBase64 !== 'string' || body.dataBase64.length === 0) { return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 (a base64 string) is required.', ); } // Reject oversized uploads BEFORE decoding — base64 inflates ~4/3, so a // string longer than maxBytes*1.4 cannot fit the cap. Bounds the decode // allocation instead of materializing a huge buffer only to reject it. // (A request-body-size limit at the adapter is the complementary guard.) if (body.dataBase64.length > Math.ceil(maxBytes * 1.4)) { return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`, // Values for a client that writes the message in its own language. { maxBytes, maxMegabytes: Math.round((maxBytes / 1_048_576) * 10) / 10 }, ); } let bytes: Uint8Array; try { bytes = decodeBase64(body.dataBase64); } catch { return setApiResponse( HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'dataBase64 is not valid base64.', ); } if (bytes.byteLength === 0) { return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'The image is empty.'); } if (bytes.byteLength > maxBytes) { return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_TOO_LARGE', `Image exceeds the ${maxBytes}-byte limit.`, // Values for a client that writes the message in its own language. { maxBytes, maxMegabytes: Math.round((maxBytes / 1_048_576) * 10) / 10 }, ); } const contentType = sniffImageType(bytes); if (!contentType || !allowed.includes(contentType)) { // Say what arrived, not only what is allowed: a HEIC photo and // a double-encoded JPEG fail the same way and are fixed // differently. const why = describeRejectedImage(bytes); return setApiResponse( HTTP.UNPROCESSABLE, 'ASSET_UNSUPPORTED', `Unsupported image type.${why ? ` ${why}` : ''} Allowed: ${allowed.join(', ')}.`, { allowed: allowed.map((t) => t.replace('image/', '').toUpperCase()).join(', ') }, ); } const ownerType = typeof body.ownerType === 'string' ? body.ownerType : 'user'; const ownerId = typeof body.ownerId === 'string' ? body.ownerId : userId; const purpose = typeof body.purpose === 'string' ? body.purpose : 'avatar'; // Authorize the target owner. Default policy: self-owned user assets // only; a consumer opts into other owners (workspace logos, customer // photos) via config.authorizeOwner. const authorized = config.authorizeOwner ? await config.authorizeOwner(ctx, { ownerType, ownerId }) : ownerType === 'user' && ownerId === userId; if (!authorized) { return setApiResponse( HTTP.FORBIDDEN, 'FORBIDDEN', 'Not allowed to upload for that owner.', ); } const { ref } = await config.provider.put({ bytes, contentType }); let asset: Awaited<ReturnType<typeof assets.create>>; try { asset = await assets.create({ ownerType, ownerId, purpose, contentType, byteSize: bytes.byteLength, storageRef: ref, createdBy: userId, }); } catch (err) { // Metadata insert failed — don't orphan the bytes we just stored. await config.provider.delete(ref).catch(() => {}); throw err; } // Build the URL at whatever prefix this route is mounted under // (e.g. '/v1/media/:id'), derived from the request path. // Normalize first: '/v1/media/' must still yield the '/v1' basePath. const basePath = normalizeRequestPath(new URL(ctx.request.url).pathname).replace( /\\/media$/, '', ); return setApiResponse(HTTP.OK, 'ASSET_CREATED', 'Asset uploaded.', { asset: toMediaAssetDTO(asset, basePath), }); }"
         },
         {
           "method": "DELETE",
@@ -1440,7 +1462,7 @@
       "hasOutcomes": true
     },
     "permissions": {
-      "version": "5.0.32",
+      "version": "5.1.3",
       "stability": "stable",
       "requires": [
         "core",
@@ -1471,7 +1493,7 @@
       "hasOutcomes": true
     },
     "rate-limit": {
-      "version": "4.0.31",
+      "version": "4.1.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1497,7 +1519,7 @@
       "hasOutcomes": true
     },
     "react": {
-      "version": "0.5.1",
+      "version": "0.11.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1507,9 +1529,17 @@
         "FonderieProvider",
         "useFonderieClient",
         "useFonderieSubClient",
+        "useWorkspaceId",
+        "useUiError",
+        "useUiLocale",
+        "useUiT",
+        "useClientQuery",
+        "usePagedQuery",
         "useRemoteConfig",
+        "useScopedQuery",
         "useSse",
-        "useSseStatus"
+        "useSseStatus",
+        "useWrite"
       ],
       "subpaths": [],
       "tables": [],
@@ -1520,7 +1550,7 @@
       "hasOutcomes": false
     },
     "react-admin": {
-      "version": "1.2.0",
+      "version": "1.2.2",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -1559,7 +1589,7 @@
       "hasOutcomes": false
     },
     "react-admin-screens": {
-      "version": "1.7.0",
+      "version": "1.7.2",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -1594,7 +1624,7 @@
       "hasOutcomes": false
     },
     "react-audit": {
-      "version": "0.3.1",
+      "version": "0.4.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1614,11 +1644,12 @@
       "hasOutcomes": false
     },
     "react-audit-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-audit"
       ],
       "exports": [
@@ -1633,7 +1664,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.11.1",
+      "version": "0.11.9",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1669,11 +1700,12 @@
       "hasOutcomes": false
     },
     "react-auth-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-auth"
       ],
       "exports": [
@@ -1693,7 +1725,7 @@
       "hasOutcomes": false
     },
     "react-billing": {
-      "version": "0.9.1",
+      "version": "0.11.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1730,11 +1762,12 @@
       "hasOutcomes": false
     },
     "react-billing-screens": {
-      "version": "0.3.2",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-billing"
       ],
       "exports": [
@@ -1750,7 +1783,7 @@
       "hasOutcomes": false
     },
     "react-config-admin": {
-      "version": "0.3.2",
+      "version": "0.3.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1776,7 +1809,7 @@
       "hasOutcomes": false
     },
     "react-config-admin-screens": {
-      "version": "0.8.0",
+      "version": "0.8.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1796,7 +1829,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin": {
-      "version": "0.5.1",
+      "version": "0.5.3",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1822,7 +1855,7 @@
       "hasOutcomes": false
     },
     "react-courier-admin-screens": {
-      "version": "0.11.0",
+      "version": "0.11.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1843,7 +1876,7 @@
       "hasOutcomes": false
     },
     "react-customers": {
-      "version": "0.4.1",
+      "version": "0.6.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1871,11 +1904,12 @@
       "hasOutcomes": false
     },
     "react-customers-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-customers"
       ],
       "exports": [
@@ -1891,7 +1925,7 @@
       "hasOutcomes": false
     },
     "react-media": {
-      "version": "0.1.0",
+      "version": "0.2.8",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1913,7 +1947,7 @@
       "hasOutcomes": false
     },
     "react-native-audit": {
-      "version": "0.1.1",
+      "version": "0.1.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1930,11 +1964,12 @@
       "hasOutcomes": false
     },
     "react-native-audit-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-audit"
       ],
       "exports": [
@@ -1949,7 +1984,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.12.1",
+      "version": "0.13.6",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1961,6 +1996,7 @@
         "useForgotPassword",
         "useLogin",
         "useAppleSignIn",
+        "useGoogleSignIn",
         "useLogout",
         "useAccountData",
         "useChangePassword",
@@ -1986,11 +2022,12 @@
       "hasOutcomes": false
     },
     "react-native-auth-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-auth"
       ],
       "exports": [
@@ -2010,7 +2047,7 @@
       "hasOutcomes": false
     },
     "react-native-billing": {
-      "version": "0.2.3",
+      "version": "0.2.7",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2027,11 +2064,12 @@
       "hasOutcomes": false
     },
     "react-native-billing-screens": {
-      "version": "0.3.2",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-billing"
       ],
       "exports": [
@@ -2047,7 +2085,7 @@
       "hasOutcomes": false
     },
     "react-native-customers": {
-      "version": "0.1.1",
+      "version": "0.1.5",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2064,11 +2102,12 @@
       "hasOutcomes": false
     },
     "react-native-customers-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-customers"
       ],
       "exports": [
@@ -2084,7 +2123,7 @@
       "hasOutcomes": false
     },
     "react-native-media": {
-      "version": "0.1.0",
+      "version": "0.1.3",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2101,7 +2140,7 @@
       "hasOutcomes": false
     },
     "react-native-webhooks": {
-      "version": "0.1.1",
+      "version": "0.1.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2118,11 +2157,12 @@
       "hasOutcomes": false
     },
     "react-native-webhooks-screens": {
-      "version": "0.3.1",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-webhooks"
       ],
       "exports": [
@@ -2138,7 +2178,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces": {
-      "version": "0.1.1",
+      "version": "0.1.6",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2155,11 +2195,12 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-native-workspaces"
       ],
       "exports": [
@@ -2176,7 +2217,7 @@
       "hasOutcomes": false
     },
     "react-webhooks": {
-      "version": "0.4.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2198,11 +2239,12 @@
       "hasOutcomes": false
     },
     "react-webhooks-screens": {
-      "version": "0.3.1",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-webhooks"
       ],
       "exports": [
@@ -2218,7 +2260,7 @@
       "hasOutcomes": false
     },
     "react-workspaces": {
-      "version": "0.6.1",
+      "version": "0.9.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2227,9 +2269,13 @@
       ],
       "exports": [
         "FonderieApiError",
+        "useCurrentWorkspace",
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useCan",
+        "usePermissionCatalog",
+        "usePermissions",
         "useRole",
         "useRolePermissions",
         "useRoles",
@@ -2247,11 +2293,12 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "react",
         "react-workspaces"
       ],
       "exports": [
@@ -2268,7 +2315,7 @@
       "hasOutcomes": false
     },
     "risk": {
-      "version": "0.3.6",
+      "version": "0.3.9",
       "stability": "experimental",
       "requires": [
         "core",
@@ -2294,7 +2341,7 @@
       "hasOutcomes": true
     },
     "sse": {
-      "version": "0.2.5",
+      "version": "0.2.8",
       "stability": "experimental",
       "requires": [
         "core"
@@ -2316,7 +2363,7 @@
       "hasOutcomes": false
     },
     "storage": {
-      "version": "0.1.27",
+      "version": "0.1.30",
       "stability": "experimental",
       "requires": [
         "core",
@@ -2366,7 +2413,7 @@
       "hasOutcomes": false
     },
     "vue": {
-      "version": "0.5.1",
+      "version": "0.11.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2377,9 +2424,17 @@
         "FonderiePlugin",
         "useFonderieClient",
         "useFonderieSubClient",
+        "useWorkspaceId",
+        "useUiError",
+        "useUiLocale",
+        "useUiT",
+        "useClientQuery",
+        "usePagedQuery",
         "useRemoteConfig",
+        "useScopedQuery",
         "useSse",
-        "useSseStatus"
+        "useSseStatus",
+        "useWrite"
       ],
       "subpaths": [],
       "tables": [],
@@ -2390,7 +2445,7 @@
       "hasOutcomes": false
     },
     "vue-admin": {
-      "version": "1.2.0",
+      "version": "1.2.2",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -2429,7 +2484,7 @@
       "hasOutcomes": false
     },
     "vue-admin-screens": {
-      "version": "1.7.0",
+      "version": "1.7.2",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -2464,7 +2519,7 @@
       "hasOutcomes": false
     },
     "vue-audit": {
-      "version": "0.4.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2484,11 +2539,12 @@
       "hasOutcomes": false
     },
     "vue-audit-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-audit"
       ],
       "exports": [
@@ -2503,7 +2559,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.12.1",
+      "version": "0.12.9",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2539,11 +2595,12 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-auth"
       ],
       "exports": [
@@ -2563,7 +2620,7 @@
       "hasOutcomes": false
     },
     "vue-billing": {
-      "version": "0.10.1",
+      "version": "0.12.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2600,11 +2657,12 @@
       "hasOutcomes": false
     },
     "vue-billing-screens": {
-      "version": "0.3.2",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-billing"
       ],
       "exports": [
@@ -2620,7 +2678,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin": {
-      "version": "0.3.2",
+      "version": "0.3.4",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2646,7 +2704,7 @@
       "hasOutcomes": false
     },
     "vue-config-admin-screens": {
-      "version": "0.8.0",
+      "version": "0.8.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2666,7 +2724,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin": {
-      "version": "0.5.1",
+      "version": "0.5.3",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2692,7 +2750,7 @@
       "hasOutcomes": false
     },
     "vue-courier-admin-screens": {
-      "version": "0.11.0",
+      "version": "0.11.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2713,7 +2771,7 @@
       "hasOutcomes": false
     },
     "vue-customers": {
-      "version": "0.5.1",
+      "version": "0.7.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2741,11 +2799,12 @@
       "hasOutcomes": false
     },
     "vue-customers-screens": {
-      "version": "0.2.1",
+      "version": "0.3.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-customers"
       ],
       "exports": [
@@ -2761,7 +2820,7 @@
       "hasOutcomes": false
     },
     "vue-media": {
-      "version": "0.1.0",
+      "version": "0.2.8",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2783,7 +2842,7 @@
       "hasOutcomes": false
     },
     "vue-webhooks": {
-      "version": "0.5.1",
+      "version": "0.6.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2805,11 +2864,12 @@
       "hasOutcomes": false
     },
     "vue-webhooks-screens": {
-      "version": "0.3.1",
+      "version": "0.4.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-webhooks"
       ],
       "exports": [
@@ -2825,7 +2885,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.7.1",
+      "version": "0.10.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2834,9 +2894,13 @@
       ],
       "exports": [
         "FonderieApiError",
+        "useCurrentWorkspace",
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useCan",
+        "usePermissionCatalog",
+        "usePermissions",
         "useRole",
         "useRolePermissions",
         "useRoles",
@@ -2854,11 +2918,12 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.4.1",
+      "version": "0.5.1",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
         "client",
+        "vue",
         "vue-workspaces"
       ],
       "exports": [
@@ -2875,7 +2940,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "6.0.5",
+      "version": "6.0.8",
       "stability": "stable",
       "requires": [
         "core",
@@ -2942,7 +3007,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.1.7",
+      "version": "6.7.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -2970,7 +3035,7 @@
         "fonderie_workspace_invitations",
         "fonderie_workspaces"
       ],
-      "routeCount": 24,
+      "routeCount": 32,
       "routes": [
         {
           "method": "GET",
@@ -2999,6 +3064,16 @@
         },
         {
           "method": "GET",
+          "path": "/workspaces/current",
+          "mw": "requireAuth → wsCtx → workspace.get"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/current/permissions",
+          "mw": "requireAuth → wsCtx → access.mine"
+        },
+        {
+          "method": "GET",
           "path": "/workspaces/invitations",
           "mw": "requireAuth → wsCtx → invitation.list"
         },
@@ -3014,8 +3089,18 @@
         },
         {
           "method": "POST",
+          "path": "/workspaces/invitations/:inviteId/resend",
+          "mw": "requireAuth → wsCtx → manager → invitation.resend"
+        },
+        {
+          "method": "POST",
           "path": "/workspaces/invitations/accept",
           "mw": "acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/leave",
+          "mw": "requireAuth → wsCtx → member.leave"
         },
         {
           "method": "GET",
@@ -3026,6 +3111,16 @@
           "method": "DELETE",
           "path": "/workspaces/members/:userId",
           "mw": "requireAuth → wsCtx → manager → member.remove"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/members/:userId/manager",
+          "mw": "requireAuth → wsCtx → owner → member.unsetManager"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/members/:userId/manager",
+          "mw": "requireAuth → wsCtx → owner → member.setManager"
         },
         {
           "method": "GET",
@@ -3041,6 +3136,11 @@
           "method": "DELETE",
           "path": "/workspaces/members/:userId/roles/:roleId",
           "mw": "requireAuth → wsCtx → manager → member.removeRole"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/permissions/catalog",
+          "mw": "requireAuth → wsCtx → access.catalog"
         },
         {
           "method": "POST",
@@ -3091,6 +3191,11 @@
           "method": "PUT",
           "path": "/workspaces/settings",
           "mw": "requireAuth → wsCtx → manager → validate(updateSettingsSchema) → workspace.updateSettings"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/transfer-ownership",
+          "mw": "requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → member.transferOwnership"
         }
       ],
       "secures": [
@@ -3399,6 +3504,11 @@
     },
     {
       "from": "react-audit-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-audit-screens",
       "to": "react-audit",
       "type": "depends-on"
     },
@@ -3419,6 +3529,11 @@
     },
     {
       "from": "react-auth-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-auth-screens",
       "to": "react-auth",
       "type": "depends-on"
     },
@@ -3435,6 +3550,11 @@
     {
       "from": "react-billing-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-billing-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3489,6 +3609,11 @@
     },
     {
       "from": "react-customers-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-customers-screens",
       "to": "react-customers",
       "type": "depends-on"
     },
@@ -3519,6 +3644,11 @@
     },
     {
       "from": "react-native-audit-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-audit-screens",
       "to": "react-native-audit",
       "type": "depends-on"
     },
@@ -3535,6 +3665,11 @@
     {
       "from": "react-native-auth-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-auth-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3559,6 +3694,11 @@
     },
     {
       "from": "react-native-billing-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-billing-screens",
       "to": "react-native-billing",
       "type": "depends-on"
     },
@@ -3575,6 +3715,11 @@
     {
       "from": "react-native-customers-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-customers-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3609,6 +3754,11 @@
     },
     {
       "from": "react-native-webhooks-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-webhooks-screens",
       "to": "react-native-webhooks",
       "type": "depends-on"
     },
@@ -3625,6 +3775,11 @@
     {
       "from": "react-native-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-native-workspaces-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3649,6 +3804,11 @@
     },
     {
       "from": "react-webhooks-screens",
+      "to": "react",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-webhooks-screens",
       "to": "react-webhooks",
       "type": "depends-on"
     },
@@ -3665,6 +3825,11 @@
     {
       "from": "react-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "react-workspaces-screens",
+      "to": "react",
       "type": "depends-on"
     },
     {
@@ -3744,6 +3909,11 @@
     },
     {
       "from": "vue-audit-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-audit-screens",
       "to": "vue-audit",
       "type": "depends-on"
     },
@@ -3764,6 +3934,11 @@
     },
     {
       "from": "vue-auth-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-auth-screens",
       "to": "vue-auth",
       "type": "depends-on"
     },
@@ -3780,6 +3955,11 @@
     {
       "from": "vue-billing-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-billing-screens",
+      "to": "vue",
       "type": "depends-on"
     },
     {
@@ -3834,6 +4014,11 @@
     },
     {
       "from": "vue-customers-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-customers-screens",
       "to": "vue-customers",
       "type": "depends-on"
     },
@@ -3864,6 +4049,11 @@
     },
     {
       "from": "vue-webhooks-screens",
+      "to": "vue",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-webhooks-screens",
       "to": "vue-webhooks",
       "type": "depends-on"
     },
@@ -3880,6 +4070,11 @@
     {
       "from": "vue-workspaces-screens",
       "to": "client",
+      "type": "depends-on"
+    },
+    {
+      "from": "vue-workspaces-screens",
+      "to": "vue",
       "type": "depends-on"
     },
     {
@@ -5482,6 +5677,18 @@
     "default_admin_locale": [
       "client"
     ],
+    "querystore": [
+      "client"
+    ],
+    "ui_dictionaries": [
+      "client"
+    ],
+    "ui_languages": [
+      "client"
+    ],
+    "uilocale": [
+      "client"
+    ],
     "configmodule": [
       "config"
     ],
@@ -5496,6 +5703,9 @@
     ],
     "configtypechangeerror": [
       "config"
+    ],
+    "courier_format_key": [
+      "core"
     ],
     "fonderieapp": [
       "core"
@@ -5660,7 +5870,35 @@
       "react",
       "vue"
     ],
+    "useworkspaceid": [
+      "react",
+      "vue"
+    ],
+    "useuierror": [
+      "react",
+      "vue"
+    ],
+    "useuilocale": [
+      "react",
+      "vue"
+    ],
+    "useuit": [
+      "react",
+      "vue"
+    ],
+    "useclientquery": [
+      "react",
+      "vue"
+    ],
+    "usepagedquery": [
+      "react",
+      "vue"
+    ],
     "useremoteconfig": [
+      "react",
+      "vue"
+    ],
+    "usescopedquery": [
       "react",
       "vue"
     ],
@@ -5669,6 +5907,10 @@
       "vue"
     ],
     "usessestatus": [
+      "react",
+      "vue"
+    ],
+    "usewrite": [
       "react",
       "vue"
     ],
@@ -6105,6 +6347,9 @@
     "useapplesignin": [
       "react-native-auth"
     ],
+    "usegooglesignin": [
+      "react-native-auth"
+    ],
     "webhookdetailscreen": [
       "react-native-webhooks-screens",
       "react-webhooks-screens",
@@ -6137,6 +6382,22 @@
     "usewebhookendpoint": [
       "react-webhooks",
       "vue-webhooks"
+    ],
+    "usecurrentworkspace": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usecan": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usepermissioncatalog": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usepermissions": [
+      "react-workspaces",
+      "vue-workspaces"
     ],
     "userole": [
       "react-workspaces",

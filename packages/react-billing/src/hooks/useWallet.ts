@@ -1,11 +1,12 @@
-import type { BillingClient, IWalletDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IWalletDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUseWalletReturn {
 	// The balance snapshot. Money fields are digit strings (server bigint →
-	// string); null until the first read resolves or after a failed read.
+	// string); null until the first read resolves. A failed refresh keeps the
+	// last balance shown and reports the error alongside it.
 	wallet: IWalletDTO | null;
 	isLoading: boolean;
 	error: FonderieApiError | null;
@@ -16,32 +17,10 @@ export interface IUseWalletReturn {
 // it reflects the periodic grant withBilling applies on every authed request.
 export function useWallet(client?: BillingClient): IUseWalletReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useWallet');
-	const [wallet, setWallet] = useState<IWalletDTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(
-		async (opts?: { force?: boolean }) => {
-			setIsLoading(true);
-			setError(null);
-			try {
-				const { result } = await billing.getWallet({ bust: opts?.force });
-				setWallet(result.wallet);
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				setWallet(null);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[billing],
+	const q = useBillingQuery<IWalletDTO>(
+		billing,
+		'/billing/wallet',
+		async (bust) => (await billing.getWallet({ bust })).result.wallet,
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { wallet, isLoading, error, refresh };
+	return { wallet: q.data ?? null, isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

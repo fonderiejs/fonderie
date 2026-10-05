@@ -1,11 +1,7 @@
-import type {
-	ICustomerDetailD2DTO,
-	ICustomerDetailDTO,
-	IUpdateCustomerInput,
-} from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, ICustomerDetailD2DTO, ICustomerDetailDTO, IUpdateCustomerInput } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
 
 export interface IUseCustomerReturn {
 	customer: ICustomerDetailDTO | ICustomerDetailD2DTO | null;
@@ -13,6 +9,10 @@ export interface IUseCustomerReturn {
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 	updateCustomer: (input: IUpdateCustomerInput) => Promise<void>;
+	/** Refused with 409 CUSTOMER_IN_USE while a job, quote or invoice references the customer — archive instead. */
+	deleteCustomer: () => Promise<void>;
+	archiveCustomer: () => Promise<void>;
+	unarchiveCustomer: () => Promise<void>;
 }
 
 // depth 2 (default) nests relationships one level deeper than depth 1 — see
@@ -33,48 +33,49 @@ export function useCustomer(
 	const customerId = firstIsClient ? (idOrDepth as string) : clientOrId;
 	const depth = (firstIsClient ? maybeDepth : (idOrDepth as 1 | 2 | undefined)) ?? 2;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomer');
-	const [customer, setCustomer] = useState<ICustomerDetailDTO | ICustomerDetailD2DTO | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.getCustomer(customerId, { depth }, { bust: opts?.force });
-			setCustomer(result);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId, depth]);
-
-	const updateCustomer = useCallback(
-		async (input: IUpdateCustomerInput) => {
-			setError(null);
-			try {
-				await customers.updateCustomer(customerId, input);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+	const q = useScopedQuery<ICustomerDetailDTO | ICustomerDetailD2DTO>(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}${depth === 1 ? '?depth=1' : ''}`,
+		async (bust) => (await customers.getCustomer(customerId, { depth }, { bust })).result,
+		{ enabled: !!customerId },
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
-	return { customer, isLoading, error, refresh, updateCustomer };
+	const w = useWrite(q.refresh);
+	const updateCustomer = useCallback(
+		(input: IUpdateCustomerInput) =>
+			w.run(async () => {
+				await customers.updateCustomer(customerId, input);
+			}),
+		[customers, customerId, w.run],
+	);
+	const deleteCustomer = useCallback(
+		() =>
+			w.run(async () => {
+				await customers.deleteCustomer(customerId);
+			}),
+		[customers, customerId, w.run],
+	);
+	const archiveCustomer = useCallback(
+		() =>
+			w.run(async () => {
+				await customers.archiveCustomer(customerId);
+			}),
+		[customers, customerId, w.run],
+	);
+	const unarchiveCustomer = useCallback(
+		() =>
+			w.run(async () => {
+				await customers.unarchiveCustomer(customerId);
+			}),
+		[customers, customerId, w.run],
+	);
+	return {
+		customer: q.data ?? null,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		updateCustomer,
+		deleteCustomer,
+		archiveCustomer,
+		unarchiveCustomer,
+	};
 }

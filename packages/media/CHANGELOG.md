@@ -1,5 +1,60 @@
 # @fonderie/media
 
+## 0.3.4
+
+### Patch Changes
+
+- 2686f16: Error messages in the reader's language. The screens showed the server's English sentence to everyone; a wrong password now reads « Le courriel ou le mot de passe est incorrect. » for a fr-CA user, 「電子郵件或密碼不正確。」 for zh-TW.
+  
+  - **`localizeApiError(error, locale)`** (client):
+    - English readers keep the server's exact sentence.
+    - Every other language gets the message for the error's reason code, filled from its `details`.
+    - If the code is unknown or a value is missing, they get the generic message for the status, never a half-filled sentence.
+    - An offline failure reads "couldn't reach the server" in every language, instead of "TypeError: Failed to fetch".
+    - Covers 57 user-facing reason codes (sign-in, teams, billing, customers, uploads) plus 12 generic messages, in en/fr/es/zh-Hans/zh-Hant.
+  - **`useUiError(source?, locale?)`** in `@fonderie/react` and `@fonderie/vue` returns that function in the app's UI language, following `setLocale()`.
+  - **Every prebuilt screen** (all 18 packages) shows errors through it.
+  - **Server:** `PLAN_UNCHANGED` (`plan`, `interval`), `FEATURE_UNAVAILABLE` (`feature`), `ASSET_TOO_LARGE` (`maxBytes`, `maxMegabytes`) and `ASSET_UNSUPPORTED` (`allowed`) now send their values in `details`, like the other messages that name a value. The English sentences are unchanged.
+
+## 0.3.3
+
+### Patch Changes
+
+- Updated dependencies [4aca9ac]
+  - @fonderie/core@0.31.0
+
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [7ec4d32]
+  - @fonderie/core@0.30.0
+
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [3f521bc]
+  - @fonderie/core@0.29.0
+
+## 0.3.0
+
+### Minor Changes
+
+- ad560bd: **Image uploads from phones.** A JPEG picked on Android was refused with "Unsupported image type."
+  
+  **The hooks now take the image as base64.** `uploadAvatar` and `upload` accept `{ base64 }`, as a raw payload or a `data:` URL, as well as a Blob.
+  - Use base64 on React Native. Pickers return it directly: expo-image-picker with `base64: true`, or expo-image-manipulator.
+  - Turning a file URI into a Blob there goes through fetch, the native blob store and FileReader. That chain can hand the server bytes that are not the image.
+  - `MediaInput` is exported.
+  
+  **`@fonderie/media`:**
+  - A rejected upload now says what arrived, not only what is allowed:
+    - "This is a HEIC/HEIF photo (what phones save by default): convert it to JPEG before uploading."
+    - "The image was base64-encoded twice."
+    - "The payload is a data: URL."
+  - HEIC/HEIF and AVIF are recognised by their bytes. They are still refused by default, since most browsers can't display HEIC. A deployment can opt in through `allowedTypes`.
+
 ## 0.2.28
 
 ### Patch Changes

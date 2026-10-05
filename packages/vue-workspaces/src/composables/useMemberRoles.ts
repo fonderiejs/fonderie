@@ -1,8 +1,8 @@
-import type { IRoleDTO } from '@fonderie/client';
-import { FonderieApiError, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import type { FonderieApiError, IRoleDTO } from '@fonderie/client';
+import { WorkspacesClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseMemberRolesReturn {
 	roles: Ref<IRoleDTO[]>;
@@ -12,6 +12,8 @@ export interface IUseMemberRolesReturn {
 	addRole: (roleId: string) => Promise<void>;
 	removeRole: (roleId: string) => Promise<void>;
 }
+
+const NONE: IRoleDTO[] = [];
 
 export function useMemberRoles(userId: MaybeRefOrGetter<string>): IUseMemberRolesReturn;
 export function useMemberRoles(
@@ -26,56 +28,27 @@ export function useMemberRoles(
 	const explicit = firstIsClient ? (clientOrId as WorkspacesClient | undefined) : undefined;
 	const userId = firstIsClient ? (maybeId as MaybeRefOrGetter<string>) : clientOrId;
 	const workspaces = useFonderieSubClient(explicit, (c) => c.workspaces, 'useMemberRoles');
-	const roles = ref<IRoleDTO[]>([]);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await workspaces.getMemberRoles(toValue(userId), { bust: opts?.force });
-			roles.value = result.roles;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function addRole(roleId: string) {
-		error.value = null;
-		try {
-			await workspaces.addMemberRole(toValue(userId), roleId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function removeRole(roleId: string) {
-		error.value = null;
-		try {
-			await workspaces.removeMemberRole(toValue(userId), roleId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	watch(
-		() => toValue(userId),
-		() => void refresh(),
+	// The key follows the id: a new id reads that entry.
+	const q = useScopedQuery(
+		workspaces,
+		() => `/workspaces/members/${encodeURIComponent(toValue(userId))}/roles`,
+		async (bust) => (await workspaces.getMemberRoles(toValue(userId), { bust })).result.roles,
+		// No id yet (a screen still resolving it): wait, don't request '/…/'.
+		{ enabled: () => !!toValue(userId) },
 	);
-
-	return { roles, isLoading, error, refresh, addRole, removeRole };
+	const w = useWrite(() => q.refresh());
+	return {
+		roles: computed(() => q.data.value ?? NONE),
+		isLoading: q.isLoading,
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		addRole: (roleId) =>
+			w.run(async () => {
+				await workspaces.addMemberRole(toValue(userId), roleId);
+			}),
+		removeRole: (roleId) =>
+			w.run(async () => {
+				await workspaces.removeMemberRole(toValue(userId), roleId);
+			}),
+	};
 }

@@ -9,7 +9,7 @@ import type { SubscriberType } from '../types';
 import type { INormalizedPaymentFailure, INormalizedReversal } from '../providers/types';
 import { WalletModel } from '../models/wallet.model';
 import { DuplicateTransactionError } from '../errors';
-import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
+import { normalizeCurrency, subscriberEventFields, formatWalletAmount, localizedAmounts } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { buildReceiptData } from '../services/receipt';
 import { upsertWalletCustomer } from '../services/wallet-customers';
@@ -179,6 +179,10 @@ export function paymentWebhookController(
 						sub.currency,
 						config.wallet?.precision ?? 2,
 					),
+					...localizedAmounts({
+						creditsDisplay: { amount: result.reversed, currency: sub.currency, precision: config.wallet?.precision ?? 2 },
+						balanceAfterDisplay: { amount: result.balance, currency: sub.currency, precision: config.wallet?.precision ?? 2 },
+					}),
 					kind: reversal.kind,
 					refundAmount: reversal.amount?.toString() ?? null,
 					refundCurrency: reversal.currency,
@@ -242,13 +246,14 @@ export function paymentWebhookController(
 			// Deliberately NOT falling back to the subscription webhook's secret:
 			// per-endpoint secrets exist so a delivery captured for one endpoint
 			// can never replay validly against the other.
-			const event = await readWebhookEvent(
+			const read = await readWebhookEvent(
 				ctx,
 				config.wallet?.webhookSecret,
 				config.provider,
 				'Payment webhook secret not configured — set wallet.webhookSecret',
 			);
-			if (event instanceof Response) return event;
+			if (!read.ok) return read.response;
+			const event = read.event;
 			warnOnUnconsumedEvent(event.type, 'POST /billing/webhook/payment', PAYMENT_WEBHOOK_EVENTS);
 
 			// Refund/chargeback events carry no event.payment and would otherwise

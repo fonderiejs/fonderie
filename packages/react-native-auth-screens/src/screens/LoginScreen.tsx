@@ -1,5 +1,6 @@
 import type { AuthClient, ILoginResult } from '@fonderie/client';
 import { isMfaRequired } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useLogin } from '@fonderie/react-native-auth';
 import { useState } from 'react';
 import {
@@ -18,6 +19,8 @@ export interface ILoginScreenProps {
 	onMfaRequired?: (mfaToken: string) => void;
 	onNavigateToRegister?: () => void;
 	onNavigateToForgotPassword?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function LoginScreen({
@@ -26,8 +29,11 @@ export function LoginScreen({
 	onMfaRequired,
 	onNavigateToRegister,
 	onNavigateToForgotPassword,
+	locale,
 }: ILoginScreenProps) {
 	const { login, isLoading, error } = useLogin(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
@@ -46,32 +52,32 @@ export function LoginScreen({
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Sign In</Text>
+			<Text style={styles.title}>{t('auth.login.title')}</Text>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Email"
+				placeholder={t('auth.fields.email')}
 				value={email}
 				onChangeText={setEmail}
 				autoCapitalize="none"
 				keyboardType="email-address"
-				accessibilityLabel="Email input"
-				accessibilityHint="Enter your email address"
+				accessibilityLabel={t('auth.login.a11y.email')}
+				accessibilityHint={t('auth.login.a11y.emailHint')}
 			/>
 
 			<TextInput
 				style={styles.input}
-				placeholder="Password"
+				placeholder={t('auth.fields.password')}
 				value={password}
 				onChangeText={setPassword}
 				secureTextEntry
-				accessibilityLabel="Password input"
-				accessibilityHint="Enter your password"
+				accessibilityLabel={t('auth.login.a11y.password')}
+				accessibilityHint={t('auth.login.a11y.passwordHint')}
 			/>
 
 			{error && (
 				<Text style={styles.error} accessibilityRole="alert">
-					{error.explanation}
+					{errorText(error)}
 				</Text>
 			)}
 
@@ -79,23 +85,23 @@ export function LoginScreen({
 				onPress={handleSubmit}
 				disabled={isLoading}
 				style={styles.button}
-				accessibilityLabel="Sign in button"
+				accessibilityLabel={t('auth.login.a11y.submit')}
 				accessibilityRole="button"
 			>
 				{isLoading ? (
 					<ActivityIndicator color="#fff" />
 				) : (
-					<Text style={styles.buttonText}>Sign In</Text>
+					<Text style={styles.buttonText}>{t('auth.login.submit')}</Text>
 				)}
 			</TouchableOpacity>
 
 			<TouchableOpacity onPress={onNavigateToForgotPassword}>
-				<Text style={styles.link}>Forgot password?</Text>
+				<Text style={styles.link}>{t('auth.login.forgotPassword')}</Text>
 			</TouchableOpacity>
 
 			<TouchableOpacity onPress={onNavigateToRegister}>
 				<Text style={styles.link}>
-					Don't have an account? <Text style={styles.linkBold}>Sign up</Text>
+					{t('auth.login.noAccount')} <Text style={styles.linkBold}>{t('auth.login.signUp')}</Text>
 				</Text>
 			</TouchableOpacity>
 		</View>

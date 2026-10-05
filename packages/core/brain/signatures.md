@@ -4,7 +4,7 @@
 
 ## @fonderie/core
 
-Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/response`, `@fonderie/core/env.json`
+Subpath exports: `@fonderie/core/config`, `@fonderie/core/types`, `@fonderie/core/middlewares`, `@fonderie/core/parser`, `@fonderie/core/region`, `@fonderie/core/response`, `@fonderie/core/env.json`
 
 ```ts
 interface IAdminCheck {
@@ -123,6 +123,7 @@ interface IFonderieContext {
 interface ICourierMessage {
     type: string;
     locale?: string;
+    fallbackLocale?: string;
     recipient: {
         email: string | null;
         phone: string | null;
@@ -160,6 +161,7 @@ interface IFonderieContextMeta {
     userId?: string;
     userWorkspaceRoles?: string[];
     message?: ICourierMessage;
+    bridged?: Readonly<IFonderieContextMeta>;
     [key: string]: unknown;
 }
 
@@ -193,6 +195,19 @@ interface ISecurityReport {
 }
 
 const OPERATIONS: { readonly CREATE: "create"; readonly READ: "read"; readonly UPDATE: "update"; readonly DELETE: "delete"; }
+
+const COURIER_FORMAT_KEY: "$format"
+
+type ICourierFormatValue = {
+    money: {
+        amount: string;
+        currency: string;
+        precision: number;
+    };
+} | {
+    date: string;
+    style?: 'short' | 'medium' | 'long' | 'full';
+};
 
 function background(work: Promise<unknown> | undefined, options?: { settles?: boolean; }): Promise<void>
 
@@ -251,6 +266,10 @@ function defineLocales(config?: ILocaleConfig): ILocaleSettings
 function localeChain(requested: string | null | undefined, settings: ILocaleSettings): string[]
 
 function localeLanguage(tag: string): string
+
+function localeCopyKeys(tag: string): string[]
+
+function localeScriptTag(tag: string): string | null
 
 const SHIPPED_TEMPLATE_LANGUAGES: readonly string[]
 

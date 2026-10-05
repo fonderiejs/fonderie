@@ -1,7 +1,9 @@
-import type { IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IAddPhoneInput, ICustomerPhoneDTO } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
+
+import type { ICustomerSectionOptions } from './section-options';
 
 export interface IUseCustomerPhonesReturn {
 	phones: ICustomerPhoneDTO[];
@@ -14,119 +16,65 @@ export interface IUseCustomerPhonesReturn {
 	removePhone: (phoneId: string) => Promise<void>;
 }
 
-export function useCustomerPhones(customerId: string): IUseCustomerPhonesReturn;
+const NONE: ICustomerPhoneDTO[] = [];
+
+// One customer's phones: shown at once when seen before, refreshed behind
+// what is shown; any write under /customers marks it stale everywhere.
+export function useCustomerPhones(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn;
 export function useCustomerPhones(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerPhonesReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerPhones');
-	const [phones, setPhones] = useState<ICustomerPhoneDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.listPhones(customerId, { bust: opts?.force });
-			setPhones(result.phones);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId]);
-
+	const q = useScopedQuery(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}/phones`,
+		async (bust) => (await customers.listPhones(customerId, { bust })).result.phones,
+		// Nothing to read until there is a customer.
+		{ enabled: !!customerId && read },
+	);
+	const w = useWrite(q.refresh);
 	const addPhone = useCallback(
-		async (input: IAddPhoneInput) => {
-			setError(null);
-			try {
-				const { result } = await customers.addPhone(customerId, input);
-				await refresh();
-				return result.phone;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+		(input: IAddPhoneInput) =>
+			w.run(async () => (await customers.addPhone(customerId, input)).result.phone),
+		[customers, customerId, w.run],
 	);
-
 	const updatePhoneLabel = useCallback(
-		async (phoneId: string, label: string) => {
-			setError(null);
-			try {
+		(phoneId: string, label: string) =>
+			w.run(async () => {
 				await customers.updatePhoneLabel(customerId, phoneId, label);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const setPrimaryPhone = useCallback(
-		async (phoneId: string) => {
-			setError(null);
-			try {
+		(phoneId: string) =>
+			w.run(async () => {
 				await customers.setPrimaryPhone(customerId, phoneId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const removePhone = useCallback(
-		async (phoneId: string) => {
-			setError(null);
-			try {
+		(phoneId: string) =>
+			w.run(async () => {
 				await customers.removePhone(customerId, phoneId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
 	return {
-		phones,
-		isLoading,
-		error,
-		refresh,
-		addPhone,
-		updatePhoneLabel,
-		setPrimaryPhone,
-		removePhone,
+		phones: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		addPhone, updatePhoneLabel, setPrimaryPhone, removePhone,
 	};
 }

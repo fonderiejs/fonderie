@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/workspaces",
-	"version": "6.1.7",
+	"version": "6.7.0",
 	"fonderie": {
 		"stability": "stable"
 	},
@@ -56,7 +56,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.28.0",
+		"@fonderie/core": "^0.31.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.7.0"
 	},
@@ -70,6 +70,7 @@
 		"@fonderie/billing": "../billing",
 		"@fonderie/core": "../core",
 		"@fonderie/events": "../events",
+		"@fonderie/permissions": "../permissions",
 		"@fonderie/store": "../store",
 		"@types/node": "^26.6.3",
 		"tsup": "^8.5.1",
@@ -97,6 +98,6 @@
 	},
 	"dependencies": {
 		"zod": "^4.6.5",
-		"@fonderie/rate-limit": "^4.0.31"
+		"@fonderie/rate-limit": "^4.0.34"
 	}
 }

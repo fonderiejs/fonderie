@@ -1,7 +1,9 @@
-import type { IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IAddAddressInput, ICustomerAddressDTO } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
+
+import type { ICustomerSectionOptions } from './section-options';
 
 export interface IUseCustomerAddressesReturn {
 	addresses: ICustomerAddressDTO[];
@@ -14,119 +16,65 @@ export interface IUseCustomerAddressesReturn {
 	removeAddress: (addrId: string) => Promise<void>;
 }
 
-export function useCustomerAddresses(customerId: string): IUseCustomerAddressesReturn;
+const NONE: ICustomerAddressDTO[] = [];
+
+// One customer's addresses: shown at once when seen before, refreshed behind
+// what is shown; any write under /customers marks it stale everywhere.
+export function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn;
 export function useCustomerAddresses(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerAddressesReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerAddresses');
-	const [addresses, setAddresses] = useState<ICustomerAddressDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.listAddresses(customerId, { bust: opts?.force });
-			setAddresses(result.addresses);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId]);
-
+	const q = useScopedQuery(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}/addresses`,
+		async (bust) => (await customers.listAddresses(customerId, { bust })).result.addresses,
+		// Nothing to read until there is a customer.
+		{ enabled: !!customerId && read },
+	);
+	const w = useWrite(q.refresh);
 	const addAddress = useCallback(
-		async (input: IAddAddressInput) => {
-			setError(null);
-			try {
-				const { result } = await customers.addAddress(customerId, input);
-				await refresh();
-				return result.address;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+		(input: IAddAddressInput) =>
+			w.run(async () => (await customers.addAddress(customerId, input)).result.address),
+		[customers, customerId, w.run],
 	);
-
 	const updateAddressLabel = useCallback(
-		async (addrId: string, label: string) => {
-			setError(null);
-			try {
+		(addrId: string, label: string) =>
+			w.run(async () => {
 				await customers.updateAddressLabel(customerId, addrId, label);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const setPrimaryAddress = useCallback(
-		async (addrId: string) => {
-			setError(null);
-			try {
+		(addrId: string) =>
+			w.run(async () => {
 				await customers.setPrimaryAddress(customerId, addrId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const removeAddress = useCallback(
-		async (addrId: string) => {
-			setError(null);
-			try {
+		(addrId: string) =>
+			w.run(async () => {
 				await customers.removeAddress(customerId, addrId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
 	return {
-		addresses,
-		isLoading,
-		error,
-		refresh,
-		addAddress,
-		updateAddressLabel,
-		setPrimaryAddress,
-		removeAddress,
+		addresses: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		addAddress, updateAddressLabel, setPrimaryAddress, removeAddress,
 	};
 }

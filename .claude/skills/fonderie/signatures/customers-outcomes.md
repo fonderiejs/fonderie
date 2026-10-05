@@ -133,6 +133,8 @@ sex                      TEXT NOT NULL DEFAULT 'UNKNOWN'
 blacklist_reason         TEXT
 referral_code            TEXT
 referred_by              UUID REFERENCES fonderie_customers(id) ON DELETE SET NULL
+is_archived              BOOLEAN NOT NULL DEFAULT false
+archived_at              TIMESTAMPTZ
 ```
 
 Raw SQL ships in `node_modules/@fonderie/customers/dist/migrations/sql/` — read it there if you must; never download tarballs.
@@ -160,6 +162,7 @@ INSERT INTO fonderie_customer_labels (type, value) SELECT DISTINCT 'address'::fo
 | DELETE | `/customers/:customerId/addresses/:addrId` | `requireAuth → wsCtx → address.remove` |
 | PATCH | `/customers/:customerId/addresses/:addrId` | `requireAuth → wsCtx → validate(updateAddressSchema) → address.update` |
 | PUT | `/customers/:customerId/addresses/:addrId/primary` | `requireAuth → wsCtx → address.setPrimary` |
+| POST | `/customers/:customerId/archive` | `requireAuth → wsCtx → customer.archive` |
 | POST | `/customers/:customerId/blacklist` | `requireAuth → wsCtx → validate(blacklistSchema) → customer.blacklist` |
 | GET | `/customers/:customerId/emails` | `requireAuth → wsCtx → email.list` |
 | POST | `/customers/:customerId/emails` | `requireAuth → wsCtx → validate(addEmailSchema) → email.add` |
@@ -182,6 +185,7 @@ INSERT INTO fonderie_customer_labels (type, value) SELECT DISTINCT 'address'::fo
 | GET | `/customers/:customerId/tags` | `requireAuth → wsCtx → tag.list` |
 | POST | `/customers/:customerId/tags` | `requireAuth → wsCtx → validate(addTagSchema) → tag.add` |
 | DELETE | `/customers/:customerId/tags/:tag` | `requireAuth → wsCtx → tag.remove` |
+| POST | `/customers/:customerId/unarchive` | `requireAuth → wsCtx → customer.unarchive` |
 | POST | `/customers/:customerId/unblacklist` | `requireAuth → wsCtx → customer.unblacklist` |
 | GET | `/customers/labels` | `requireAuth → wsCtx → label.list` |
 | DELETE | `/customers/labels/:labelId` | `requireAuth → wsCtx → label.remove` |

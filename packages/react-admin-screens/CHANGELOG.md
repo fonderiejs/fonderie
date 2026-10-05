@@ -1,5 +1,29 @@
 # @fonderie/react-admin-screens
 
+## 1.7.2
+
+### Patch Changes
+
+- Updated dependencies [bd033f5]
+  - @fonderie/client@3.0.0
+  - @fonderie/react-admin@1.2.2
+  - @fonderie/react-config-admin-screens@0.8.2
+  - @fonderie/react-courier-admin-screens@0.11.2
+
+## 1.7.1
+
+### Patch Changes
+
+- 789d775: **Depending on a Fonderie package now actually upgrades the Fonderie packages it uses.**
+  
+  These packages depended on their siblings at `"*"`. npm treats an already-installed version as satisfying `"*"`, so upgrading one package left the packages it builds on at their old versions. For example, `@fonderie/react-native-media` 0.1.1 kept `@fonderie/react-media` at 0.1.0, without the fix the upgrade was for. Nothing reported it.
+  
+  Each internal dependency is now a caret range on the current version (e.g. `^0.2.0`), so installing a package brings its siblings up to what it was built with. Releases keep the ranges current, and a new `check:internal-ranges` gate keeps `"*"` from coming back.
+- Updated dependencies [789d775]
+  - @fonderie/react-admin@1.2.1
+  - @fonderie/react-config-admin-screens@0.8.1
+  - @fonderie/react-courier-admin-screens@0.11.1
+
 ## 1.7.0
 
 ### Minor Changes

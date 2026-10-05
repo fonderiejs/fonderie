@@ -19,7 +19,7 @@ export interface IEventRecord {
 export interface IConsumerRecord {
 	eventId: string;
 	consumer: string;
-	status: 'pending' | 'processing' | 'processed' | 'failed' | 'dead';
+	status: 'pending' | 'processing' | 'processed' | 'failed' | 'dead' | 'dismissed';
 	attempts: number;
 	error: string | null;
 	processedAt: Date | null;

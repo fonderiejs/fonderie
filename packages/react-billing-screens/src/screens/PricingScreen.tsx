@@ -1,4 +1,6 @@
 import type { BillingClient } from '@fonderie/client';
+import { canonicalLocaleTag, uiLocaleFor } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useCheckout, usePlans } from '@fonderie/react-billing';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -6,13 +8,19 @@ import { useState } from 'react';
 export interface IPricingScreenProps {
 	client?: BillingClient;
 	onCheckoutStart?: (url: string) => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
-function formatPrice(cents: number, currency: string): string {
-	return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
+// In the UI language (undefined = the runtime's default), never a hard-coded one.
+function formatPrice(cents: number, currency: string, locale: string | undefined): string {
+	return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
 }
 
-export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) {
+export function PricingScreen({ client, onCheckoutStart, locale }: IPricingScreenProps) {
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
+	const formatLocale = canonicalLocaleTag(locale) ?? uiLocaleFor(client)?.get();
 	const { plans, isLoading, error } = usePlans(client);
 	const { checkout, isLoading: isCheckingOut, error: checkoutError } = useCheckout(client);
 	const [interval, setInterval] = useState<'month' | 'year'>('month');
@@ -27,11 +35,11 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 		}
 	};
 
-	if (isLoading) return <p style={styles.status}>Loading plans…</p>;
+	if (isLoading) return <p style={styles.status}>{t('billing.pricing.loading')}</p>;
 	if (error)
 		return (
 			<p style={styles.error} role="alert">
-				{error.explanation}
+				{errorText(error)}
 			</p>
 		);
 
@@ -43,20 +51,20 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 					onClick={() => setInterval('month')}
 					style={interval === 'month' ? styles.toggleActive : styles.toggleButton}
 				>
-					Monthly
+					{t('billing.pricing.monthly')}
 				</button>
 				<button
 					type="button"
 					onClick={() => setInterval('year')}
 					style={interval === 'year' ? styles.toggleActive : styles.toggleButton}
 				>
-					Yearly
+					{t('billing.pricing.yearly')}
 				</button>
 			</div>
 
 			{checkoutError && (
 				<p style={styles.error} role="alert">
-					{checkoutError.explanation}
+					{errorText(checkoutError)}
 				</p>
 			)}
 
@@ -69,8 +77,11 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 							{formatPrice(
 								interval === 'year' ? plan.pricing.yearly : plan.pricing.monthly,
 								plan.pricing.currency,
+								formatLocale,
 							)}
-							<span style={styles.priceInterval}>/{interval}</span>
+							<span style={styles.priceInterval}>
+								{interval === 'year' ? t('billing.pricing.perYear') : t('billing.pricing.perMonth')}
+							</span>
 						</p>
 						<ul style={styles.features}>
 							{plan.features
@@ -85,7 +96,9 @@ export function PricingScreen({ client, onCheckoutStart }: IPricingScreenProps) 
 							onClick={() => handleChoose(plan.name)}
 							style={styles.button}
 						>
-							{isCheckingOut ? 'Redirecting…' : `Choose ${plan.name}`}
+							{isCheckingOut
+								? t('billing.pricing.redirecting')
+								: t('billing.pricing.choose', { plan: plan.name })}
 						</button>
 					</div>
 				))}

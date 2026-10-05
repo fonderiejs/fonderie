@@ -1,7 +1,9 @@
-import type { IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FonderieApiError, IAddRelationshipInput, ICustomerRelationshipDTO } from '@fonderie/client';
+import { CustomersClient } from '@fonderie/client';
+import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useCallback } from 'react';
+
+import type { ICustomerSectionOptions } from './section-options';
 
 export interface IUseCustomerRelationshipsReturn {
 	relationships: ICustomerRelationshipDTO[];
@@ -13,102 +15,58 @@ export interface IUseCustomerRelationshipsReturn {
 	removeRelationship: (relatedId: string) => Promise<void>;
 }
 
-export function useCustomerRelationships(customerId: string): IUseCustomerRelationshipsReturn;
+const NONE: ICustomerRelationshipDTO[] = [];
+
+// One customer's relationships: shown at once when seen before, refreshed behind
+// what is shown; any write under /customers marks it stale everywhere.
+export function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOptions): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
 	client: CustomersClient | undefined,
 	customerId: string,
+	opts?: ICustomerSectionOptions,
 ): IUseCustomerRelationshipsReturn;
 export function useCustomerRelationships(
 	clientOrId: CustomersClient | string | undefined,
-	maybeId?: string,
+	maybeIdOrOpts?: string | ICustomerSectionOptions,
+	maybeOpts?: ICustomerSectionOptions,
 ): IUseCustomerRelationshipsReturn {
 	const firstIsClient = clientOrId === undefined || clientOrId instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrId as CustomersClient | undefined) : undefined;
-	const customerId = firstIsClient ? (maybeId as string) : clientOrId;
+	const customerId = firstIsClient ? (maybeIdOrOpts as string) : clientOrId;
+	const read = ((firstIsClient ? maybeOpts : maybeIdOrOpts) as ICustomerSectionOptions | undefined)?.read !== false;
 	const customers = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomerRelationships');
-	const [relationships, setRelationships] = useState<ICustomerRelationshipDTO[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		if (!customerId) {
-			setIsLoading(false);
-			return;
-		}
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await customers.listRelationships(customerId, { bust: opts?.force });
-			setRelationships(result.relationships);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [customers, customerId]);
-
+	const q = useScopedQuery(
+		customers,
+		`/customers/${encodeURIComponent(customerId ?? '')}/relationships`,
+		async (bust) => (await customers.listRelationships(customerId, { bust })).result.relationships,
+		// Nothing to read until there is a customer.
+		{ enabled: !!customerId && read },
+	);
+	const w = useWrite(q.refresh);
 	const addRelationship = useCallback(
-		async (input: IAddRelationshipInput) => {
-			setError(null);
-			try {
-				const { result } = await customers.addRelationship(customerId, input);
-				await refresh();
-				return result.relationship;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+		(input: IAddRelationshipInput) =>
+			w.run(async () => (await customers.addRelationship(customerId, input)).result.relationship),
+		[customers, customerId, w.run],
 	);
-
 	const setPrimaryRelationship = useCallback(
-		async (relatedId: string) => {
-			setError(null);
-			try {
+		(relatedId: string) =>
+			w.run(async () => {
 				await customers.setPrimaryRelationship(customerId, relatedId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
 	const removeRelationship = useCallback(
-		async (relatedId: string) => {
-			setError(null);
-			try {
+		(relatedId: string) =>
+			w.run(async () => {
 				await customers.removeRelationship(customerId, relatedId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[customers, customerId, refresh],
+			}),
+		[customers, customerId, w.run],
 	);
-
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
-
 	return {
-		relationships,
-		isLoading,
-		error,
-		refresh,
-		addRelationship,
-		setPrimaryRelationship,
-		removeRelationship,
+		relationships: q.data ?? NONE,
+		isLoading: q.isLoading,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		addRelationship, setPrimaryRelationship, removeRelationship,
 	};
 }

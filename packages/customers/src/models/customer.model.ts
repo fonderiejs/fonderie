@@ -1,3 +1,4 @@
+import { DEFAULT_SYSTEM_LOCALE } from '@fonderie/core';
 import { randomInt } from 'node:crypto';
 
 import type { IStoreAdapter } from '@fonderie/store';
@@ -38,16 +39,43 @@ const SELECT_CUSTOMER = `
 	referral_code  AS "referralCode",
 	referred_by    AS "referredBy",
 	is_blacklisted    AS "isBlacklisted",
+	is_archived       AS "isArchived",
+	archived_at       AS "archivedAt",
 	blacklist_reason  AS "blacklistReason",
 	created_by     AS "createdBy",
 	created_at     AS "createdAt",
 	updated_at     AS "updatedAt"
 `;
 
+// The same columns read through the `c` alias the list/count queries use.
+const SELECT_CUSTOMER_C = `
+	c.id,
+	c.workspace_id   AS "workspaceId",
+	c.type,
+	c.sex,
+	c.first_name     AS "firstName",
+	c.last_name      AS "lastName",
+	c.company_name   AS "companyName",
+	c.avatar_url     AS "avatarUrl",
+	c.locale,
+	c.reference_code AS "referenceCode",
+	c.referral_code  AS "referralCode",
+	c.referred_by    AS "referredBy",
+	c.is_blacklisted    AS "isBlacklisted",
+	c.is_archived       AS "isArchived",
+	c.archived_at       AS "archivedAt",
+	c.blacklist_reason  AS "blacklistReason",
+	c.created_by     AS "createdBy",
+	c.created_at     AS "createdAt",
+	c.updated_at     AS "updatedAt"
+`;
+
 export interface ListCustomersOpts {
 	workspaceId: string;
 	search?: string | undefined;
 	blacklisted?: boolean | undefined;
+	/** false (default): active only; true: archived only; 'all': both. */
+	archived?: boolean | 'all' | undefined;
 	limit?: number | undefined;
 	offset?: number | undefined;
 }
@@ -135,60 +163,63 @@ export class CustomerModel {
 		return row?.id ?? null;
 	}
 
-	async list(opts: ListCustomersOpts): Promise<ICustomer[]> {
-		const conditions: string[] = ['workspace_id = $1'];
+	// One WHERE for the list and its count, so the total always describes the
+	// same rows. Search covers names, company, reference code, any email, and
+	// any phone — by digits, so '514 555' finds '+1 (514) 555-0100'.
+	private where(opts: Omit<ListCustomersOpts, 'limit' | 'offset'>): { sql: string; params: unknown[] } {
+		const conditions: string[] = ['c.workspace_id = $1'];
 		const params: unknown[] = [opts.workspaceId];
 
 		if (opts.blacklisted !== undefined) {
 			params.push(opts.blacklisted);
-			conditions.push(`is_blacklisted = $${params.length}`);
+			conditions.push(`c.is_blacklisted = $${params.length}`);
 		}
-
-		if (opts.search) {
-			params.push(`%${opts.search}%`);
+		if (opts.archived !== 'all') {
+			params.push(opts.archived === true);
+			conditions.push(`c.is_archived = $${params.length}`);
+		}
+		const search = opts.search?.trim();
+		if (search) {
+			params.push(`%${search.replace(/[\\%_]/g, (m) => `\\${m}`)}%`);
 			const idx = params.length;
-			conditions.push(
-				`(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR company_name ILIKE $${idx} OR reference_code ILIKE $${idx})`,
-			);
+			const any = [
+				`c.first_name ILIKE $${idx}`,
+				`c.last_name ILIKE $${idx}`,
+				`c.company_name ILIKE $${idx}`,
+				`c.reference_code ILIKE $${idx}`,
+				`EXISTS (SELECT 1 FROM fonderie_customer_emails e WHERE e.customer_id = c.id AND e.email ILIKE $${idx})`,
+			];
+			const digits = search.replace(/\D/g, '');
+			if (digits.length >= 3) {
+				params.push(`%${digits}%`);
+				any.push(
+					`EXISTS (SELECT 1 FROM fonderie_customer_phones p WHERE p.customer_id = c.id AND regexp_replace(p.phone, '\\D', '', 'g') LIKE $${params.length})`,
+				);
+			}
+			conditions.push(`(${any.join(' OR ')})`);
 		}
+		return { sql: conditions.join(' AND '), params };
+	}
 
-		const limit = Math.min(opts.limit ?? 50, 200);
-		const offset = opts.offset ?? 0;
+	async list(opts: ListCustomersOpts): Promise<ICustomer[]> {
+		const { sql, params } = this.where(opts);
+		const limit = Math.min(Math.max(1, opts.limit ?? 50), 200);
+		const offset = Math.max(0, opts.offset ?? 0);
 		params.push(limit, offset);
-		const limitIdx = params.length - 1;
-		const offsetIdx = params.length;
-
 		return this.store.query<ICustomer>(
-			`SELECT ${SELECT_CUSTOMER}
-			 FROM fonderie_customers
-			 WHERE ${conditions.join(' AND ')}
-			 ORDER BY created_at DESC
-			 LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+			`SELECT ${SELECT_CUSTOMER_C}
+			 FROM fonderie_customers c
+			 WHERE ${sql}
+			 ORDER BY c.created_at DESC, c.id
+			 LIMIT $${params.length - 1} OFFSET $${params.length}`,
 			params,
 		);
 	}
 
 	async count(opts: Omit<ListCustomersOpts, 'limit' | 'offset'>): Promise<number> {
-		const conditions: string[] = ['workspace_id = $1'];
-		const params: unknown[] = [opts.workspaceId];
-
-		if (opts.blacklisted !== undefined) {
-			params.push(opts.blacklisted);
-			conditions.push(`is_blacklisted = $${params.length}`);
-		}
-
-		if (opts.search) {
-			params.push(`%${opts.search}%`);
-			const idx = params.length;
-			conditions.push(
-				`(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR company_name ILIKE $${idx} OR reference_code ILIKE $${idx})`,
-			);
-		}
-
+		const { sql, params } = this.where(opts);
 		const [row] = await this.store.query<{ count: string }>(
-			`SELECT COUNT(*) AS count
-			 FROM fonderie_customers
-			 WHERE ${conditions.join(' AND ')}`,
+			`SELECT COUNT(*) AS count FROM fonderie_customers c WHERE ${sql}`,
 			params,
 		);
 		return Number(row?.count ?? 0);
@@ -538,7 +569,7 @@ export class CustomerModel {
 				opts.lastName ?? null,
 				opts.companyName ?? null,
 				opts.avatarUrl ?? null,
-				opts.locale ?? 'en-US',
+				opts.locale ?? DEFAULT_SYSTEM_LOCALE,
 				referenceCode,
 				referralCode,
 				referredBy,
@@ -612,33 +643,48 @@ export class CustomerModel {
 		return row ?? null;
 	}
 
+	/**
+	 * Delete a customer and everything attached, in ONE transaction. Before, the
+	 * attachments went first in separate statements: when the database then
+	 * refused the customer row (an app's job or invoice still references it),
+	 * their emails, phones and notes were already gone. Now a refusal undoes
+	 * everything and surfaces as CustomerInUseError.
+	 */
 	async delete(id: string, workspaceId: string): Promise<void> {
-		// Delete all sub-resources in parallel, then the customer.
-		// Relationships: remove both sides (owner and target) — detach strategy,
-		// related customers are left intact.
-		// Addresses: delete the underlying fonderie_addresses rows directly; their
-		// ON DELETE CASCADE removes the customer_addresses link automatically.
-		// The remaining DB cascades on the customer row act as a safety net.
-		await Promise.all([
-			this.store.query(`DELETE FROM fonderie_customer_emails WHERE customer_id = $1`, [id]),
-			this.store.query(`DELETE FROM fonderie_customer_phones WHERE customer_id = $1`, [id]),
-			this.store.query(
-				`DELETE FROM fonderie_addresses WHERE id IN (
-					SELECT addr_id FROM fonderie_customer_addresses WHERE customer_id = $1
-				)`,
-				[id],
-			),
-			this.store.query(`DELETE FROM fonderie_customer_notes WHERE customer_id = $1`, [id]),
-			this.store.query(`DELETE FROM fonderie_customer_tags WHERE customer_id = $1`, [id]),
-			this.store.query(
-				`DELETE FROM fonderie_customer_relationships WHERE customer_id = $1 OR related_id = $1`,
-				[id],
-			),
-		]);
-		await this.store.query(`DELETE FROM fonderie_customers WHERE id = $1 AND workspace_id = $2`, [
-			id,
-			workspaceId,
-		]);
+		try {
+			await this.store.transaction(async (tx) => {
+				await tx.query(
+					`DELETE FROM fonderie_addresses WHERE id IN (
+						SELECT addr_id FROM fonderie_customer_addresses WHERE customer_id = $1
+					)`,
+					[id],
+				);
+				await tx.query(`DELETE FROM fonderie_customer_relationships WHERE customer_id = $1 OR related_id = $1`, [id]);
+				// Emails, phones, notes, tags and label links cascade with the row.
+				await tx.query(`DELETE FROM fonderie_customers WHERE id = $1 AND workspace_id = $2`, [id, workspaceId]);
+			});
+		} catch (err) {
+			if ((err as { code?: string }).code === '23503') throw new CustomerInUseError(id);
+			throw err;
+		}
+	}
+
+	async archive(id: string, workspaceId: string): Promise<boolean> {
+		const rows = await this.store.query(
+			`UPDATE fonderie_customers SET is_archived = true, archived_at = now(), updated_at = now()
+			 WHERE id = $1 AND workspace_id = $2 RETURNING id`,
+			[id, workspaceId],
+		);
+		return rows.length > 0;
+	}
+
+	async unarchive(id: string, workspaceId: string): Promise<boolean> {
+		const rows = await this.store.query(
+			`UPDATE fonderie_customers SET is_archived = false, archived_at = NULL, updated_at = now()
+			 WHERE id = $1 AND workspace_id = $2 RETURNING id`,
+			[id, workspaceId],
+		);
+		return rows.length > 0;
 	}
 
 	async blacklist(id: string, workspaceId: string, reason?: string | null): Promise<void> {
@@ -657,5 +703,13 @@ export class CustomerModel {
 			 WHERE id = $1 AND workspace_id = $2`,
 			[id, workspaceId],
 		);
+	}
+}
+
+/** Something still references this customer (a job, a quote, an invoice…): archive it instead. */
+export class CustomerInUseError extends Error {
+	constructor(readonly customerId: string) {
+		super('Customer is still referenced');
+		this.name = 'CustomerInUseError';
 	}
 }

@@ -8,6 +8,8 @@
 new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
+  .getWorkspaceId(): string | undefined
+  .onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void
   .listPlans(opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanListResult>>
   .getPlan(planId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IPlanResult>>
   .createPlan(input: ICreatePlanInput): Promise<IApiResponse<IPlanResult>>
@@ -29,7 +31,7 @@ new BillingClient(http: HttpClient, tokens: TokenStore): BillingClient
   .setupPaymentMethod(): Promise<IApiResponse<ISetupIntentResult>>
   .savePaymentMethod(input: ISavePaymentMethodInput): Promise<IApiResponse<IPaymentMethodResult>>
   .removePaymentMethod(): Promise<IApiResponse<IPaymentMethodResult>>
-  .listInvoices(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvoicesResult>>
+  .listInvoices(opts?: (IReadOptions & { cursor?: string; limit?: number; }) | undefined): Promise<IApiResponse<IInvoicesResult>>
 
 interface ICancelSubscriptionInput {
     atPeriodEnd?: boolean;
@@ -38,6 +40,7 @@ interface ICancelSubscriptionInput {
 interface ICheckoutInput {
     plan: string;
     interval?: 'month' | 'year';
+    skipTrial?: boolean;
     idempotencyKey?: string;
 }
 
@@ -69,10 +72,12 @@ interface IInvoiceDTO {
 }
 
 interface IPaymentMethodDTO {
+    type?: 'card' | 'link';
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email?: string | null;
 }
 
 interface IPlanDTO {
@@ -126,6 +131,17 @@ interface ISubscriptionDTO {
 }
 
 type IUpdatePlanInput = Partial<ICreatePlanInput>;
+
+interface IUsageResult {
+    metric: string;
+    kind?: 'counter' | 'records';
+    total: number;
+    since: string;
+    limit?: number | null;
+    status?: 'ok' | 'warning' | 'over_limit' | 'blocked' | null;
+    window?: string | null;
+    resetsAt?: string | null;
+}
 
 interface IWalletCheckoutInput {
     packId: string;
@@ -200,11 +216,14 @@ interface IUseCheckoutReturn {
 
 interface IUseInvoicesReturn {
     invoices: Ref<IInvoiceDTO[]>;
+    nextCursor: Ref<string | null>;
+    hasMore: ComputedRef<boolean>;
     isLoading: Ref<boolean>;
     error: Ref<FonderieApiError | null>;
     refresh: (opts?: {
         force?: boolean;
     }) => Promise<void>;
+    loadMore: () => Promise<void>;
 }
 
 interface IUsePaymentMethodReturn {
@@ -277,7 +296,8 @@ interface IUseSubscriptionReturn {
 }
 
 interface IUseUsageReturn {
-    total: Ref<number | null>;
+    total: ComputedRef<number | null>;
+    usage: Ref<IUsageResult | null>;
     isLoading: Ref<boolean>;
     error: Ref<FonderieApiError | null>;
     refresh: (opts?: {

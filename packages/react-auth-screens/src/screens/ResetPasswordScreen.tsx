@@ -1,4 +1,5 @@
 import type { AuthClient } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import { useResetPassword } from '@fonderie/react-auth';
 import type { CSSProperties, FormEvent } from 'react';
 import { useState } from 'react';
@@ -9,6 +10,8 @@ export interface IResetPasswordScreenProps {
 	initialPin?: string;
 	onResetSuccess?: () => void;
 	onNavigateToLogin?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function ResetPasswordScreen({
@@ -16,8 +19,11 @@ export function ResetPasswordScreen({
 	initialPin,
 	onResetSuccess,
 	onNavigateToLogin,
+	locale,
 }: IResetPasswordScreenProps) {
 	const { resetPassword, isLoading, error, done } = useResetPassword(client);
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const [pin, setPin] = useState(initialPin ?? '');
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,10 +47,10 @@ export function ResetPasswordScreen({
 	if (done) {
 		return (
 			<div style={styles.container}>
-				<h1 style={styles.title}>Password updated</h1>
-				<p style={styles.body}>Your password has been reset. Sign in with your new password.</p>
+				<h1 style={styles.title}>{t('auth.reset.doneTitle')}</h1>
+				<p style={styles.body}>{t('auth.reset.doneBody')}</p>
 				<button type="button" onClick={onNavigateToLogin} style={styles.button}>
-					Go to sign in
+					{t('auth.reset.goToSignIn')}
 				</button>
 			</div>
 		);
@@ -52,18 +58,18 @@ export function ResetPasswordScreen({
 
 	return (
 		<form style={styles.container} onSubmit={handleSubmit}>
-			<h1 style={styles.title}>Choose a new password</h1>
-			<p style={styles.body}>Enter the 6-digit code from your email and your new password.</p>
+			<h1 style={styles.title}>{t('auth.reset.title')}</h1>
+			<p style={styles.body}>{t('auth.reset.lead')}</p>
 
 			<label htmlFor="fonderie-reset-pin" style={styles.visuallyHidden}>
-				Reset code
+				{t('auth.reset.codeLabel')}
 			</label>
 			<input
 				id="fonderie-reset-pin"
 				style={styles.input}
 				type="text"
 				inputMode="numeric"
-				placeholder="6-digit code"
+				placeholder={t('auth.fields.code')}
 				value={pin}
 				onChange={(event) => setPin(event.target.value)}
 				autoComplete="one-time-code"
@@ -71,13 +77,13 @@ export function ResetPasswordScreen({
 			/>
 
 			<label htmlFor="fonderie-reset-password" style={styles.visuallyHidden}>
-				New password
+				{t('auth.reset.newPassword')}
 			</label>
 			<input
 				id="fonderie-reset-password"
 				style={styles.input}
 				type="password"
-				placeholder="New password"
+				placeholder={t('auth.reset.newPassword')}
 				value={password}
 				onChange={(event) => setPassword(event.target.value)}
 				autoComplete="new-password"
@@ -85,13 +91,13 @@ export function ResetPasswordScreen({
 			/>
 
 			<label htmlFor="fonderie-reset-confirm-password" style={styles.visuallyHidden}>
-				Confirm new password
+				{t('auth.reset.confirmPassword')}
 			</label>
 			<input
 				id="fonderie-reset-confirm-password"
 				style={styles.input}
 				type="password"
-				placeholder="Confirm new password"
+				placeholder={t('auth.reset.confirmPassword')}
 				value={confirmPassword}
 				onChange={(event) => setConfirmPassword(event.target.value)}
 				autoComplete="new-password"
@@ -100,22 +106,22 @@ export function ResetPasswordScreen({
 
 			{mismatch && (
 				<p style={styles.error} role="alert">
-					Passwords do not match.
+					{t('auth.reset.mismatch')}
 				</p>
 			)}
 
 			{error && (
 				<p style={styles.error} role="alert">
-					{error.explanation}
+					{errorText(error)}
 				</p>
 			)}
 
 			<button type="submit" disabled={isLoading} style={styles.button}>
-				{isLoading ? 'Resetting…' : 'Reset password'}
+				{isLoading ? t('auth.reset.submitting') : t('auth.reset.submit')}
 			</button>
 
 			<button type="button" onClick={onNavigateToLogin} style={styles.link}>
-				Back to sign in
+				{t('auth.backToSignIn')}
 			</button>
 		</form>
 	);

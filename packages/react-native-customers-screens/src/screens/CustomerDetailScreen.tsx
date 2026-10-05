@@ -4,6 +4,7 @@ import type {
 	ICustomerNoteDTO,
 	ICustomerPhoneDTO,
 } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/react';
 import {
 	useCustomer,
 	useCustomerEmails,
@@ -18,13 +19,18 @@ export interface ICustomerDetailScreenProps {
 	client?: CustomersClient;
 	customerId: string;
 	onNavigateToList?: () => void;
+	/** The language for this screen only; default: the client's UI language (client.setLocale). */
+	locale?: string;
 }
 
 export function CustomerDetailScreen({
 	client,
 	customerId,
 	onNavigateToList,
+	locale,
 }: ICustomerDetailScreenProps) {
+	const t = useUiT(client, locale);
+	const errorText = useUiError(client, locale);
 	const { customer, isLoading, error, updateCustomer } = useCustomer(client, customerId, 1);
 	const { emails, addEmail, setPrimaryEmail, removeEmail } = useCustomerEmails(client, customerId);
 	const { phones, addPhone, setPrimaryPhone, removePhone } = useCustomerPhones(client, customerId);
@@ -95,17 +101,26 @@ export function CustomerDetailScreen({
 	const renderEmail = ({ item: email }: { item: ICustomerEmailDTO }) => (
 		<View style={styles.row}>
 			<Text style={styles.rowText}>
-				{email.email}
-				{email.isPrimary ? ' (primary)' : ''}
+				{email.isPrimary ? t('customers.detail.withPrimary', { value: email.email }) : email.email}
 			</Text>
 			<View style={styles.rowActions}>
 				{!email.isPrimary && (
-					<TouchableOpacity onPress={() => setPrimaryEmail(email.id)} style={styles.smallButton}>
-						<Text>Make primary</Text>
+					<TouchableOpacity
+						onPress={() => setPrimaryEmail(email.id)}
+						style={styles.smallButton}
+						accessibilityRole="button"
+						accessibilityLabel={t('customers.detail.a11y.makePrimaryEmail', { value: email.email })}
+					>
+						<Text>{t('customers.detail.makePrimary')}</Text>
 					</TouchableOpacity>
 				)}
-				<TouchableOpacity onPress={() => removeEmail(email.id)} style={styles.smallButton}>
-					<Text>Remove</Text>
+				<TouchableOpacity
+					onPress={() => removeEmail(email.id)}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.removeEmail', { value: email.email })}
+				>
+					<Text>{t('customers.detail.remove')}</Text>
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -114,17 +129,26 @@ export function CustomerDetailScreen({
 	const renderPhone = ({ item: phone }: { item: ICustomerPhoneDTO }) => (
 		<View style={styles.row}>
 			<Text style={styles.rowText}>
-				{phone.phone}
-				{phone.isPrimary ? ' (primary)' : ''}
+				{phone.isPrimary ? t('customers.detail.withPrimary', { value: phone.phone }) : phone.phone}
 			</Text>
 			<View style={styles.rowActions}>
 				{!phone.isPrimary && (
-					<TouchableOpacity onPress={() => setPrimaryPhone(phone.id)} style={styles.smallButton}>
-						<Text>Make primary</Text>
+					<TouchableOpacity
+						onPress={() => setPrimaryPhone(phone.id)}
+						style={styles.smallButton}
+						accessibilityRole="button"
+						accessibilityLabel={t('customers.detail.a11y.makePrimaryPhone', { value: phone.phone })}
+					>
+						<Text>{t('customers.detail.makePrimary')}</Text>
 					</TouchableOpacity>
 				)}
-				<TouchableOpacity onPress={() => removePhone(phone.id)} style={styles.smallButton}>
-					<Text>Remove</Text>
+				<TouchableOpacity
+					onPress={() => removePhone(phone.id)}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.removePhone', { value: phone.phone })}
+				>
+					<Text>{t('customers.detail.remove')}</Text>
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -133,76 +157,106 @@ export function CustomerDetailScreen({
 	const renderNote = ({ item: note }: { item: ICustomerNoteDTO }) => (
 		<View style={styles.row}>
 			<Text style={styles.rowText}>{note.body}</Text>
-			<TouchableOpacity onPress={() => deleteNote(note.id)} style={styles.smallButton}>
-				<Text>Delete</Text>
+			<TouchableOpacity
+				onPress={() => deleteNote(note.id)}
+				style={styles.smallButton}
+				accessibilityRole="button"
+				accessibilityLabel={t('customers.detail.a11y.deleteNote')}
+			>
+				<Text>{t('customers.detail.delete')}</Text>
 			</TouchableOpacity>
 		</View>
 	);
 
-	if (isLoading) return <Text style={styles.status}>Loading…</Text>;
+	if (isLoading) return <Text style={styles.status}>{t('customers.loading')}</Text>;
 	if (error)
 		return (
 			<Text style={styles.error} accessibilityRole="alert">
-				{error.explanation}
+				{errorText(error)}
 			</Text>
 		);
 
 	return (
 		<View style={styles.container}>
-			<Text style={styles.title}>Customer</Text>
+			<Text style={styles.title}>{t('customers.detail.title')}</Text>
 
 			<View style={styles.form}>
 				<TextInput
 					style={styles.input}
-					placeholder="First name"
+					placeholder={t('customers.fields.firstName')}
+					accessibilityLabel={t('customers.detail.a11y.firstName')}
 					value={firstName}
 					onChangeText={setFirstName}
 				/>
 				<TextInput
 					style={styles.input}
-					placeholder="Last name"
+					placeholder={t('customers.fields.lastName')}
+					accessibilityLabel={t('customers.detail.a11y.lastName')}
 					value={lastName}
 					onChangeText={setLastName}
 				/>
-				<TouchableOpacity onPress={handleSaveProfile} style={styles.button}>
-					<Text style={styles.buttonText}>Save</Text>
+				<TouchableOpacity
+					onPress={handleSaveProfile}
+					style={styles.button}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.save')}
+				>
+					<Text style={styles.buttonText}>{t('customers.detail.save')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<Text style={styles.subtitle}>Emails</Text>
+			<Text style={styles.subtitle}>{t('customers.detail.emails')}</Text>
 			<FlatList data={emails} keyExtractor={(e) => e.id} renderItem={renderEmail} />
 			<View style={styles.inlineForm}>
 				<TextInput
 					style={styles.inlineInput}
-					placeholder="new@email.com"
+					placeholder={t('customers.detail.emailPlaceholder')}
+					accessibilityLabel={t('customers.detail.a11y.newEmail')}
 					value={newEmail}
 					onChangeText={setNewEmail}
 					autoCapitalize="none"
 				/>
-				<TouchableOpacity onPress={handleAddEmail} style={styles.smallButton}>
-					<Text>Add</Text>
+				<TouchableOpacity
+					onPress={handleAddEmail}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.addEmail')}
+				>
+					<Text>{t('customers.detail.add')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<Text style={styles.subtitle}>Phones</Text>
+			<Text style={styles.subtitle}>{t('customers.detail.phones')}</Text>
 			<FlatList data={phones} keyExtractor={(p) => p.id} renderItem={renderPhone} />
 			<View style={styles.inlineForm}>
 				<TextInput
 					style={styles.inlineInput}
-					placeholder="+1 555 0100"
+					placeholder={t('customers.detail.phonePlaceholder')}
+					accessibilityLabel={t('customers.detail.a11y.newPhone')}
 					value={newPhone}
 					onChangeText={setNewPhone}
 					autoCapitalize="none"
 				/>
-				<TouchableOpacity onPress={handleAddPhone} style={styles.smallButton}>
-					<Text>Add</Text>
+				<TouchableOpacity
+					onPress={handleAddPhone}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.addPhone')}
+				>
+					<Text>{t('customers.detail.add')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<Text style={styles.subtitle}>Tags</Text>
+			<Text style={styles.subtitle}>{t('customers.detail.tags')}</Text>
 			<View style={styles.tags}>
 				{tags.map((tag) => (
-					<TouchableOpacity key={tag} onPress={() => removeTag(tag)} style={styles.tag}>
+					<TouchableOpacity
+						key={tag}
+						onPress={() => removeTag(tag)}
+						style={styles.tag}
+						accessibilityRole="button"
+						accessibilityLabel={t('customers.detail.a11y.removeTag', { tag })}
+					>
 						<Text>{tag} ×</Text>
 					</TouchableOpacity>
 				))}
@@ -210,31 +264,48 @@ export function CustomerDetailScreen({
 			<View style={styles.inlineForm}>
 				<TextInput
 					style={styles.inlineInput}
-					placeholder="new tag"
+					placeholder={t('customers.detail.tagPlaceholder')}
+					accessibilityLabel={t('customers.detail.a11y.newTag')}
 					value={newTag}
 					onChangeText={setNewTag}
 				/>
-				<TouchableOpacity onPress={handleAddTag} style={styles.smallButton}>
-					<Text>Add</Text>
+				<TouchableOpacity
+					onPress={handleAddTag}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.addTag')}
+				>
+					<Text>{t('customers.detail.add')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<Text style={styles.subtitle}>Notes</Text>
+			<Text style={styles.subtitle}>{t('customers.detail.notes')}</Text>
 			<FlatList data={notes} keyExtractor={(n) => n.id} renderItem={renderNote} />
 			<View style={styles.inlineForm}>
 				<TextInput
 					style={styles.inlineInput}
-					placeholder="Add a note…"
+					placeholder={t('customers.detail.notePlaceholder')}
+					accessibilityLabel={t('customers.detail.a11y.newNote')}
 					value={newNote}
 					onChangeText={setNewNote}
 				/>
-				<TouchableOpacity onPress={handleAddNote} style={styles.smallButton}>
-					<Text>Add</Text>
+				<TouchableOpacity
+					onPress={handleAddNote}
+					style={styles.smallButton}
+					accessibilityRole="button"
+					accessibilityLabel={t('customers.detail.a11y.addNote')}
+				>
+					<Text>{t('customers.detail.add')}</Text>
 				</TouchableOpacity>
 			</View>
 
-			<TouchableOpacity onPress={onNavigateToList} style={styles.link}>
-				<Text style={styles.linkText}>Back to customers</Text>
+			<TouchableOpacity
+				onPress={onNavigateToList}
+				style={styles.link}
+				accessibilityRole="button"
+				accessibilityLabel={t('customers.detail.a11y.backToList')}
+			>
+				<Text style={styles.linkText}>{t('customers.detail.backToList')}</Text>
 			</TouchableOpacity>
 		</View>
 	);

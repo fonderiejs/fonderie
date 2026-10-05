@@ -1,11 +1,13 @@
-import type { BillingClient, ISubscriptionDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, ISubscriptionDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUseSubscriptionReturn {
 	subscription: Ref<ISubscriptionDTO | null>;
+	/** Nothing to show yet — never true while a refresh runs behind data. */
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
@@ -13,28 +15,12 @@ export interface IUseSubscriptionReturn {
 
 export function useSubscription(client?: BillingClient): IUseSubscriptionReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useSubscription');
-	const subscription = ref<ISubscriptionDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await billing.getSubscription({ bust: opts?.force });
-			subscription.value = result.subscription;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			// No active subscription is a normal, expected state — not an error banner.
-			if (apiError.status !== 404) error.value = apiError;
-			subscription.value = null;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-
-	return { subscription, isLoading, error, refresh };
+	const q = useBillingQuery<ISubscriptionDTO | null>(
+		billing,
+		'/billing/subscription',
+		async (bust) => (await billing.getSubscription({ bust })).result.subscription,
+		// No active subscription is a normal, expected state — not an error banner.
+		{ normal: (err) => (err.status === 404 ? null : undefined) },
+	);
+	return { subscription: computed(() => q.data.value ?? null), isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

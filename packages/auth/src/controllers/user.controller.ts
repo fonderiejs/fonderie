@@ -381,6 +381,21 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 		deleteMe: async (ctx: IFonderieContext): Promise<Response> => {
 			const userId = ctx.user!.id;
 			await users.softDelete(userId);
+			// End every session now, as a password change does. Without this the
+			// user's other devices stayed signed in until their next request
+			// failed — and were never told why.
+			await sessions.deleteByUser(userId);
+			// …and every one-time code that could still act on the account. The
+			// ACCOUNT is archived (restorable); these are credentials, not data — a
+			// reset link or verification code issued before the deletion must not
+			// work on the archived account. One statement: one round trip, all or
+			// nothing.
+			await store.query(
+				`WITH resets AS (DELETE FROM fonderie_password_resets WHERE user_id = $1),
+				      emails AS (DELETE FROM fonderie_email_verifications WHERE user_id = $1)
+				 DELETE FROM fonderie_phone_verifications WHERE user_id = $1`,
+				[userId],
+			);
 
 			const reqId = ctx.meta['requestId'] as string | undefined;
 			await background(bus
@@ -389,6 +404,7 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 					{ userId },
 					reqId !== undefined ? { requestId: reqId } : undefined,
 				));
+			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId, sids: null, reason: 'account-deleted' } satisfies ISessionRevokedEvent));
 
 			return Response.json(
 				{ reason: 'ACCOUNT_DELETED', explanation: 'Account successfully deleted.' },

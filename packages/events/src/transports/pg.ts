@@ -63,6 +63,10 @@ export interface IPGTransportConfig {
 	// content, making the audit log tamper-evident. Unset → no HMAC (unchanged
 	// behaviour). Verify later with `verifyEventChain(store, integrityKey)`.
 	integrityKey?: string;
+	// Keys the log was signed with before `integrityKey` was rotated. Used to
+	// VERIFY older rows only — nothing is signed with them. Without them a
+	// rotation makes every earlier row read as tampered.
+	retiredIntegrityKeys?: string[];
 }
 
 interface Subscription {
@@ -93,6 +97,7 @@ export class PGTransport implements IEventTransport {
 	private readonly pollInterval: number;
 	private readonly claimTimeoutMs: number;
 	private readonly integrityKey: string | undefined;
+	private readonly retiredIntegrityKeys: readonly string[];
 
 	constructor(private config: IPGTransportConfig) {
 		this.maxRetries = config.maxRetries ?? 3;
@@ -100,6 +105,7 @@ export class PGTransport implements IEventTransport {
 		this.pollInterval = config.pollInterval ?? 1_000;
 		this.claimTimeoutMs = config.claimTimeoutMs ?? 300_000;
 		this.integrityKey = config.integrityKey;
+		this.retiredIntegrityKeys = config.retiredIntegrityKeys ?? [];
 	}
 
 	// ── Public API ──────────────────────────────────────────────────
@@ -282,7 +288,7 @@ export class PGTransport implements IEventTransport {
 	 */
 	async verifyIntegrity(): Promise<IIntegrityReport | null> {
 		if (!this.hasIntegrityKey() || !this.store) return null;
-		return verifyEventChain(this.store, this.integrityKey as string);
+		return verifyEventChain(this.store, this.integrityKey as string, this.retiredIntegrityKeys);
 	}
 
 	async deadLetters(limit = 50): Promise<IDeadLetter[]> {
@@ -297,6 +303,41 @@ export class PGTransport implements IEventTransport {
 			  LIMIT $1`,
 			[limit],
 		);
+	}
+
+	/**
+	 * Give a dead delivery another full set of attempts — after the cause was
+	 * fixed (a missing template, a provider outage). False when no DEAD row
+	 * matches: a live, processed or dismissed row is never touched.
+	 */
+	async retryDead(eventId: string, consumer: string): Promise<boolean> {
+		if (!this.store) return false;
+		const rows = await this.store.query(
+			`UPDATE fonderie_event_consumers
+			 SET status = 'pending', attempts = 0, error = NULL, claimed_at = NULL
+			 WHERE event_id = $1 AND consumer = $2 AND status = 'dead'
+			 RETURNING event_id`,
+			[eventId, consumer],
+		);
+		if (rows.length > 0) await this.store.query(`SELECT pg_notify('fonderie_events', '')`);
+		return rows.length > 0;
+	}
+
+	/**
+	 * Mark a dead delivery as never to be sent (e.g. a verification code that
+	 * expired long ago). Keeps its error and attempts for the record; it leaves
+	 * the dead-letter list. False when no DEAD row matches.
+	 */
+	async dismissDead(eventId: string, consumer: string): Promise<boolean> {
+		if (!this.store) return false;
+		const rows = await this.store.query(
+			`UPDATE fonderie_event_consumers
+			 SET status = 'dismissed', processed_at = now()
+			 WHERE event_id = $1 AND consumer = $2 AND status = 'dead'
+			 RETURNING event_id`,
+			[eventId, consumer],
+		);
+		return rows.length > 0;
 	}
 
 	/**
@@ -365,6 +406,32 @@ export class PGTransport implements IEventTransport {
 	}
 
 	private async pollConsumer(store: IStoreAdapter, consumer: string): Promise<number> {
+		// A row whose attempts are spent is never claimed again (attempts <
+		// maxRetries below), and only a handler that THROWS on its last attempt
+		// marks it dead. A row whose last attempt never finished — the instance
+		// died mid-send, or an older release reset it to 'failed' — was left in
+		// limbo: not retried, not dead, missing from the dead-letter list, and
+		// (as 'processing') missing from the backlog too. Bury those first, so
+		// every row ends either processed or visibly dead.
+		await store.query(
+			`UPDATE fonderie_event_consumers
+			 SET status = 'dead',
+			     error  = coalesce(error, $4)
+			 WHERE consumer = $1
+			   AND attempts >= $2
+			   AND (
+			         status = 'failed'
+			         OR (status = 'processing'
+			             AND (claimed_at IS NULL OR claimed_at < now() - make_interval(secs => $3)))
+			       )`,
+			[
+				consumer,
+				this.maxRetries,
+				this.claimTimeoutMs / 1000,
+				`no attempt completed within ${this.maxRetries} tries (abandoned mid-delivery)`,
+			],
+		);
+
 		const claimed = await store.query<{ event_id: string }>(
 			// 'processing' rows older than the visibility timeout are claimable
 			// too: that is how work abandoned by a crashed instance comes back,

@@ -1,6 +1,7 @@
-import type { FonderieClient } from '@fonderie/client';
+import type { FonderieClient, IApiErrorLike, UiT } from '@fonderie/client';
+import { createUiT, detectDeviceLocale, localizeApiError, uiLocaleFor } from '@fonderie/client';
 import type { ReactNode } from 'react';
-import { createContext, createElement, useContext } from 'react';
+import { createContext, createElement, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
 
 const FonderieContext = createContext<FonderieClient | null>(null);
 
@@ -39,4 +40,80 @@ export function useFonderieSubClient<T>(
 		);
 	}
 	return select(contextClient);
+}
+
+/**
+ * Anything scoped to a workspace that says when it changes: the FonderieClient
+ * itself, or a workspace-scoped sub-client such as `client.billing`.
+ */
+export interface IWorkspaceScoped {
+	getWorkspaceId(): string | undefined;
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void;
+}
+
+const noop = () => {};
+
+function isWorkspaceScoped(value: unknown): value is IWorkspaceScoped {
+	const v = value as Partial<IWorkspaceScoped> | null | undefined;
+	return typeof v?.getWorkspaceId === 'function' && typeof v?.onWorkspaceChange === 'function';
+}
+
+/**
+ * The current workspace id, re-rendering when it changes. Pass the sub-client a
+ * hook reads from (so an explicitly passed client is followed too); with no
+ * argument it follows the <FonderieProvider> client. Hooks that load
+ * per-workspace data put this in their load effect's dependencies, so switching
+ * workspace re-reads instead of showing the previous workspace's data. A source
+ * that cannot report changes (an older client) reads as undefined — the hook
+ * then never re-reads on a switch, exactly as before.
+ */
+export function useWorkspaceId(source?: unknown): string | undefined {
+	const contextClient = useContext(FonderieContext);
+	const scoped = source ?? contextClient;
+	const target = isWorkspaceScoped(scoped) ? scoped : null;
+	const subscribe = useCallback(
+		(onChange: () => void) => (target ? target.onWorkspaceChange(onChange) : noop),
+		[target],
+	);
+	const read = useCallback(() => target?.getWorkspaceId(), [target]);
+	return useSyncExternalStore(subscribe, read, read);
+}
+
+const DEVICE_LOCALE = detectDeviceLocale();
+const NO_SUBSCRIBE = () => () => {};
+
+/**
+ * The prebuilt screens' translator, in the app's UI language: the language of
+ * the client a screen was handed (`source`, any sub-client works), else of the
+ * <FonderieProvider> client, else the device's. Follows client.setLocale()
+ * live. `locale` overrides it for one screen.
+ *
+ *   const t = useUiT(client);  t('auth.login.title')
+ */
+export function useUiT(source?: object, locale?: string): UiT {
+	const tag = useUiLocale(source, locale);
+	return useMemo(() => createUiT(tag), [tag]);
+}
+
+/**
+ * The app's UI language as a BCP 47 tag ('fr-CA', 'zh-Hant'…), found the same
+ * way as useUiT — for formatting dates, amounts and names the way it writes them.
+ */
+export function useUiLocale(source?: object, locale?: string): string {
+	const contextClient = useContext(FonderieContext);
+	const src = uiLocaleFor(source) ?? uiLocaleFor(contextClient ?? undefined);
+	const subscribe = useCallback((onChange: () => void) => (src ? src.on(onChange) : NO_SUBSCRIBE()), [src]);
+	const tag = useSyncExternalStore(subscribe, () => src?.get() ?? DEVICE_LOCALE, () => src?.get() ?? DEVICE_LOCALE);
+	return locale ?? tag;
+}
+
+/**
+ * A refused request as text in the app's UI language — what a screen shows
+ * instead of the server's English `explanation` (see localizeApiError).
+ *
+ *   const errorText = useUiError(client);  {error && <p>{errorText(error)}</p>}
+ */
+export function useUiError(source?: object, locale?: string): (error: IApiErrorLike | null | undefined) => string {
+	const tag = useUiLocale(source, locale);
+	return useCallback((error: IApiErrorLike | null | undefined) => localizeApiError(error, tag), [tag]);
 }

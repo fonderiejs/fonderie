@@ -2,9 +2,14 @@ import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
 	IReadOptions,
+	IAcceptInvitationInput,
 	IAcceptInvitationResult,
 	IApiResponse,
 	IInvitationListResult,
+	IInvitationResult,
+	IMyPermissionsResult,
+	IPermissionCatalogResult,
+	IRoleDeleteResult,
 	IInviteResult,
 	IMemberListResult,
 	IRoleListResult,
@@ -13,6 +18,7 @@ import type {
 	IWorkspaceResult,
 	IWorkspaceSettingsResult,
 } from '../types';
+import { WorkspaceScope } from '../workspace-scope';
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
@@ -36,6 +42,15 @@ export interface IUpdateWorkspaceInput {
 		zip?: string;
 		country?: string;
 	} | null;
+	legalName?: string | null;
+	email?: string | null;
+	website?: string | null;
+	/** The logo's URL — typically what client.media returned for the upload. */
+	logoUrl?: string | null;
+	/** Replaces the list. Each is checked against its country's rules (422 names the field). */
+	taxRegistrations?: Array<{ country: string; type: string; number: string; region?: string | null; label?: string | null }>;
+	/** The languages the business serves customers in, e.g. ['en-CA', 'fr-CA']. */
+	languages?: string[];
 }
 
 export interface IInviteEntry {
@@ -86,6 +101,9 @@ export interface IRolePermissionsResult {
 
 export class WorkspacesClient {
 	private workspaceId: string | undefined;
+	// Created on first use, so an instance built without the constructor (a
+	// test double from Object.create(prototype)) still works.
+	private scope?: WorkspaceScope;
 
 	constructor(
 		private http: HttpClient,
@@ -100,6 +118,23 @@ export class WorkspacesClient {
 	// Falls back to the caller's personal workspace when unset.
 	setWorkspaceId(workspaceId: string | undefined) {
 		this.workspaceId = workspaceId;
+		this.workspaceScope().set(workspaceId);
+	}
+
+	// The workspace this client is scoped to (X-Workspace-ID).
+	getWorkspaceId(): string | undefined {
+		return this.workspaceId;
+	}
+
+	// Called whenever setWorkspaceId changes the workspace, so a screen showing
+	// this workspace's data re-reads on a switch. Returns the unsubscribe.
+	onWorkspaceChange(listener: (workspaceId: string | undefined) => void): () => void {
+		return this.workspaceScope().on(listener);
+	}
+
+	private workspaceScope(): WorkspaceScope {
+		if (!this.scope) this.scope = new WorkspaceScope();
+		return this.scope;
 	}
 
 	// ── Workspace creation + listing ─────────────────────────────────────────────
@@ -127,6 +162,41 @@ export class WorkspacesClient {
 			method: 'GET',
 			path: `/workspaces/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
+			bust: opts?.bust,
+		});
+	}
+
+	// The workspace this client is scoped to (the selected one, or the personal
+	// workspace when none is selected).
+	getCurrentWorkspace(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceResult>>({
+			method: 'GET',
+			path: '/workspaces/current',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// What the signed-in member may do in the selected workspace — the one read
+	// a client gates its UI on (usePermissions / useCan).
+	getMyPermissions(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IMyPermissionsResult>>({
+			method: 'GET',
+			path: '/workspaces/current/permissions',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// The resources the app checks — a role editor's switch grid.
+	getPermissionCatalog(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IPermissionCatalogResult>>({
+			method: 'GET',
+			path: '/workspaces/permissions/catalog',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
 			bust: opts?.bust,
 		});
 	}
@@ -202,8 +272,10 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Resolves with how many members held the role and how many of them moved
+	// to the default role (it was their only one) — say so before confirming.
 	removeRole(roleId: string) {
-		return this.http.request<IApiResponse<undefined>>({
+		return this.http.request<IApiResponse<IRoleDeleteResult>>({
 			method: 'DELETE',
 			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
 			token: this.tokens.get(),
@@ -281,6 +353,47 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Owner only: make a member a manager, or take it back.
+	setManager(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: `/workspaces/members/${encodeURIComponent(userId)}/manager`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	unsetManager(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'DELETE',
+			path: `/workspaces/members/${encodeURIComponent(userId)}/manager`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Owner only: hand the workspace to another member (the previous owner stays
+	// as a manager).
+	transferOwnership(userId: string) {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: '/workspaces/transfer-ownership',
+			body: { userId },
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Leave the selected workspace. The owner must transfer ownership first.
+	leaveWorkspace() {
+		return this.http.request<IApiResponse<void>>({
+			method: 'POST',
+			path: '/workspaces/leave',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
 	// ── Invitations ──────────────────────────────────────────────────────────────
 
 	listInvitations(opts?: IReadOptions) {
@@ -312,11 +425,24 @@ export class WorkspacesClient {
 		});
 	}
 
-	acceptInvitation(pin: string) {
+	resendInvitation(inviteId: string) {
+		return this.http.request<IApiResponse<IInvitationResult>>({
+			method: 'POST',
+			path: `/workspaces/invitations/${encodeURIComponent(inviteId)}/resend`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Accept with the link's token ({ token }) or the 6-digit PIN from the email
+	// ({ pin }, or a bare string). The PIN only redeems an invitation addressed
+	// to the signed-in account's email; the token works for any account.
+	acceptInvitation(code: string | IAcceptInvitationInput) {
+		const body = typeof code === 'string' ? { pin: code } : code;
 		return this.http.request<IApiResponse<IAcceptInvitationResult>>({
 			method: 'POST',
 			path: '/workspaces/invitations/accept',
-			body: { pin },
+			body,
 			token: this.tokens.get(),
 		});
 	}

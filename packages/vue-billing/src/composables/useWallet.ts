@@ -1,8 +1,9 @@
-import type { BillingClient, IWalletDTO } from '@fonderie/client';
-import { FonderieApiError } from '@fonderie/client';
+import type { BillingClient, FonderieApiError, IWalletDTO } from '@fonderie/client';
 import { useFonderieSubClient } from '@fonderie/vue';
 import type { Ref } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
+
+import { useBillingQuery } from './workspace';
 
 export interface IUseWalletReturn {
 	wallet: Ref<IWalletDTO | null>;
@@ -12,29 +13,10 @@ export interface IUseWalletReturn {
 }
 
 // The subscriber's stored-value wallet balance (GET /billing/wallet) — reflects
-// the periodic grant withBilling applies on every authed request.
+// the periodic grant withBilling applies on every authed request. A failed
+// refresh keeps the last balance shown and reports the error alongside it.
 export function useWallet(client?: BillingClient): IUseWalletReturn {
 	const billing = useFonderieSubClient(client, (c) => c.billing, 'useWallet');
-	const wallet = ref<IWalletDTO | null>(null);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await billing.getWallet({ bust: opts?.force });
-			wallet.value = result.wallet;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			wallet.value = null;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	onMounted(() => void refresh());
-	return { wallet, isLoading, error, refresh };
+	const q = useBillingQuery<IWalletDTO>(billing, '/billing/wallet', async (bust) => (await billing.getWallet({ bust })).result.wallet);
+	return { wallet: computed(() => q.data.value ?? null), isLoading: q.isLoading, error: q.error, refresh: q.refresh };
 }

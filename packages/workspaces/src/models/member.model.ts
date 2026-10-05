@@ -9,6 +9,9 @@ import {
 	getUserRoles,
 	addRoleToMember,
 	removeRoleFromMember,
+	countOccupiedSeats,
+	setManager,
+	transferOwnership,
 } from '../services/members';
 
 export class MemberModel {
@@ -18,8 +21,20 @@ export class MemberModel {
 		return getMember(userId, workspaceId, this.store);
 	}
 
-	list(workspaceId: string): Promise<IMember[]> {
-		return listMembers(workspaceId, this.store);
+	list(workspaceId: string, managerRoles?: string[]): Promise<IMember[]> {
+		return listMembers(workspaceId, this.store, managerRoles);
+	}
+
+	countSeats(workspaceId: string): Promise<number> {
+		return countOccupiedSeats(workspaceId, this.store);
+	}
+
+	setManager(userId: string, workspaceId: string, manager: boolean, managerRole?: string): Promise<boolean> {
+		return setManager(userId, workspaceId, manager, this.store, managerRole);
+	}
+
+	transferOwnership(workspaceId: string, fromUserId: string, toUserId: string, managerRole?: string): Promise<boolean> {
+		return transferOwnership(workspaceId, fromUserId, toUserId, this.store, managerRole);
 	}
 
 	add(opts: Parameters<typeof addMember>[0]): Promise<void> {
@@ -38,7 +53,7 @@ export class MemberModel {
 		return addRoleToMember(userId, workspaceId, roleId, this.store);
 	}
 
-	removeRole(userId: string, workspaceId: string, roleId: string): Promise<void> {
+	removeRole(userId: string, workspaceId: string, roleId: string): ReturnType<typeof removeRoleFromMember> {
 		return removeRoleFromMember(userId, workspaceId, roleId, this.store);
 	}
 }

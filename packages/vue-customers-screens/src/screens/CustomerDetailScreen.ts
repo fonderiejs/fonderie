@@ -4,6 +4,7 @@ import type {
 	ICustomerNoteDTO,
 	ICustomerPhoneDTO,
 } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import {
 	useCustomer,
 	useCustomerEmails,
@@ -20,11 +21,15 @@ export const CustomerDetailScreen = defineComponent({
 	props: {
 		client: { type: Object as PropType<CustomersClient>, required: false },
 		customerId: { type: String, required: true },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	emits: {
 		'navigate-list': () => true,
 	},
 	setup(props, { emit }) {
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const customerBound = useCustomer(props.client, props.customerId, 1);
 		const emailsBound = useCustomerEmails(props.client, props.customerId);
 		const phonesBound = useCustomerPhones(props.client, props.customerId);
@@ -106,7 +111,9 @@ export const CustomerDetailScreen = defineComponent({
 			return h('li', { key: email.id, style: styles.detailRow }, [
 				h('span', {}, [
 					email.email,
-					email.isPrimary ? h('em', { style: styles.primary }, 'primary') : null,
+					email.isPrimary
+						? h('em', { style: styles.primary }, t('customers.detail.primary'))
+						: null,
 				]),
 				h('span', { style: styles.rowActions }, [
 					!email.isPrimary
@@ -117,7 +124,7 @@ export const CustomerDetailScreen = defineComponent({
 									style: styles.smallButton,
 									onClick: () => emailsBound.setPrimaryEmail(email.id),
 								},
-								'Make primary',
+								t('customers.detail.makePrimary'),
 							)
 						: null,
 					h(
@@ -127,7 +134,7 @@ export const CustomerDetailScreen = defineComponent({
 							style: styles.smallButton,
 							onClick: () => emailsBound.removeEmail(email.id),
 						},
-						'Remove',
+						t('customers.detail.remove'),
 					),
 				]),
 			]);
@@ -137,7 +144,9 @@ export const CustomerDetailScreen = defineComponent({
 			return h('li', { key: phone.id, style: styles.detailRow }, [
 				h('span', {}, [
 					phone.phone,
-					phone.isPrimary ? h('em', { style: styles.primary }, 'primary') : null,
+					phone.isPrimary
+						? h('em', { style: styles.primary }, t('customers.detail.primary'))
+						: null,
 				]),
 				h('span', { style: styles.rowActions }, [
 					!phone.isPrimary
@@ -148,7 +157,7 @@ export const CustomerDetailScreen = defineComponent({
 									style: styles.smallButton,
 									onClick: () => phonesBound.setPrimaryPhone(phone.id),
 								},
-								'Make primary',
+								t('customers.detail.makePrimary'),
 							)
 						: null,
 					h(
@@ -158,7 +167,7 @@ export const CustomerDetailScreen = defineComponent({
 							style: styles.smallButton,
 							onClick: () => phonesBound.removePhone(phone.id),
 						},
-						'Remove',
+						t('customers.detail.remove'),
 					),
 				]),
 			]);
@@ -174,27 +183,28 @@ export const CustomerDetailScreen = defineComponent({
 						style: styles.smallButton,
 						onClick: () => notesBound.deleteNote(note.id),
 					},
-					'Delete',
+					t('customers.detail.delete'),
 				),
 			]);
 		}
 
 		return () => {
-			if (customerBound.isLoading.value) return h('p', { style: styles.status }, 'Loading…');
+			if (customerBound.isLoading.value)
+				return h('p', { style: styles.status }, t('customers.loading'));
 			if (customerBound.error.value)
 				return h(
 					'p',
 					{ style: styles.error, role: 'alert' },
-					customerBound.error.value.explanation,
+					errorText(customerBound.error.value),
 				);
 
 			return h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Customer'),
+				h('h1', { style: styles.title }, t('customers.detail.title')),
 
 				h('form', { style: styles.editForm, onSubmit: handleSaveProfile }, [
 					h('input', {
 						style: styles.input,
-						placeholder: 'First name',
+						placeholder: t('customers.fields.firstName'),
 						value: firstName.value,
 						onInput: (e: Event) => {
 							firstName.value = (e.target as HTMLInputElement).value;
@@ -202,7 +212,7 @@ export const CustomerDetailScreen = defineComponent({
 					}),
 					h('input', {
 						style: styles.input,
-						placeholder: 'Last name',
+						placeholder: t('customers.fields.lastName'),
 						value: lastName.value,
 						onInput: (e: Event) => {
 							lastName.value = (e.target as HTMLInputElement).value;
@@ -210,21 +220,21 @@ export const CustomerDetailScreen = defineComponent({
 					}),
 					h('input', {
 						style: styles.input,
-						placeholder: 'Company',
+						placeholder: t('customers.fields.company'),
 						value: companyName.value,
 						onInput: (e: Event) => {
 							companyName.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					h('button', { type: 'submit', style: styles.button }, 'Save'),
+					h('button', { type: 'submit', style: styles.button }, t('customers.detail.save')),
 				]),
 
-				h('h2', { style: styles.subtitle }, 'Emails'),
+				h('h2', { style: styles.subtitle }, t('customers.detail.emails')),
 				h('ul', { style: styles.list }, emailsBound.emails.value.map(renderEmail)),
 				h('div', { style: styles.inlineForm }, [
 					h('input', {
 						style: styles.inlineInput,
-						placeholder: 'new@email.com',
+						placeholder: t('customers.detail.emailPlaceholder'),
 						value: newEmail.value,
 						onInput: (e: Event) => {
 							newEmail.value = (e.target as HTMLInputElement).value;
@@ -233,16 +243,16 @@ export const CustomerDetailScreen = defineComponent({
 					h(
 						'button',
 						{ type: 'button', style: styles.smallButton, onClick: handleAddEmail },
-						'Add',
+						t('customers.detail.add'),
 					),
 				]),
 
-				h('h2', { style: styles.subtitle }, 'Phones'),
+				h('h2', { style: styles.subtitle }, t('customers.detail.phones')),
 				h('ul', { style: styles.list }, phonesBound.phones.value.map(renderPhone)),
 				h('div', { style: styles.inlineForm }, [
 					h('input', {
 						style: styles.inlineInput,
-						placeholder: '+1 555 0100',
+						placeholder: t('customers.detail.phonePlaceholder'),
 						value: newPhone.value,
 						onInput: (e: Event) => {
 							newPhone.value = (e.target as HTMLInputElement).value;
@@ -251,11 +261,11 @@ export const CustomerDetailScreen = defineComponent({
 					h(
 						'button',
 						{ type: 'button', style: styles.smallButton, onClick: handleAddPhone },
-						'Add',
+						t('customers.detail.add'),
 					),
 				]),
 
-				h('h2', { style: styles.subtitle }, 'Tags'),
+				h('h2', { style: styles.subtitle }, t('customers.detail.tags')),
 				h(
 					'div',
 					{ style: styles.tags },
@@ -266,6 +276,7 @@ export const CustomerDetailScreen = defineComponent({
 								key: tag,
 								type: 'button',
 								style: styles.tag,
+								'aria-label': t('customers.detail.a11y.removeTag', { tag }),
 								onClick: () => tagsBound.removeTag(tag),
 							},
 							`${tag} ×`,
@@ -275,33 +286,41 @@ export const CustomerDetailScreen = defineComponent({
 				h('div', { style: styles.inlineForm }, [
 					h('input', {
 						style: styles.inlineInput,
-						placeholder: 'new tag',
+						placeholder: t('customers.detail.tagPlaceholder'),
 						value: newTag.value,
 						onInput: (e: Event) => {
 							newTag.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					h('button', { type: 'button', style: styles.smallButton, onClick: handleAddTag }, 'Add'),
+					h(
+						'button',
+						{ type: 'button', style: styles.smallButton, onClick: handleAddTag },
+						t('customers.detail.add'),
+					),
 				]),
 
-				h('h2', { style: styles.subtitle }, 'Notes'),
+				h('h2', { style: styles.subtitle }, t('customers.detail.notes')),
 				h('ul', { style: styles.list }, notesBound.notes.value.map(renderNote)),
 				h('div', { style: styles.inlineForm }, [
 					h('input', {
 						style: styles.inlineInput,
-						placeholder: 'Add a note…',
+						placeholder: t('customers.detail.notePlaceholder'),
 						value: newNote.value,
 						onInput: (e: Event) => {
 							newNote.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					h('button', { type: 'button', style: styles.smallButton, onClick: handleAddNote }, 'Add'),
+					h(
+						'button',
+						{ type: 'button', style: styles.smallButton, onClick: handleAddNote },
+						t('customers.detail.add'),
+					),
 				]),
 
 				h(
 					'button',
 					{ type: 'button', style: styles.link, onClick: () => emit('navigate-list') },
-					'Back to customers',
+					t('customers.detail.backToList'),
 				),
 			]);
 		};

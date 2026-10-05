@@ -6,6 +6,9 @@ export {
 	getUserRoles,
 	addRoleToMember,
 	removeRoleFromMember,
+	countOccupiedSeats,
+	setManager,
+	transferOwnership,
 } from './members';
 export {
 	findWorkspaceById,
@@ -25,10 +28,12 @@ export {
 	deleteRole,
 	setRolePermissions,
 } from './roles';
+export type { IRoleDeleteResult } from './roles';
 export {
 	createInvitation,
 	listInvitations,
 	cancelInvitation,
+	resendInvitation,
 	acceptInvitationByPin,
 	acceptInvitationByToken,
 } from './invitations';

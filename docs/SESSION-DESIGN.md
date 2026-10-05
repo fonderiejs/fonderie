@@ -122,7 +122,7 @@ first render), signs out once with a message on a definitive refusal, keeps
 one token store, clears Keychain tokens on the first launch after a reinstall
 (iOS), excludes SecureStore from Android Auto Backup.
 
-**Phase 5 — Live revocation.** ✅ Payload `{ userId, sids (null = all), reason }`, projected to the user as `{ sids, reason }`; emitted by terminate-one, terminate-others, password change, admin sign-out-everywhere and refresh reuse. The client listens while signed in when `sse` is configured (`liveSignOut: false` opts out) and signs out only if the event names its own `sid` or all sessions. `fonderie.session.revoked` in auth's event
+**Phase 5 — Live revocation.** ✅ Payload `{ userId, sids (null = all), reason }`, projected to the user as `{ sids, reason }`; emitted by terminate-one, terminate-others, password change, admin sign-out-everywhere, refresh reuse and account deletion (`account-deleted`). The client listens while signed in when `sse` is configured (`liveSignOut: false` opts out) and signs out only if the event names its own `sid` or all sessions. `fonderie.session.revoked` in auth's event
 catalog (audience: the user); terminate-device, password change, reuse
 detection and suspension emit it; the client signs out within a second over
 the stream it already holds.

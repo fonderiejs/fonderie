@@ -1,4 +1,6 @@
 import type { AuditClient, IAuditEventDTO, IListAuditEventsInput } from '@fonderie/client';
+import { uiLocaleFor } from '@fonderie/client';
+import { useUiError, useUiT } from '@fonderie/vue';
 import { useAuditEvents } from '@fonderie/vue-audit';
 import type { PropType } from 'vue';
 import { defineComponent, h, ref } from 'vue';
@@ -65,8 +67,12 @@ export const AuditLogScreen = defineComponent({
 	name: 'FonderieAuditLogScreen',
 	props: {
 		client: { type: Object as PropType<AuditClient>, required: false },
+		/** The language for this screen only; default: the client's UI language (client.setLocale). */
+		locale: { type: String, required: false },
 	},
 	setup(props) {
+		const t = useUiT(props.client, () => props.locale);
+		const errorText = useUiError(props.client, () => props.locale);
 		const type = ref('');
 		const actorId = ref('');
 		const expanded = ref<string | null>(null);
@@ -102,7 +108,7 @@ export const AuditLogScreen = defineComponent({
 						h(
 							'span',
 							{ style: styles.meta },
-							`${event.actorId ?? 'system'} · ${new Date(event.createdAt).toLocaleString()}`,
+							`${event.actorId ?? t('audit.log.system')} · ${new Date(event.createdAt).toLocaleString(props.locale ?? uiLocaleFor(props.client)?.get())}`,
 						),
 					],
 				),
@@ -114,11 +120,12 @@ export const AuditLogScreen = defineComponent({
 
 		return () =>
 			h('div', { style: styles.container }, [
-				h('h1', { style: styles.title }, 'Audit log'),
+				h('h1', { style: styles.title }, t('audit.log.title')),
 				h('form', { style: styles.form, onSubmit: handleFilterSubmit }, [
 					h('input', {
 						style: styles.input,
-						placeholder: 'Event type',
+						placeholder: t('audit.log.eventType'),
+						'aria-label': t('audit.log.eventType'),
 						value: type.value,
 						onInput: (e: Event) => {
 							type.value = (e.target as HTMLInputElement).value;
@@ -126,19 +133,20 @@ export const AuditLogScreen = defineComponent({
 					}),
 					h('input', {
 						style: styles.input,
-						placeholder: 'Actor ID',
+						placeholder: t('audit.log.actorId'),
+						'aria-label': t('audit.log.actorId'),
 						value: actorId.value,
 						onInput: (e: Event) => {
 							actorId.value = (e.target as HTMLInputElement).value;
 						},
 					}),
-					h('button', { type: 'submit', style: styles.filterButton }, 'Filter'),
+					h('button', { type: 'submit', style: styles.filterButton }, t('audit.log.filter')),
 				]),
 				error.value
-					? h('p', { style: styles.error, role: 'alert' }, error.value.explanation)
+					? h('p', { style: styles.error, role: 'alert' }, errorText(error.value))
 					: null,
 				isLoading.value
-					? h('p', { style: styles.status }, 'Loading…')
+					? h('p', { style: styles.status }, t('audit.log.loading'))
 					: h('ul', { style: styles.list }, events.value.map(renderEvent)),
 				hasMore.value
 					? h(
@@ -149,7 +157,7 @@ export const AuditLogScreen = defineComponent({
 								style: styles.loadMoreButton,
 								onClick: loadMore,
 							},
-							isLoadingMore.value ? 'Loading…' : 'Load more',
+							isLoadingMore.value ? t('audit.log.loading') : t('audit.log.loadMore'),
 						)
 					: null,
 			]);

@@ -1,7 +1,7 @@
-import type { ICreateCustomerInput, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FonderieApiError, ICreateCustomerInput, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
+import { CustomersClient, queryParams } from '@fonderie/client';
+import { useFonderieSubClient, usePagedQuery, useWrite } from '@fonderie/react';
+import { useCallback, useMemo } from 'react';
 
 export interface IUseCustomersReturn {
 	customers: ICustomerDTO[];
@@ -17,6 +17,9 @@ export interface IUseCustomersReturn {
 	deleteCustomer: (customerId: string) => Promise<void>;
 	blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
 	unblacklistCustomer: (customerId: string) => Promise<void>;
+	/** Hide from lists and pickers, keep on documents — what to offer when delete answers 409 CUSTOMER_IN_USE. */
+	archiveCustomer: (customerId: string) => Promise<void>;
+	unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 export function useCustomers(params?: IListCustomersInput): IUseCustomersReturn;
@@ -31,132 +34,93 @@ export function useCustomers(
 	const firstIsClient = clientOrParams === undefined || clientOrParams instanceof CustomersClient;
 	const explicit = firstIsClient ? (clientOrParams as CustomersClient | undefined) : undefined;
 	const rawParams = (firstIsClient ? maybeParams : clientOrParams) ?? {};
-	// Named `client` (not `customers`) to avoid shadowing the list state below.
+	// Named `client` (not `customers`) to avoid shadowing the list below.
 	const client = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomers');
-	// Memoized by value (not reference) — `rawParams` defaults to a fresh {}
-	// on every render when the caller omits it, which would otherwise refetch
-	// on every render regardless of the dependency list below.
+	// Keyed by content, not identity: callers pass a fresh {} on every render.
+	const key = queryParams(rawParams);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally keyed on content, not identity
-	const params = useMemo(() => rawParams, [JSON.stringify(rawParams)]);
+	const params = useMemo(() => rawParams, [key]);
+	const start = params.offset ?? 0;
 
-	const [customers, setCustomers] = useState<ICustomerDTO[]>([]);
-	const [total, setTotal] = useState(0);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState<FonderieApiError | null>(null);
-
-	const refresh = useCallback(async (opts?: { force?: boolean }) => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await client.listCustomers(params, { bust: opts?.force });
-			setCustomers(result.customers);
-			setTotal(result.total);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [client, params]);
-
-	const loadMore = useCallback(async () => {
-		if (isLoading || customers.length >= total) return;
-		setIsLoading(true);
-		setError(null);
-		try {
-			const { result } = await client.listCustomers({ ...params, offset: customers.length });
-			setCustomers((prev) => [...prev, ...result.customers]);
-			setTotal(result.total);
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			setError(apiError);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [client, params, customers.length, total, isLoading]);
+	// Offset pagination: the "cursor" is the offset of the next page.
+	const pageOf = (offset: number, customers: ICustomerDTO[], total: number) => ({
+		rows: customers,
+		total,
+		next: offset + customers.length < total ? offset + customers.length : null,
+	});
+	const q = usePagedQuery<ICustomerDTO, number>(
+		client,
+		`/customers${queryParams({ ...params, offset: undefined })}${start ? `#from=${start}` : ''}`,
+		async (bust) => {
+			const { result } = await client.listCustomers(params, { bust });
+			return pageOf(start, result.customers, result.total);
+		},
+		async (offset) => {
+			const { result } = await client.listCustomers({ ...params, offset });
+			return pageOf(offset, result.customers, result.total);
+		},
+		// loadMore here never threw: a list's onEndReached calls it fire-and-forget.
+		// A failed page is reported on `error` only.
+		{ rethrowLoadMore: false },
+	);
+	const w = useWrite(q.refresh);
 
 	const createCustomer = useCallback(
-		async (input: ICreateCustomerInput = {}) => {
-			setError(null);
-			try {
-				const { result } = await client.createCustomer(input);
-				await refresh();
-				return result.customer;
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[client, refresh],
+		(input: ICreateCustomerInput = {}) => w.run(async () => (await client.createCustomer(input)).result.customer),
+		[client, w.run],
 	);
-
 	const deleteCustomer = useCallback(
-		async (customerId: string) => {
-			setError(null);
-			try {
+		(customerId: string) =>
+			w.run(async () => {
 				await client.deleteCustomer(customerId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[client, refresh],
+			}),
+		[client, w.run],
 	);
-
 	const blacklistCustomer = useCallback(
-		async (customerId: string, reason?: string) => {
-			setError(null);
-			try {
+		(customerId: string, reason?: string) =>
+			w.run(async () => {
 				await client.blacklistCustomer(customerId, reason !== undefined ? { reason } : {});
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[client, refresh],
+			}),
+		[client, w.run],
 	);
-
 	const unblacklistCustomer = useCallback(
-		async (customerId: string) => {
-			setError(null);
-			try {
+		(customerId: string) =>
+			w.run(async () => {
 				await client.unblacklistCustomer(customerId);
-				await refresh();
-			} catch (err) {
-				const apiError =
-					err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-				setError(apiError);
-				throw apiError;
-			}
-		},
-		[client, refresh],
+			}),
+		[client, w.run],
 	);
 
-	useEffect(() => {
-		void refresh();
-	}, [refresh]);
+	const archiveCustomer = useCallback(
+		(customerId: string) =>
+			w.run(async () => {
+				await client.archiveCustomer(customerId);
+			}),
+		[client, w.run],
+	);
+	const unarchiveCustomer = useCallback(
+		(customerId: string) =>
+			w.run(async () => {
+				await client.unarchiveCustomer(customerId);
+			}),
+		[client, w.run],
+	);
 
 	return {
-		customers,
-		isLoading,
-		error,
-		refresh,
-		total,
-		hasMore: customers.length < total,
-		loadMore,
+		customers: q.rows,
+		// Busy covers "nothing yet" AND a page append, as before: a list UI
+		// disables its "more" button on it.
+		isLoading: q.isLoading || q.isLoadingMore,
+		error: w.error ?? q.error,
+		refresh: q.refresh,
+		total: q.total ?? 0,
+		hasMore: q.hasMore,
+		loadMore: q.loadMore,
 		createCustomer,
 		deleteCustomer,
 		blacklistCustomer,
 		unblacklistCustomer,
+		archiveCustomer,
+		unarchiveCustomer,
 	};
 }

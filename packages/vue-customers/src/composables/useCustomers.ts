@@ -1,8 +1,8 @@
 import type { ICreateCustomerInput, ICustomerDTO, IListCustomersInput } from '@fonderie/client';
-import { CustomersClient, FonderieApiError } from '@fonderie/client';
-import { useFonderieSubClient } from '@fonderie/vue';
+import { CustomersClient, type FonderieApiError, queryParams } from '@fonderie/client';
+import { useFonderieSubClient, usePagedQuery, useWrite } from '@fonderie/vue';
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import { computed, onMounted, ref, toValue, watch } from 'vue';
+import { computed, toValue } from 'vue';
 
 export interface IUseCustomersReturn {
 	customers: Ref<ICustomerDTO[]>;
@@ -18,6 +18,9 @@ export interface IUseCustomersReturn {
 	deleteCustomer: (customerId: string) => Promise<void>;
 	blacklistCustomer: (customerId: string, reason?: string) => Promise<void>;
 	unblacklistCustomer: (customerId: string) => Promise<void>;
+	/** Hide from lists and pickers, keep on documents — what to offer when delete answers 409 CUSTOMER_IN_USE. */
+	archiveCustomer: (customerId: string) => Promise<void>;
+	unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
 export function useCustomers(
@@ -38,124 +41,60 @@ export function useCustomers(
 		: (clientOrParams as MaybeRefOrGetter<IListCustomersInput | undefined>);
 	const resolveParams = (): IListCustomersInput => toValue(rawParams) ?? {};
 	const customersClient = useFonderieSubClient(explicit, (c) => c.customers, 'useCustomers');
-	const customers = ref<ICustomerDTO[]>([]);
-	const total = ref(0);
-	const isLoading = ref(true);
-	const error = ref<FonderieApiError | null>(null);
-
-	const hasMore = computed(() => customers.value.length < total.value);
-
-	async function refresh(opts?: { force?: boolean }) {
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customersClient.listCustomers(resolveParams(), {
-				bust: opts?.force,
-			});
-			customers.value = result.customers;
-			total.value = result.total;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function loadMore() {
-		if (isLoading.value || customers.value.length >= total.value) return;
-		isLoading.value = true;
-		error.value = null;
-		try {
-			const { result } = await customersClient.listCustomers({
-				...resolveParams(),
-				offset: customers.value.length,
-			});
-			customers.value = [...customers.value, ...result.customers];
-			total.value = result.total;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-		} finally {
-			isLoading.value = false;
-		}
-	}
-
-	async function createCustomer(input: ICreateCustomerInput = {}) {
-		error.value = null;
-		try {
-			const { result } = await customersClient.createCustomer(input);
-			await refresh();
-			return result.customer;
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function deleteCustomer(customerId: string) {
-		error.value = null;
-		try {
-			await customersClient.deleteCustomer(customerId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function blacklistCustomer(customerId: string, reason?: string) {
-		error.value = null;
-		try {
-			await customersClient.blacklistCustomer(customerId, reason !== undefined ? { reason } : {});
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	async function unblacklistCustomer(customerId: string) {
-		error.value = null;
-		try {
-			await customersClient.unblacklistCustomer(customerId);
-			await refresh();
-		} catch (err) {
-			const apiError =
-				err instanceof FonderieApiError ? err : new FonderieApiError('unknown', String(err), 0);
-			error.value = apiError;
-			throw apiError;
-		}
-	}
-
-	onMounted(() => void refresh());
-	// Keyed on content, not identity — a getter returning a fresh object
-	// literal must not refetch unless the filter values actually changed,
-	// mirroring the React hook's JSON.stringify memo.
-	watch(
-		() => JSON.stringify(resolveParams()),
-		() => void refresh(),
-	);
-
-	return {
-		customers,
-		isLoading,
-		error,
-		refresh,
+	// The first page is the shared, cached read, keyed by the filters and the
+	// starting offset (so lists starting elsewhere never share an entry);
+	// loadMore appends by offset.
+	const start = () => resolveParams().offset ?? 0;
+	const page = (from: number, rows: ICustomerDTO[], total: number) => ({
+		rows,
 		total,
-		hasMore,
-		loadMore,
-		createCustomer,
-		deleteCustomer,
-		blacklistCustomer,
-		unblacklistCustomer,
+		next: from + rows.length < total ? from + rows.length : null,
+	});
+	const q = usePagedQuery<ICustomerDTO, number>(
+		customersClient,
+		() => `/customers${queryParams({ ...resolveParams(), offset: undefined })}${start() ? `#from=${start()}` : ''}`,
+		async (bust) => {
+			const { result } = await customersClient.listCustomers(resolveParams(), { bust });
+			return page(start(), result.customers, result.total);
+		},
+		async (offset) => {
+			const { result } = await customersClient.listCustomers({ ...resolveParams(), offset });
+			return page(offset, result.customers, result.total);
+		},
+		// loadMore here never threw: a list's onEndReached calls it fire-and-forget.
+		// A failed page is reported on `error` only.
+		{ rethrowLoadMore: false },
+	);
+	const w = useWrite(() => q.refresh());
+	return {
+		customers: q.rows,
+		// The old composable reported loading during loadMore too.
+		isLoading: computed(() => q.isLoading.value || q.isLoadingMore.value),
+		error: computed(() => w.error.value ?? q.error.value),
+		refresh: q.refresh,
+		total: computed(() => q.total.value ?? 0),
+		hasMore: q.hasMore,
+		loadMore: q.loadMore,
+		createCustomer: (input = {}) => w.run(async () => (await customersClient.createCustomer(input)).result.customer),
+		deleteCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.deleteCustomer(customerId);
+			}),
+		blacklistCustomer: (customerId, reason) =>
+			w.run(async () => {
+				await customersClient.blacklistCustomer(customerId, reason !== undefined ? { reason } : {});
+			}),
+		unblacklistCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.unblacklistCustomer(customerId);
+			}),
+		archiveCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.archiveCustomer(customerId);
+			}),
+		unarchiveCustomer: (customerId) =>
+			w.run(async () => {
+				await customersClient.unarchiveCustomer(customerId);
+			}),
 	};
 }

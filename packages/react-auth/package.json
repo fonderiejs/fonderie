@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-auth",
-	"version": "0.11.1",
+	"version": "0.11.9",
 	"description": "React hooks for Fonderie auth — thin bindings over @fonderie/client.",
 	"keywords": [
 		"fonderiejs",
@@ -34,8 +34,8 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/client": "*",
-		"@fonderie/react": "*"
+		"@fonderie/client": "^3.12.0",
+		"@fonderie/react": "^0.11.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"

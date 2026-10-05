@@ -138,7 +138,16 @@ export interface IResolvedPrice {
 // The customer's card on file. Display fields (never the full number) plus
 // one non-display field: `fingerprint`, a server-side abuse signal.
 export interface INormalizedCard {
-	brand: string; // 'visa' | 'mastercard' | 'amex' | …
+	/**
+	 * What kind of method this is. 'card' carries brand/last4/expiry. 'link'
+	 * (Stripe Link, a saved wallet) has no card details — brand is 'link',
+	 * last4 '' and expiry 0 — and carries the Link account's `email` instead.
+	 * Absent = 'card' (providers predating the field).
+	 */
+	type?: 'card' | 'link';
+	/** The Link account's email, for type 'link'; null otherwise. */
+	email?: string | null;
+	brand: string; // 'visa' | 'mastercard' | 'amex' | 'link' | …
 	last4: string;
 	expMonth: number;
 	expYear: number;
@@ -370,7 +379,17 @@ export interface IBillingProvider {
 	// List the customer's invoices, newest first, for an in-app billing history
 	// that links out to the provider-hosted invoice. Optional; when absent, the
 	// invoices route answers 501.
-	listInvoices?(opts: { customerId: string; limit?: number }): Promise<INormalizedInvoiceSummary[]>;
+	/**
+	 * The customer's invoices (and one-time charges), newest first, at most
+	 * `limit`. `createdLte` (ISO-8601) bounds the page to rows created at or
+	 * before that instant — GET /billing/invoices pages with it. A provider that
+	 * ignores it still works: the route drops rows it already returned.
+	 */
+	listInvoices?(opts: {
+		customerId: string;
+		limit?: number;
+		createdLte?: string;
+	}): Promise<INormalizedInvoiceSummary[]>;
 
 	// Generate a hosted billing portal URL
 	createPortalSession(opts: { customerId: string; returnUrl: string }): Promise<{ url: string }>;

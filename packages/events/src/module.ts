@@ -1,10 +1,12 @@
 import type {
 	IFinding,
 	IAdminDescription,
+	IAdminRoute,
 	IFonderieModule,
 	IFonderieApp,
 	IReadinessProblem,
 } from '@fonderie/core';
+import { HTTP, setApiResponse } from '@fonderie/core';
 
 import { EventBus } from './bus';
 import { PGTransport } from './transports/pg';
@@ -28,6 +30,8 @@ export type EventTransportConfig =
 			claimTimeoutMs?: number;
 			// Enables tamper-evident audit logging (keyed HMAC per event).
 			integrityKey?: string;
+			// Keys used before integrityKey was rotated — verify-only.
+			retiredIntegrityKeys?: string[];
 	  }
 	| IEventTransport;
 
@@ -45,6 +49,9 @@ function resolveTransport(config: EventTransportConfig): IEventTransport {
 			...(config.consume !== undefined ? { consume: config.consume } : {}),
 			...(config.claimTimeoutMs !== undefined ? { claimTimeoutMs: config.claimTimeoutMs } : {}),
 			...(config.integrityKey !== undefined ? { integrityKey: config.integrityKey } : {}),
+			...(config.retiredIntegrityKeys !== undefined
+				? { retiredIntegrityKeys: config.retiredIntegrityKeys }
+				: {}),
 		});
 	}
 
@@ -112,6 +119,14 @@ export class EventsModule implements IFonderieModule {
 							reason: 'EVENT_TAMPERED',
 							metadata: { event: id },
 						}));
+						if (r.retiredKey > 0)
+							findings.push({
+								message: `${r.retiredKey} row(s) verified under a retired key (signed before the key was rotated)`,
+								domain: 'events',
+								reason: 'EVENTS_RETIRED_KEY',
+								metadata: { count: r.retiredKey },
+								severity: 'advice',
+							});
 						if (r.unprotected > 0)
 							findings.push({
 								message: `${r.unprotected} row(s) carry no HMAC (published before integrity was enabled)`,
@@ -150,6 +165,7 @@ export class EventsModule implements IFonderieModule {
 					},
 				},
 			],
+			routes: deadLetterRoutes(t),
 		};
 	}
 
@@ -206,4 +222,42 @@ export class EventsModule implements IFonderieModule {
 		}
 		return [];
 	}
+}
+
+// The operator's way out of a dead delivery. A dead row used to have none: it
+// stayed on the dead-letter list and kept the outbox check failing until
+// someone edited the table by hand. Retry once the cause is fixed; dismiss
+// what must never go (a verification code that expired weeks ago). Declared at
+// the default admin path, re-based by @fonderie/admin.
+function deadLetterRoutes(t: PGTransport): IAdminRoute[] {
+	const act =
+		(action: 'retry' | 'dismiss') =>
+		async (ctx: Parameters<IAdminRoute['handlers'][number]>[0]) => {
+			const eventId = ctx.meta.params?.['eventId'] ?? '';
+			const consumer = decodeURIComponent(ctx.meta.params?.['consumer'] ?? '');
+			if (!/^[0-9a-f-]{36}$/i.test(eventId) || consumer === '')
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'eventId must be a UUID and consumer non-empty');
+			const done =
+				action === 'retry' ? await t.retryDead(eventId, consumer) : await t.dismissDead(eventId, consumer);
+			if (!done)
+				return setApiResponse(HTTP.NOT_FOUND, 'DEAD_LETTER_NOT_FOUND', 'No dead delivery for that event and consumer');
+			return action === 'retry'
+				? setApiResponse(HTTP.OK, 'DEAD_LETTER_RETRIED', 'Delivery queued again with a full set of attempts', { eventId, consumer })
+				: setApiResponse(HTTP.OK, 'DEAD_LETTER_DISMISSED', 'Delivery dismissed — it will never be sent', { eventId, consumer });
+		};
+	return [
+		{
+			method: 'GET',
+			path: '/events/dead',
+			handlers: [
+				async (ctx) => {
+					const raw = Number(new URL(ctx.request.url).searchParams.get('limit') ?? 50);
+					const limit = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), 200) : 50;
+					return setApiResponse(HTTP.OK, 'DEAD_LETTERS', 'Dead deliveries', { deadLetters: await t.deadLetters(limit) });
+				},
+			],
+		},
+		{ method: 'POST', path: '/events/dead/:eventId/:consumer/retry', handlers: [act('retry')] },
+		{ method: 'POST', path: '/events/dead/:eventId/:consumer/dismiss', handlers: [act('dismiss')] },
+	];
 }
