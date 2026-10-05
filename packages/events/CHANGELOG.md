@@ -1,5 +1,12 @@
 # @fonderie/events
 
+## 5.13.1
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+
 ## 5.13.0
 
 ### Minor Changes

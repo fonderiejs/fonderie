@@ -1,5 +1,12 @@
 # @fonderie/sse
 
+## 0.2.9
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+
 ## 0.2.8
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/sse",
-	"version": "0.2.8",
+	"version": "0.2.9",
 	"fonderie": { "stability": "experimental" },
 	"description": "Server-Sent Events delivery to frontends — clients subscribe to all or individual events, each brick's event catalog decides who may receive what (default deny), and fan-out works across instances. Push is additive: apps never wait on it.",
 	"keywords": [
@@ -44,7 +44,7 @@
 		"check": "biome check --write src"
 	},
 	"peerDependencies": {
-		"@fonderie/core": "^0.31.0",
+		"@fonderie/core": "^0.32.0",
 		"pg": "^8.0.0"
 	},
 	"peerDependenciesMeta": {
