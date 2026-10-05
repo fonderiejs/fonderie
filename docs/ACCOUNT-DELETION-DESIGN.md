@@ -120,7 +120,7 @@ customers carrying the email), customers (null `created_by` / `author_id`),
 webhooks (delivery payloads mentioning the user). A gate test fails when a new
 migration adds a personal-data column no brick claims.
 
-**Phase 5 — Operator & evidence.** Console: pending deletions (requested, date,
+**Phase 5 — Operator & evidence.** ✅ console: deleted accounts show the deletion date, channel, reminder and hold; cancel (`fonderie.user.restored`, person told), legal hold (schedule skips it; reason required; lifting needs step-up), erase now (`eraseAccountNow`, archived + not held only, receipt `initiated_by: 'operator'`), receipts tab (lookup by address hash, CSV/JSON export); auth migration 024. Planned as: Console: pending deletions (requested, date,
 reminder sent), cancel on request, legal hold, "erase now" for an urgent
 verified request; erasure receipts list + export. Compliance doc section in
 fonderie-compliance (policy, periods, backup statement).

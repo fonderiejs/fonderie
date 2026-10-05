@@ -159,6 +159,12 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/users/:id/login-history', 'AuthAdminClient.userLoginHistory() — prefix is configurable, invisible to the static match'],
 	['POST /_admin/users/:id/suspend', 'AuthAdminClient.suspendUser() — prefix is configurable, invisible to the static match'],
 	['POST /_admin/users/:id/unsuspend', 'AuthAdminClient.unsuspendUser() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/users/:id/deletion/cancel', 'AuthAdminClient.cancelUserDeletion() — prefix is configurable, invisible to the static match'],
+	['POST /_admin/users/:id/deletion/hold', 'AuthAdminClient.holdUserDeletion() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/users/:id/deletion/hold', 'AuthAdminClient.liftUserDeletionHold() — prefix is configurable, invisible to the static match'],
+	['DELETE /_admin/users/:id/deletion', 'AuthAdminClient.eraseUserNow() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/erasures', 'AuthAdminClient.listErasures() — prefix is configurable, invisible to the static match'],
+	['GET /_admin/erasures/export', 'AuthAdminClient.exportErasures() — prefix is configurable, invisible to the static match'],
 	// @fonderie/billing's described money reads, reached through BillingAdminClient
 	// (+ react-admin / vue-admin hooks, which leg 1 verifies). Same prefix caveat.
 	['GET /_admin/catalog', 'BillingAdminClient.catalog() — prefix is configurable, invisible to the static match'],

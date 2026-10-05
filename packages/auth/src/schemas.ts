@@ -128,3 +128,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+// An operator's legal hold on an archived account: the reason is the record.
+export const deletionHoldSchema = z.object({
+	reason: z.string().trim().min(1, 'say why the deletion is held').max(500),
+});

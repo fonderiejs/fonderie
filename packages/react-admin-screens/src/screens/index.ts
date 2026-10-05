@@ -18,6 +18,8 @@ export type { IAdminLogScreenProps } from './AdminLogScreen';
 export { AdminLogScreen } from './AdminLogScreen';
 export type { IUsersScreenProps } from './UsersScreen';
 export { UsersScreen } from './UsersScreen';
+export type { IErasuresPanelProps } from './ErasuresPanel';
+export { ErasuresPanel } from './ErasuresPanel';
 export type { ICatalogScreenProps } from './CatalogScreen';
 export { CatalogScreen } from './CatalogScreen';
 export type { ISubscriberScreenProps } from './SubscriberScreen';

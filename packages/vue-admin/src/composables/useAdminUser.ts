@@ -1,4 +1,4 @@
-import type { AuthAdminClient, IAdminUserDTO } from '@fonderie/client';
+import type { AuthAdminClient, IAdminErasureDTO, IAdminUserDTO } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { ref, watch } from 'vue';
 import type { Ref } from 'vue';
@@ -62,5 +62,20 @@ export function useAdminUser(
 			await client.revokeUserSessions(id);
 			return { result: undefined };
 		}),
+		// Account deletion (an archived account): keep it, hold it, or erase it now.
+		cancelDeletion: act((id) => client.cancelUserDeletion(id)),
+		holdDeletion: (reason: string) => act((id) => client.holdUserDeletion(id, reason))(),
+		liftDeletionHold: act((id) => client.liftUserDeletionHold(id)),
+		// The account is gone afterwards: `user` becomes null; answers the receipt.
+		async eraseNow(): Promise<IAdminErasureDTO | null> {
+			if (!user.value) return null;
+			const id = user.value.id;
+			let receipt: IAdminErasureDTO | null = null;
+			await wrap(async () => {
+				receipt = (await client.eraseUserNow(id)).result ?? null;
+				user.value = null;
+			});
+			return receipt;
+		},
 	};
 }

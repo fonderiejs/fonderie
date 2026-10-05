@@ -835,6 +835,46 @@ export interface IAdminLogPage {
 // the app's own DTO plus what support asks about. Never a hash or MFA secret.
 export interface IAdminUserDTO extends IUserDTO {
 	deletedAt: string | null;
+	/** Set while the account awaits deletion (archived): when, how, and whether it is held. */
+	deletion?: IAdminDeletionDTO | null;
+}
+
+/** An archived account's deletion, as the operator sees it. */
+export interface IAdminDeletionDTO {
+	requestedAt: string;
+	/** When the schedule erases it — unless it is held. */
+	deleteOn: string;
+	/** The channel the person confirmed with; the reminder goes the same way. */
+	channel: string | null;
+	remindedAt: string | null;
+	/** A legal hold stops the schedule until an operator lifts it. */
+	hold: { at: string; reason: string | null } | null;
+}
+
+/** An erasure receipt — no personal data: identifiers as keyed hashes only. */
+export interface IAdminErasureDTO {
+	id: string;
+	userId: string;
+	emailHash: string | null;
+	phoneHash: string | null;
+	requestedAt: string | null;
+	remindedAt: string | null;
+	erasedAt: string;
+	/** 'schedule' on its date, 'operator' for an "erase now". */
+	initiatedBy: string;
+	outcomes: Array<{ brick: string; erased: number; kept?: string }>;
+}
+
+export interface IAdminErasurePageResult {
+	erasures: IAdminErasureDTO[];
+	nextCursor: string | null;
+}
+
+export interface IAdminErasureExport {
+	generatedAt: string;
+	/** More receipts exist than one export carries. */
+	truncated: boolean;
+	erasures: IAdminErasureDTO[];
 }
 
 // The operator's money reads (@fonderie/billing's described admin routes).

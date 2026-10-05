@@ -214,7 +214,7 @@ type LocationResolver = (req: ILocationRequest) => IRequestLocation | null | und
 
 function validate(schema: IRequestSchema): Middleware
 
-namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, confirmDeletionSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, requestDeletionSchema, resetPasswordSchema, restoreAccountSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
+namespace schemas — exports: ChangePasswordInput, LoginInput, RegisterInput, ResetPasswordInput, appleNativeSchema, changePasswordSchema, confirmDeletionSchema, deletionHoldSchema, forgotPasswordSchema, googleNativeSchema, loginSchema, mfaTokenSchema, refreshSchema, registerSchema, requestDeletionSchema, resetPasswordSchema, restoreAccountSchema, updateEmailSchema, updatePhoneSchema, updatePreferencesSchema, updateProfileSchema, verifySchema
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -258,6 +258,8 @@ function authEraser(store: IStoreAdapter): IAccountEraser
 
 function erasureHash(secret: string, value: string | null): string | null
 
+function eraseAccountNow(store: IStoreAdapter, config: ScheduleConfig, userId: string, bus?: Bus | undefined): Promise<EraseNowResult>
+
 interface IDeletionScheduleResult {
     reminded: number;
     purged: number;
@@ -267,6 +269,29 @@ interface IDeletionScheduleResult {
         error: string;
     }>;
 }
+
+type EraseNowResult = {
+    status: 'erased';
+    outcomes: ErasureOutcomes;
+} | {
+    status: 'not-pending';
+} | {
+    status: 'held';
+} | {
+    status: 'busy';
+} | {
+    status: 'no-erasers';
+} | {
+    status: 'failed';
+    eraser: string;
+    error: string;
+};
+
+type ErasureOutcomes = Array<{
+    brick: string;
+    erased: number;
+    kept?: string;
+}>;
 
 interface IImportUser {
     id?: string;
@@ -300,11 +325,12 @@ interface IAdminUserDTO extends IUserDTO {
     suspended: boolean;
     deletedAt: string | null;
     createdAt: string;
+    deletion?: IAdminDeletionDTO | null;
 }
 
-function describeAuthAdminRoutes(store: IStoreAdapter, bus?: EventBus | undefined): IAdminRoute[]
+function describeAuthAdminRoutes(store: IStoreAdapter, bus?: EventBus | undefined, config?: DeletionConfig | undefined): IAdminRoute[]
 
-function toAdminUserDTO(user: IUser): IAdminUserDTO
+function toAdminUserDTO(user: IUser, deletion?: { facts: IDeletionFacts | undefined; config: Pick<IAuthConfig, "accountDeletion">; } | undefined): IAdminUserDTO
 
 function toAdminUserPageDTO(page: IUserPage): IAdminUserPageDTO
 
