@@ -482,6 +482,25 @@ test('login: generic failures, then a lockout; the second factor is required aft
 	);
 });
 
+test('a burst of parallel wrong passwords is checked one at a time: at most 5 are tried, the rest are locked out', {
+	skip,
+}, async () => {
+	const burst = await Promise.all(
+		Array.from({ length: 15 }, () =>
+			call({ method: 'POST', path: '/_admin/session/login', body: { email: EMAIL, password: 'wrong wrong wrong' } }),
+		),
+	);
+	const tried = burst.filter((r) => r.reason !== 'LOCKED').length;
+	assert.ok(tried <= 5, `${tried} guesses were verified; the lockout allows 5`);
+	assert.equal(burst.filter((r) => r.reason === 'LOCKED').length, 15 - tried);
+	const [row] = await store.query<{ n: number }>(`SELECT failed_attempts AS n FROM fonderie_admin_operators WHERE email = $1`, [EMAIL]);
+	assert.equal(Number(row!.n), tried, 'every verified guess was counted');
+	await store.query(
+		`UPDATE fonderie_admin_operators SET failed_attempts = 0, locked_until = NULL WHERE email = $1`,
+		[EMAIL],
+	);
+});
+
 test('recovery via the root token (break-glass): new password, must re-enroll, old sessions end', {
 	skip,
 }, async () => {
