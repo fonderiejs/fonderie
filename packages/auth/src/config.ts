@@ -220,6 +220,11 @@ export interface IAccountDeletionConfig {
 	 * the account row goes, so a failure keeps the account archived and the
 	 * purge retries (nothing is half-erased). Each brick ships its own (e.g.
 	 * @fonderie/workspaces `accountEraser(store)`); auth's runs first, always.
+	 *
+	 * ORDER MATTERS — billing before workspaces: billing finds the payment
+	 * customers of the workspaces that go with the account through the
+	 * workspace rows the workspaces eraser deletes. Recommended:
+	 *   [billing, workspaces, media, customers, courier, webhooks, events]
 	 */
 	erasers?: IAccountEraser[];
 }

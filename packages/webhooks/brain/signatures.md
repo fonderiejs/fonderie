@@ -78,6 +78,24 @@ interface IWebhookDeliveryDTO {
 
 namespace schemas — exports: createEndpointSchema, updateEndpointSchema
 
+function accountEraser(store: IStoreAdapter): IWebhooksAccountEraser
+
+interface IWebhooksAccountEraser {
+    readonly name: 'webhooks';
+    erase(subject: IWebhooksErasureSubject): Promise<IWebhooksErasureResult>;
+}
+
+interface IWebhooksErasureResult {
+    erased: number;
+    kept?: string;
+}
+
+interface IWebhooksErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
+
 function assertPublicHttpUrl(raw: string): Promise<void>
 
 function isBlockedAddress(ip: string): boolean

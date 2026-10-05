@@ -649,6 +649,7 @@
         "@fonderie/billing/env.json"
       ],
       "tables": [
+        "fonderie_billing_customers",
         "fonderie_billing_notifications",
         "fonderie_credit_packs",
         "fonderie_plans",

@@ -208,8 +208,12 @@ export function accountEraser(
 const UNKNOWN = new Map<string, IWorkspaceFact>();
 
 // The workspaces the person owns or belongs to, and whether each goes with
-// the account: owned by them and no one else in it — no other member who is
-// not removed and whose own account is not itself awaiting deletion. Reads the
+// the account: owned by them and no other LIVE member — not removed, not
+// suspended, an account that exists and is not itself awaiting deletion.
+// This MUST be the workspaces eraser's rule (@fonderie/workspaces
+// account-deletion.ts, OTHER_LIVE_MEMBER): if billing kept a customer for a
+// workspace the workspaces eraser deletes, its subscription would live on with
+// no workspace; the reverse would cancel a surviving team's plan. Reads the
 // workspaces brick's tables (data, not code — the same cross-brick read as
 // services/membership.ts). Without that brick, there are none.
 async function relatedWorkspaces(store: IStoreAdapter, userId: string): Promise<Map<string, IWorkspaceFact>> {
@@ -219,8 +223,9 @@ async function relatedWorkspaces(store: IStoreAdapter, userId: string): Promise<
 			`SELECT w.id, w.email,
 			        (w.owner_id = $1 AND NOT EXISTS (
 			           SELECT 1 FROM fonderie_role_user_workspaces m
-			            WHERE m.workspace_id = w.id AND m.user_id <> $1 AND m.removed = false
-			              AND NOT EXISTS (SELECT 1 FROM fonderie_users u WHERE u.id = m.user_id AND u.deleted_at IS NOT NULL)
+			            JOIN fonderie_users u ON u.id = m.user_id AND u.deleted_at IS NULL
+			            WHERE m.workspace_id = w.id AND m.user_id <> $1
+			              AND m.removed = false AND m.suspended = false
 			        )) AS goes
 			   FROM fonderie_workspaces w
 			  WHERE w.owner_id = $1

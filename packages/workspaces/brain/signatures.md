@@ -247,4 +247,17 @@ function exportUserData(store: IStoreAdapter, userId: string): Promise<unknown>
 function workspaceExportContributor(store: IStoreAdapter): { name: string; collect: (userId: string) => Promise<unknown>; }
 
 function accountDeletionBlocker(store: IStoreAdapter): (userId: string) => Promise<IAccountDeletionRefusal | null>
+
+function accountEraser(store: IStoreAdapter): { name: "workspaces"; erase(subject: IErasureSubject): Promise<IErasureResult>; }
+
+interface IErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
+
+interface IErasureResult {
+    erased: number;
+    kept?: string;
+}
 ```

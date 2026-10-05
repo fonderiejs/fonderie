@@ -38,6 +38,7 @@ new StripeProvider(secretKey: string, webhookSecret: string | undefined, options
   .setDefaultPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .detachPaymentMethod(opts: { customerId: string; paymentMethodId: string; }): Promise<void>
   .deleteCustomer(customerId: string): Promise<void>
+  .replaceCustomerEmail(opts: { customerId: string; email: string; replacement: string | null; }): Promise<boolean>
   .listInvoices(opts: { customerId: string; limit?: number; createdLte?: string; }): Promise<INormalizedInvoiceSummary[]>
   .constructEvent(opts: { payload: string; signature: string; secret: string; }): Promise<IBillingEvent>
 
@@ -339,6 +340,11 @@ interface IBillingProvider {
         paymentMethodId: string;
     }): Promise<void>;
     deleteCustomer?(customerId: string): Promise<void>;
+    replaceCustomerEmail?(opts: {
+        customerId: string;
+        email: string;
+        replacement: string | null;
+    }): Promise<boolean>;
     listInvoices?(opts: {
         customerId: string;
         limit?: number;
@@ -924,4 +930,24 @@ interface ISubscriberDeletedOutcome {
 }
 
 type SubscriberDeletedPolicy = 'cancel' | 'cancel-at-period-end' | 'keep';
+
+function accountEraser(store: IStoreAdapter, opts: IBillingAccountEraserOptions): IBillingAccountEraser
+
+interface IBillingAccountEraser {
+    name: 'billing';
+    erase(subject: IBillingErasureSubject): Promise<{
+        erased: number;
+        kept?: string;
+    }>;
+}
+
+interface IBillingAccountEraserOptions {
+    provider: Pick<IBillingProvider, 'name'> & Partial<Pick<IBillingProvider, 'deleteCustomer' | 'replaceCustomerEmail'>>;
+}
+
+interface IBillingErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
 ```

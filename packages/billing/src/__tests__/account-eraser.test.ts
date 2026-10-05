@@ -68,7 +68,7 @@ async function connect() {
 type Store = Awaited<ReturnType<typeof connect>>;
 const close = (store: unknown) => (store as { end?: () => Promise<void> }).end?.();
 
-async function workspace(store: Store, owner: string, members: Array<{ id: string; removed?: boolean }>, email: string | null = null) {
+async function workspace(store: Store, owner: string, members: Array<{ id: string; removed?: boolean; suspended?: boolean }>, email: string | null = null) {
 	const id = randomUUID();
 	await store.query(
 		`INSERT INTO fonderie_workspaces (id, name, slug, owner_id, email) VALUES ($1, 'Acme', $2, $3, $4)`,
@@ -77,8 +77,8 @@ async function workspace(store: Store, owner: string, members: Array<{ id: strin
 	const [role] = await store.query<{ id: string }>(`SELECT id FROM fonderie_roles WHERE name = 'ADMIN' AND workspace_id IS NULL`);
 	for (const m of [{ id: owner }, ...members]) {
 		await store.query(
-			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed, removed) VALUES ($1, $2, $3, true, $4)`,
-			[m.id, id, role!.id, m.removed ?? false],
+			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed, removed, suspended) VALUES ($1, $2, $3, true, $4, $5)`,
+			[m.id, id, role!.id, m.removed ?? false, (m as { suspended?: boolean }).suspended ?? false],
 		);
 	}
 	return id;
@@ -306,6 +306,29 @@ test('wallet off: the customer card setup creates is found again when the card i
 		const out = await accountEraser(store as never, { provider: provider as never }).erase({ userId: user, email: 'card@acme.example', phone: null });
 		assert.equal(out.erased, 1);
 		assert.ok(calls.some((c) => c.op === 'deleteCustomer' && c.arg === customerId), 'the erasure reaches it');
+	} finally {
+		await close(store);
+	}
+});
+
+test('billing decides "this workspace goes" by the workspaces eraser\'s rule: a suspended or account-less member does not keep it', { skip }, async () => {
+	const store = await connect();
+	try {
+		const gone = randomUUID();
+		const k = randomUUID().slice(0, 8);
+		// The only other member is suspended — the workspaces eraser deletes this workspace…
+		const suspended = randomUUID();
+		await store.query(`INSERT INTO fonderie_users (id, email) VALUES ($1, $2)`, [suspended, `susp-${k}@acme.example`]);
+		const team = await workspace(store, gone, [{ id: suspended, suspended: true }]);
+		await subscription(store, 'workspace', team, `cus_susp_${k}`);
+		// …and so is one whose only other membership has no account at all.
+		const ghost = await workspace(store, gone, [{ id: randomUUID() }]);
+		await subscription(store, 'workspace', ghost, `cus_ghost_${k}`);
+		const { provider, calls } = fakeProvider({ [`cus_susp_${k}`]: 'gone@acme.example', [`cus_ghost_${k}`]: 'gone@acme.example' });
+		await accountEraser(store, { provider }).erase({ userId: gone, email: 'gone@acme.example', phone: null });
+		const deleted = calls.filter((c) => c.op === 'deleteCustomer').map((c) => c.arg);
+		assert.ok(deleted.includes(`cus_susp_${k}`), 'goes with the account, so its provider customer goes too');
+		assert.ok(deleted.includes(`cus_ghost_${k}`));
 	} finally {
 		await close(store);
 	}

@@ -11,6 +11,7 @@ new MediaModule(store: IStoreAdapter, config: IMediaConfig): MediaModule
   .name: "@fonderie/media"
   .version: string
   .deps: string[]
+  .accountEraser(): IMediaAccountEraser
   .install(app: IFonderieApp): void
 
 const DEFAULT_ALLOWED_TYPES: string[]
@@ -25,6 +26,24 @@ interface IMediaConfig {
         ownerType: string;
         ownerId: string;
     }): boolean | Promise<boolean>;
+}
+
+function accountEraser(store: IStoreAdapter, options: { provider: IStorageProvider; }): IMediaAccountEraser
+
+interface IMediaAccountEraser {
+    readonly name: 'media';
+    erase(subject: IMediaErasureSubject): Promise<IMediaErasureResult>;
+}
+
+interface IMediaErasureResult {
+    erased: number;
+    kept?: string;
+}
+
+interface IMediaErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
 }
 
 new DbBlobProvider(store: IStoreAdapter): DbBlobProvider
