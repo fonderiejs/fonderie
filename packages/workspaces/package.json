@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/workspaces",
-	"version": "6.9.0",
+	"version": "6.10.0",
 	"fonderie": {
 		"stability": "stable"
 	},
