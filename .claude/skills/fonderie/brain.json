@@ -1223,7 +1223,7 @@
         {
           "method": "DELETE",
           "path": "/customers/:customerId",
-          "mw": "requireAuth → wsCtx → velocityBrake(store, 'customer.delete', config.velocityBrake ?? {}, bus) → customer.delete"
+          "mw": "requireAuth → wsCtx → brake('customer.delete') → customer.delete"
         },
         {
           "method": "GET",
@@ -3079,7 +3079,7 @@
         {
           "method": "DELETE",
           "path": "/webhooks/:endpointId",
-          "mw": "requireAuth → ws → manager → velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {}) → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; // Into the undo bin: restorable for 30 days. const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
+          "mw": "requireAuth → ws → manager → typeof workspaces.velocityBrake === 'function' ? workspaces.velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {}) : ((_ctx, next) => next()) as Middleware → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; // Into the undo bin: restorable for 30 days. const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
         },
         {
           "method": "GET",
