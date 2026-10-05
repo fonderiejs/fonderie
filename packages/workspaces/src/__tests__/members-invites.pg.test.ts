@@ -319,6 +319,52 @@ test('only the owner makes or unmakes a manager', { skip }, async () => {
 	assert.equal((await call(m.token, 'POST', '/workspaces/invitations', { email: `z-${n}@${DOMAIN}` }, ws)).status, 403);
 });
 
+test("a rogue manager cannot strip manager rights — from another manager or from the owner", { skip }, async () => {
+	const { owner, ws } = await team();
+	const [rogue, peer] = [await join(owner, ws), await join(owner, ws)];
+	for (const p of [rogue, peer]) assert.equal((await call(owner.token, 'POST', `/workspaces/members/${p.id}/manager`, {}, ws)).status, 200);
+	const roles = (await call(owner.token, 'GET', '/workspaces/roles', undefined, ws)).result['roles'] as Array<{ id: string; name: string }>;
+	const admin = roles.find((r) => r.name === 'ADMIN')!;
+	const decoy = await call(owner.token, 'POST', '/workspaces/roles', { name: 'Decoy' }, ws);
+
+	// The attack: give the target a custom role (so ADMIN is not their "last"
+	// role), then delete their ADMIN row.
+	for (const target of [peer.id, owner.id]) {
+		await call(rogue.token, 'POST', `/workspaces/members/${target}/roles`, { roleId: decoy.result['role'].id }, ws);
+		const r = await call(rogue.token, 'DELETE', `/workspaces/members/${target}/roles/${admin.id}`, undefined, ws);
+		assert.deepEqual([r.status, r.reason], [403, 'SYSTEM_ROLE'], `stripping ${target === owner.id ? 'the owner' : 'a manager'}`);
+	}
+	const after = await members(owner, ws);
+	assert.equal(after.find((m) => m['userId'] === peer.id)!['isManager'], true, 'the other manager keeps manager rights');
+	const ownerRoles = after.find((m) => m['userId'] === owner.id)!['roles'].map((r: { name: string }) => r.name);
+	assert.ok(ownerRoles.includes('ADMIN'), `the owner keeps ADMIN: ${ownerRoles}`);
+	// Custom roles still come off normally; the owner's own control still works.
+	assert.equal((await call(rogue.token, 'DELETE', `/workspaces/members/${peer.id}/roles/${decoy.result['role'].id}`, undefined, ws)).status, 200);
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${peer.id}/manager`, undefined, ws)).status, 200);
+});
+
+test('two role removals racing for a two-role member never leave them with none', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [a, b] = [
+		await call(owner.token, 'POST', '/workspaces/roles', { name: 'Roofer' }, ws),
+		await call(owner.token, 'POST', '/workspaces/roles', { name: 'Glazier' }, ws),
+	];
+	const m = await join(owner, ws);
+	for (const r of [a, b]) await call(owner.token, 'POST', `/workspaces/members/${m.id}/roles`, { roleId: r.result['role'].id }, ws);
+	const roles = (await call(owner.token, 'GET', '/workspaces/roles', undefined, ws)).result['roles'] as Array<{ id: string; name: string }>;
+	const guest = roles.find((r) => r.name === 'GUEST')!;
+	// Remove GUEST first? It is a system role — refused. So race the two custom ones,
+	// after which GUEST must remain.
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${m.id}/roles/${guest.id}`, undefined, ws)).reason, 'SYSTEM_ROLE');
+	const results = await Promise.all([a, b].map((r) => call(owner.token, 'DELETE', `/workspaces/members/${m.id}/roles/${r.result['role'].id}`, undefined, ws)));
+	assert.deepEqual(results.map((r) => r.status), [200, 200]);
+	const row = (await members(owner, ws)).find((x) => x['userId'] === m.id);
+	assert.deepEqual(row!['roles'].map((r: { name: string }) => r.name), ['GUEST']);
+	// And the last role never comes off.
+	const last = await call(owner.token, 'DELETE', `/workspaces/members/${m.id}/roles/${a.result['role'].id}`, undefined, ws);
+	assert.deepEqual([last.status, last.reason], [404, 'ROLE_NOT_HELD']);
+});
+
 test('ownership moves to a member; the previous owner stays as a manager', { skip }, async () => {
 	const { owner, ws } = await team();
 	const m = await join(owner, ws);

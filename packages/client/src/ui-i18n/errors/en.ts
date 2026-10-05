@@ -56,6 +56,9 @@ const errors = {
 		OWNER_CANNOT_LEAVE: 'Transfer ownership to another member before leaving.',
 		OWNER_REQUIRED: 'Only the workspace owner can do this.',
 		MANAGER_REQUIRED: 'Only the owner or an admin can do this.',
+		SYSTEM_ROLE: "Built-in roles can't be removed here. Only the owner can remove manager rights.",
+		LAST_ROLE: 'A member keeps at least one role. Remove the member instead.',
+		ROLE_NOT_HELD: "That person doesn't hold this role.",
 		// Billing
 		PLAN_UNCHANGED: "You're already on the {plan} plan.",
 		SUBSCRIPTION_PAST_DUE: 'There is an unpaid balance on your current plan. Please resolve it before changing plans.',
