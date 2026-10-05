@@ -38,6 +38,7 @@ export type {
 	IUseCustomerReturn,
 	IUseCustomersReturn,
 	IUseCustomerTagsReturn,
+	IUseDeletedCustomersReturn,
 } from './hooks';
 export {
 	useCustomer,
@@ -49,4 +50,5 @@ export {
 	useCustomerRelationships,
 	useCustomers,
 	useCustomerTags,
+	useDeletedCustomers,
 } from './hooks';

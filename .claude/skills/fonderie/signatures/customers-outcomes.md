@@ -34,6 +34,16 @@ CONSTRAINT               fonderie_customer_addresses_label_id_fkey FOREIGN KEY (
 -- PRIMARY KEY (addr_id, customer_id)
 ```
 
+### `fonderie_customer_bin`
+
+```sql
+id                       UUID PRIMARY KEY
+workspace_id             UUID NOT NULL
+snapshot                 JSONB NOT NULL
+deleted_by               UUID
+deleted_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_customer_emails`
 
 ```sql
@@ -187,6 +197,9 @@ INSERT INTO fonderie_customer_labels (type, value) SELECT DISTINCT 'address'::fo
 | DELETE | `/customers/:customerId/tags/:tag` | `requireAuth → wsCtx → tag.remove` |
 | POST | `/customers/:customerId/unarchive` | `requireAuth → wsCtx → customer.unarchive` |
 | POST | `/customers/:customerId/unblacklist` | `requireAuth → wsCtx → customer.unblacklist` |
+| GET | `/customers/bin` | `requireAuth → wsCtx → bin.list` |
+| DELETE | `/customers/bin/:customerId` | `requireAuth → wsCtx → bin.purge` |
+| POST | `/customers/bin/:customerId/restore` | `requireAuth → wsCtx → bin.restore` |
 | GET | `/customers/labels` | `requireAuth → wsCtx → label.list` |
 | DELETE | `/customers/labels/:labelId` | `requireAuth → wsCtx → label.remove` |
 

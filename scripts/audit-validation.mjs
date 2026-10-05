@@ -19,6 +19,12 @@ const EXEMPT = new Map([
 	['POST /_admin/users/:id/suspend', 'no body — the id is the path param; flips users.suspended'],
 	['POST /_admin/users/:id/unsuspend', 'no body — the id is the path param; flips users.suspended'],
 	['POST /_admin/users/:id/deletion/cancel', 'no body — the id is the path param; restores the archived account'],
+	['POST /customers/bin/:customerId/restore', 'no body — the id is the path param; restores the snapshot'],
+	['POST /webhooks/bin/:endpointId/restore', 'no body — the id is the path param; restores the snapshot'],
+	['POST /workspaces/roles/bin/:roleId/restore', 'no body — the id is the path param; restores the snapshot'],
+	['POST /workspaces/members/:userId/manager', 'no body — the member is the path param; owner-only grant'],
+	['POST /workspaces/leave', 'no body — the caller leaves the workspace in X-Workspace-ID'],
+	['POST /workspaces/invitations/:inviteId/resend', 'no body — the invitation is the path param; mints a new code'],
 	['POST /billing/webhook', 'Stripe-shaped payload; signature-verified in handler'],
 	['POST /billing/webhook/payment', 'provider-shaped payload; signature-verified in handler'],
 	['POST /courier/delivery/sendgrid', 'provider webhook; signature-verified'],
@@ -91,6 +97,9 @@ for (const pkg of pkgs) {
 			// which then passed by never seeing it.
 			/\[\s*(?:\/\/[^\n]*\n\s*)*'(POST|PUT|PATCH)'\s*,\s*(?:\/\/[^\n]*\n\s*)*'(\/[^']*)'\s*,([\s\S]*?)\]/g,
 			/addRoute\(\s*'(POST|PUT|PATCH)'\s*,\s*'(\/[^']*)'\s*,([\s\S]*?)\)/g,
+			// The route-id form (@fonderie/workspaces: R('createRole', 'POST', '/workspaces/roles', …)).
+			// Without it every workspaces route was invisible here, and the gate passed by never seeing them.
+			/\bR\(\s*'[A-Za-z]+'\s*,\s*'(POST|PUT|PATCH)'\s*,\s*'(\/[^']*)'\s*,([^\n]*)\)/g,
 		]) {
 			let m;
 			while ((m = re.exec(src))) {

@@ -58,6 +58,9 @@ new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
   .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
   .deleteEndpoint(endpointId: string): Promise<undefined>
+  .listDeletedWebhookEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<{ endpoints: IDeletedWebhookEndpointDTO[]; }>>
+  .restoreWebhookEndpoint(id: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .purgeDeletedWebhookEndpoint(id: string): Promise<undefined>
   .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
@@ -104,9 +107,22 @@ interface IUseWebhookEndpointsReturn {
     testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 }
 
+interface IUseDeletedWebhookEndpointsReturn {
+    endpoints: Ref<IDeletedWebhookEndpointDTO[]>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    restore: (id: string) => Promise<void>;
+    purge: (id: string) => Promise<void>;
+}
+
 function useWebhookDeliveries(endpointId: MaybeRefOrGetter<string>): IUseWebhookDeliveriesReturn
 
 function useWebhookEndpoint(endpointId: MaybeRefOrGetter<string>): IUseWebhookEndpointReturn
 
 function useWebhookEndpoints(client?: WebhooksClient | undefined): IUseWebhookEndpointsReturn
+
+function useDeletedWebhookEndpoints(client?: WebhooksClient | undefined): IUseDeletedWebhookEndpointsReturn
 ```

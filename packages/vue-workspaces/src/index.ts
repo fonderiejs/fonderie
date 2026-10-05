@@ -37,6 +37,7 @@ export type {
 	IUseWorkspaceSettingsReturn,
 	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
+	IUseDeletedRolesReturn,
 } from './composables';
 export {
 	useCurrentWorkspace,
@@ -53,4 +54,5 @@ export {
 	useWorkspaceSettings,
 	useWorkspace,
 	useWorkspaces,
+	useDeletedRoles,
 } from './composables';

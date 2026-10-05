@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IDeletedWebhookEndpointDTO,
 	IReadOptions,
 	IApiResponse,
 	ITestWebhookResult,
@@ -110,6 +111,36 @@ export class WebhooksClient {
 		return this.http.request<undefined>({
 			method: 'DELETE',
 			path: `/webhooks/${encodeURIComponent(endpointId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// ── The undo bin: deleted webhook endpoints, restorable for 30 days ──────────────
+	listDeletedWebhookEndpoints(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<{ endpoints: IDeletedWebhookEndpointDTO[] }>>({
+			method: 'GET',
+			path: '/webhooks/bin',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	restoreWebhookEndpoint(id: string) {
+		return this.http.request<IApiResponse<IWebhookEndpointDTO>>({
+			method: 'POST',
+			path: `/webhooks/bin/${encodeURIComponent(id)}/restore`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Gone for good — the workspace owner only.
+	purgeDeletedWebhookEndpoint(id: string) {
+		return this.http.request<undefined>({
+			method: 'DELETE',
+			path: `/webhooks/bin/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

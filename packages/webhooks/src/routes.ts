@@ -11,7 +11,7 @@ import { EndpointModel } from './models/endpoint.model';
 import { DeliveryModel } from './models/delivery.model';
 import { WebhookDispatcher } from './dispatcher';
 import { generateSecret, signPayload } from './signing';
-import { toEndpointDTO, toEndpointCreatedDTO, toDeliveryDTO } from './dtos/webhook';
+import { toBinnedEndpointDTO, toEndpointDTO, toEndpointCreatedDTO, toDeliveryDTO } from './dtos/webhook';
 import type { IWebhooksConfig } from './config';
 import { assertPublicHttpUrl, pinnedTransport, SsrfError } from './ssrf';
 
@@ -99,6 +99,55 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			},
 		],
 
+		// ── The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3) ─────────────
+		// Registered BEFORE /webhooks/:endpointId: the router is first-match.
+		[
+			'GET',
+			'/webhooks/bin',
+			requireAuth,
+			ws,
+			manager,
+			async (ctx) => {
+				if (!ctx.workspace)
+					return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required');
+				const rows = await new EndpointModel(store).listBin(ctx.workspace.id);
+				return setApiResponse(HTTP.OK, 'WEBHOOK_BIN', 'Deleted webhook endpoints.', { endpoints: rows.map(toBinnedEndpointDTO) });
+			},
+		],
+		[
+			'POST',
+			'/webhooks/bin/:endpointId/restore',
+			requireAuth,
+			ws,
+			manager,
+			async (ctx) => {
+				if (!ctx.workspace)
+					return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required');
+				const { endpointId } = ctx.meta['params'] as { endpointId: string };
+				const restored = await new EndpointModel(store).restore(endpointId, ctx.workspace.id);
+				if (!restored)
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Nothing to restore: not deleted here, or deleted too long ago.');
+				return setApiResponse(HTTP.OK, 'WEBHOOK_RESTORED', 'Webhook endpoint restored.', toEndpointDTO(restored));
+			},
+		],
+		// Gone for good: the OWNER only — a manager who could empty the bin could
+		// delete and then erase the undo.
+		[
+			'DELETE',
+			'/webhooks/bin/:endpointId',
+			requireAuth,
+			ws,
+			async (ctx) => {
+				if (!ctx.workspace)
+					return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required');
+				if ((ctx.workspace as { ownerId?: string }).ownerId !== ctx.user?.id)
+					return setApiResponse(HTTP.FORBIDDEN, 'OWNER_REQUIRED', 'Only the workspace owner can empty the bin.');
+				const { endpointId } = ctx.meta['params'] as { endpointId: string };
+				if (!(await new EndpointModel(store).purgeFromBin(endpointId, ctx.workspace.id)))
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Not in the bin.');
+				return new Response(null, { status: HTTP.NO_CONTENT });
+			},
+		],
 		[
 			'GET',
 			'/webhooks/:endpointId',
@@ -190,7 +239,8 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 					);
 
 				const { endpointId } = ctx.meta['params'] as { endpointId: string };
-				const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id);
+				// Into the undo bin: restorable for 30 days.
+				const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null);
 				if (!deleted)
 					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found');
 

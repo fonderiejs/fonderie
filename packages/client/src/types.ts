@@ -1393,3 +1393,45 @@ export interface IAdminMigrationsReport {
 	everApplied: boolean;
 	modules: IAdminMigrationModule[];
 }
+
+// ── The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3) ─────────────────
+// Deleted records, restorable until `purgeAt`. Only the workspace owner can
+// remove one from the bin early.
+
+export interface IDeletedWebhookEndpointDTO {
+	id: string;
+	url: string;
+	events: string[];
+	deletedBy: string | null;
+	deletedAt: string;
+	purgeAt: string;
+}
+
+export interface IDeletedCustomerDTO {
+	id: string;
+	firstName: string | null;
+	lastName: string | null;
+	companyName: string | null;
+	referenceCode: string | null;
+	deletedBy: string | null;
+	deletedAt: string;
+	purgeAt: string;
+}
+
+export interface IDeletedRoleDTO {
+	id: string;
+	name: string;
+	description: string | null;
+	/** How many people held it when it was deleted. */
+	holders: number;
+	deletedBy: string | null;
+	deletedAt: string;
+	purgeAt: string;
+}
+
+export interface IRestoredRoleResult {
+	role: IRoleDTO | null;
+	/** Former holders still in the team who have it again. */
+	reassigned: number;
+}
+

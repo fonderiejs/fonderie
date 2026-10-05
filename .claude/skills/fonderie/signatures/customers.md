@@ -141,7 +141,7 @@ new CustomerModel(store: IStoreAdapter): CustomerModel
   .findDetail(id: string, workspaceId: string, depth: 2): Promise<ICustomerDetailD2 | null>
   .create(opts: CreateCustomerOpts): Promise<ICustomer>
   .update(id: string, workspaceId: string, opts: UpdateCustomerOpts, referenceCodePrefix?: string): Promise<ICustomer | null>
-  .delete(id: string, workspaceId: string): Promise<void>
+  .delete(id: string, workspaceId: string, deletedBy?: string | null): Promise<void>
   .archive(id: string, workspaceId: string): Promise<boolean>
   .unarchive(id: string, workspaceId: string): Promise<boolean>
   .blacklist(id: string, workspaceId: string, reason?: string | null | undefined): Promise<void>
@@ -271,4 +271,25 @@ interface ICustomersErasureSubject {
     email: string | null;
     phone: string | null;
 }
+
+const CUSTOMER_BIN_RETENTION_DAYS: 30
+
+function emptyCustomerBin(store: IStoreAdapter, options?: { olderThanDays?: number; }): Promise<number>
+
+function listCustomerBin(store: IStoreAdapter, workspaceId: string, retentionDays?: number): Promise<IBinnedCustomer[]>
+
+function restoreCustomer(store: IStoreAdapter, id: string, workspaceId: string, retentionDays?: number): Promise<RestoreCustomerOutcome>
+
+interface IBinnedCustomer {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    companyName: string | null;
+    referenceCode: string | null;
+    deletedBy: string | null;
+    deletedAt: Date;
+    purgeAt: Date;
+}
+
+type RestoreCustomerOutcome = 'restored' | 'not-in-bin' | 'conflict';
 ```

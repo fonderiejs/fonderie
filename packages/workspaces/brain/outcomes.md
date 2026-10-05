@@ -9,6 +9,16 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `fonderie_role_bin`
+
+```sql
+id                       UUID PRIMARY KEY
+workspace_id             UUID NOT NULL
+snapshot                 JSONB NOT NULL
+deleted_by               UUID
+deleted_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_role_user_workspaces`
 
 ```sql
@@ -117,6 +127,9 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update` |
 | GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |
 | POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions` |
+| GET | `/workspaces/roles/bin` | `requireAuth → wsCtx → manager → role.listBin` |
+| DELETE | `/workspaces/roles/bin/:roleId` | `requireAuth → wsCtx → owner → T(K.roleBinPurged, roleOf) → role.purge` |
+| POST | `/workspaces/roles/bin/:roleId/restore` | `requireAuth → wsCtx → manager → T(K.roleRestored, roleOf) → role.restore` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
 | PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings` |
 | POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |

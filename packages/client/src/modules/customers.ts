@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IDeletedCustomerDTO,
 	IReadOptions,
 	CustomerLabelType,
 	CustomerSex,
@@ -190,6 +191,36 @@ export class CustomersClient {
 		return this.http.request<IApiResponse<undefined>>({
 			method: 'DELETE',
 			path: `/customers/${encodeURIComponent(customerId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// ── The undo bin: deleted customers, restorable for 30 days ──────────────
+	listDeletedCustomers(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<{ customers: IDeletedCustomerDTO[] }>>({
+			method: 'GET',
+			path: '/customers/bin',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	restoreCustomer(id: string) {
+		return this.http.request<IApiResponse<{ id: string }>>({
+			method: 'POST',
+			path: `/customers/bin/${encodeURIComponent(id)}/restore`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Gone for good — the workspace owner only.
+	purgeDeletedCustomer(id: string) {
+		return this.http.request<undefined>({
+			method: 'DELETE',
+			path: `/customers/bin/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

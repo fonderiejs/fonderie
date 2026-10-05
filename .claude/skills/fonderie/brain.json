@@ -1168,7 +1168,8 @@
         "CustomerNoteModel",
         "CustomerPhoneModel",
         "CustomerTagModel",
-        "CustomersModule"
+        "CustomersModule",
+        "CUSTOMER_BIN_RETENTION_DAYS"
       ],
       "subpaths": [
         "@fonderie/customers/types",
@@ -1178,6 +1179,7 @@
       "tables": [
         "fonderie_addresses",
         "fonderie_customer_addresses",
+        "fonderie_customer_bin",
         "fonderie_customer_emails",
         "fonderie_customer_labels",
         "fonderie_customer_notes",
@@ -1187,7 +1189,7 @@
         "fonderie_customer_tags",
         "fonderie_customers"
       ],
-      "routeCount": 37,
+      "routeCount": 40,
       "routes": [
         {
           "method": "GET",
@@ -1363,6 +1365,21 @@
           "method": "POST",
           "path": "/customers/:customerId/unblacklist",
           "mw": "requireAuth → wsCtx → customer.unblacklist"
+        },
+        {
+          "method": "GET",
+          "path": "/customers/bin",
+          "mw": "requireAuth → wsCtx → bin.list"
+        },
+        {
+          "method": "DELETE",
+          "path": "/customers/bin/:customerId",
+          "mw": "requireAuth → wsCtx → bin.purge"
+        },
+        {
+          "method": "POST",
+          "path": "/customers/bin/:customerId/restore",
+          "mw": "requireAuth → wsCtx → bin.restore"
         },
         {
           "method": "GET",
@@ -1944,7 +1961,8 @@
         "useCustomerPhones",
         "useCustomerRelationships",
         "useCustomers",
-        "useCustomerTags"
+        "useCustomerTags",
+        "useDeletedCustomers"
       ],
       "subpaths": [],
       "tables": [],
@@ -2280,7 +2298,8 @@
         "FonderieApiError",
         "useWebhookDeliveries",
         "useWebhookEndpoint",
-        "useWebhookEndpoints"
+        "useWebhookEndpoints",
+        "useDeletedWebhookEndpoints"
       ],
       "subpaths": [],
       "tables": [],
@@ -2334,7 +2353,8 @@
         "useWorkspaceProfile",
         "useWorkspaceSettings",
         "useWorkspace",
-        "useWorkspaces"
+        "useWorkspaces",
+        "useDeletedRoles"
       ],
       "subpaths": [],
       "tables": [],
@@ -2842,7 +2862,8 @@
         "useCustomerPhones",
         "useCustomerRelationships",
         "useCustomers",
-        "useCustomerTags"
+        "useCustomerTags",
+        "useDeletedCustomers"
       ],
       "subpaths": [],
       "tables": [],
@@ -2907,7 +2928,8 @@
         "FonderieApiError",
         "useWebhookDeliveries",
         "useWebhookEndpoint",
-        "useWebhookEndpoints"
+        "useWebhookEndpoints",
+        "useDeletedWebhookEndpoints"
       ],
       "subpaths": [],
       "tables": [],
@@ -2961,7 +2983,8 @@
         "useWorkspaceProfile",
         "useWorkspaceSettings",
         "useWorkspace",
-        "useWorkspaces"
+        "useWorkspaces",
+        "useDeletedRoles"
       ],
       "subpaths": [],
       "tables": [],
@@ -3005,6 +3028,7 @@
       "dependsOn": [],
       "exports": [
         "WebhooksModule",
+        "BIN_RETENTION_DAYS",
         "SsrfError"
       ],
       "subpaths": [
@@ -3013,9 +3037,10 @@
       ],
       "tables": [
         "fonderie_webhook_deliveries",
+        "fonderie_webhook_endpoint_bin",
         "fonderie_webhook_endpoints"
       ],
-      "routeCount": 7,
+      "routeCount": 10,
       "routes": [
         {
           "method": "GET",
@@ -3030,7 +3055,7 @@
         {
           "method": "DELETE",
           "path": "/webhooks/:endpointId",
-          "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
+          "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; // Into the undo bin: restorable for 30 days. const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
         },
         {
           "method": "GET",
@@ -3051,6 +3076,21 @@
           "method": "POST",
           "path": "/webhooks/:endpointId/test",
           "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const endpoint = await new EndpointModel(store).findById(endpointId, ctx.workspace.id); if (!endpoint) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); const body = JSON.stringify({ id: `test-${Date.now()}`, type: 'webhook.test', data: { workspaceId: ctx.workspace.id, message: 'Test webhook delivery.' }, }); try { // SSRF-safe, DNS-pinned transport: re-validates the stored URL, // pins the socket to the validated IP (a rebind can't reach an // internal address), and never follows redirects. const res = await pinnedTransport(endpoint.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': signPayload(endpoint.secret, body), 'X-Webhook-Event': 'webhook.test', }, body, timeoutMs: 10_000, }); return setApiResponse(HTTP.OK, 'TEST_SENT', 'Test delivery attempted.', { status: res.status, ok: res.ok, }); } catch (err) { return setApiResponse(HTTP.OK, 'TEST_SENT', 'Test delivery attempted.', { status: null, ok: false, error: err instanceof Error ? err.message : String(err), }); } }"
+        },
+        {
+          "method": "GET",
+          "path": "/webhooks/bin",
+          "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required'); const rows = await new EndpointModel(store).listBin(ctx.workspace.id); return setApiResponse(HTTP.OK, 'WEBHOOK_BIN', 'Deleted webhook endpoints.', { endpoints: rows.map(toBinnedEndpointDTO) }); }"
+        },
+        {
+          "method": "DELETE",
+          "path": "/webhooks/bin/:endpointId",
+          "mw": "requireAuth → ws → async (ctx) => { if (!ctx.workspace) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required'); if ((ctx.workspace as { ownerId?: string }).ownerId !== ctx.user?.id) return setApiResponse(HTTP.FORBIDDEN, 'OWNER_REQUIRED', 'Only the workspace owner can empty the bin.'); const { endpointId } = ctx.meta['params'] as { endpointId: string }; if (!(await new EndpointModel(store).purgeFromBin(endpointId, ctx.workspace.id))) return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Not in the bin.'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/bin/:endpointId/restore",
+          "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required'); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const restored = await new EndpointModel(store).restore(endpointId, ctx.workspace.id); if (!restored) return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Nothing to restore: not deleted here, or deleted too long ago.'); return setApiResponse(HTTP.OK, 'WEBHOOK_RESTORED', 'Webhook endpoint restored.', toEndpointDTO(restored)); }"
         }
       ],
       "secures": [
@@ -3075,7 +3115,8 @@
         "WorkspacesModule",
         "MESSAGE_KEYS",
         "EVENT_KEYS",
-        "DEFAULT_TEMPLATES"
+        "DEFAULT_TEMPLATES",
+        "ROLE_BIN_RETENTION_DAYS"
       ],
       "subpaths": [
         "@fonderie/workspaces/types",
@@ -3084,12 +3125,13 @@
         "@fonderie/workspaces/env.json"
       ],
       "tables": [
+        "fonderie_role_bin",
         "fonderie_role_user_workspaces",
         "fonderie_roles",
         "fonderie_workspace_invitations",
         "fonderie_workspaces"
       ],
-      "routeCount": 32,
+      "routeCount": 35,
       "routes": [
         {
           "method": "GET",
@@ -3235,6 +3277,21 @@
           "method": "POST",
           "path": "/workspaces/roles/:roleId/permissions",
           "mw": "requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/roles/bin",
+          "mw": "requireAuth → wsCtx → manager → role.listBin"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/roles/bin/:roleId",
+          "mw": "requireAuth → wsCtx → owner → T(K.roleBinPurged, roleOf) → role.purge"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/roles/bin/:roleId/restore",
+          "mw": "requireAuth → wsCtx → manager → T(K.roleRestored, roleOf) → role.restore"
         },
         {
           "method": "GET",
@@ -5842,6 +5899,9 @@
     "customersmodule": [
       "customers"
     ],
+    "customer_bin_retention_days": [
+      "customers"
+    ],
     "eventbus": [
       "events"
     ],
@@ -6388,6 +6448,10 @@
       "react-customers",
       "vue-customers"
     ],
+    "usedeletedcustomers": [
+      "react-customers",
+      "vue-customers"
+    ],
     "customerdetailscreen": [
       "react-customers-screens",
       "react-native-customers-screens",
@@ -6449,6 +6513,10 @@
       "react-webhooks",
       "vue-webhooks"
     ],
+    "usedeletedwebhookendpoints": [
+      "react-webhooks",
+      "vue-webhooks"
+    ],
     "usecurrentworkspace": [
       "react-workspaces",
       "vue-workspaces"
@@ -6482,6 +6550,10 @@
       "vue-workspaces"
     ],
     "useworkspace": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "usedeletedroles": [
       "react-workspaces",
       "vue-workspaces"
     ],
@@ -6521,10 +6593,16 @@
     "webhooksmodule": [
       "webhooks"
     ],
+    "bin_retention_days": [
+      "webhooks"
+    ],
     "ssrferror": [
       "webhooks"
     ],
     "workspacesmodule": [
+      "workspaces"
+    ],
+    "role_bin_retention_days": [
       "workspaces"
     ]
   },

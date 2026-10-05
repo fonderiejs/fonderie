@@ -4,11 +4,13 @@ export type {
 	IWebhookEndpoint,
 	IWebhookDelivery,
 	DeliveryStatus,
+	IBinnedEndpoint,
 } from './types';
 export type {
 	IWebhookEndpointDTO,
 	IWebhookEndpointCreatedDTO,
 	IWebhookDeliveryDTO,
+	IBinnedEndpointDTO,
 } from './dtos/webhook';
 
 // Request validation — enforced contract for body-taking routes; exported
@@ -17,6 +19,7 @@ export * as schemas from './schemas';
 
 // Account deletion — the purge redacts the person from delivery records.
 export { accountEraser } from './eraser';
+export { BIN_RETENTION_DAYS, emptyEndpointBin } from './models/endpoint.model';
 export type { IWebhooksAccountEraser, IWebhooksErasureResult, IWebhooksErasureSubject } from './eraser';
 
 // SSRF guard — reject webhook URLs that resolve to non-public addresses.

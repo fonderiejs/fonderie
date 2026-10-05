@@ -21,6 +21,7 @@ customer data, audit/event logs, backups, and application logs.
 |---|---|---|
 | Audit / event log | **1 year** | Then purged via `purgeEvents` |
 | Accounts whose deletion was confirmed | **30 days** (grace period, restorable) | Then erased in every module via `runAccountDeletionSchedule` (§4) — unless under a legal hold |
+| Deleted customers, roles, webhook endpoints (undo bin) | **30 days** | Restorable, then purged by the scheduled job; only the workspace owner removes one early |
 | Erasure receipts | **Life of the service** | No personal data: identifiers as keyed hashes only (§4) |
 | Financial records of an erased account (invoices, ledger, subscriptions) | **As accounting law requires** (6–10 years by jurisdiction) | Pseudonymized: keyed by an id that no longer resolves to a person |
 | Application logs | **90 days hot / 1 year archived** | Per Logging Policy |
@@ -87,6 +88,8 @@ Reviewed annually. Enforcement per the Information Security Policy.
 - §2: deleted accounts are erased in every module, not only the account row;
   added erasure receipts and pseudonymized financial records.
 - §3: the purge helper is `runAccountDeletionSchedule`.
+- §2: the undo bin — deleted customers, custom roles and webhook endpoints
+  are kept 30 days for restore (insider-threat protection), then purged.
 - §4: the deletion workflow (proof, archive, reminder, erasure, receipt),
   operator controls (cancel, legal hold, erase now, receipts export), and the
   backup-restore re-erasure step.

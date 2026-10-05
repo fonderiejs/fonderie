@@ -24,3 +24,14 @@ export interface IWebhookDelivery {
 	deliveredAt: Date | null;
 	createdAt: Date;
 }
+
+/** A deleted endpoint in the undo bin — never its secret. */
+export interface IBinnedEndpoint {
+	id: string;
+	url: string;
+	events: string[];
+	deletedBy: string | null;
+	deletedAt: Date;
+	/** When the bin forgets it. */
+	purgeAt: Date;
+}
