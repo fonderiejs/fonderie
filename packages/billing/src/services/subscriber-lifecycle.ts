@@ -20,6 +20,13 @@ import { getSubscription } from './subscriptions';
 //   deleted there. The provider keeps its invoices; locally the subscription,
 //   ledger and balances stay — financial records that accounting law generally
 //   requires kept, and keyed only by an id that no longer resolves to a person.
+//
+//   The purge scheduler's in-process eraser (services/account-eraser.ts,
+//   `accountEraser`) is the complete path: it runs BEFORE the row goes, so a
+//   failure keeps the account and retries, it has the email, and it also
+//   reaches workspace customers created with that email. This handler stays as
+//   the backstop for a purge that does not run the erasers; after the eraser
+//   it finds nothing left to do (a customer already gone is success).
 
 // Well-known event names. Declared here rather than imported: billing takes no
 // dependency on @fonderie/auth, which emits them.
@@ -36,7 +43,7 @@ interface ISubscriberRef {
 
 // "Already gone" at the provider is success here: the goal is a state, not an
 // action, and a retry (the bus redelivers on throw) must be harmless.
-const alreadyGone = (err: unknown): boolean => {
+export const alreadyGone = (err: unknown): boolean => {
 	const e = err as { code?: string; statusCode?: number; message?: string };
 	return (
 		e?.code === 'resource_missing' ||
@@ -146,7 +153,10 @@ export async function handleSubscriberPurged(
 		  WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider_customer_id IS NOT NULL
 		 UNION
 		 SELECT provider_customer_id AS id FROM fonderie_wallet_customers
-		  WHERE subscriber_type = $1 AND subscriber_id = $2`,
+		  WHERE subscriber_type = $1 AND subscriber_id = $2
+		 UNION
+		 SELECT provider_customer_id AS id FROM fonderie_billing_customers
+		  WHERE subscriber_type = $1 AND subscriber_id = $2 AND erased_at IS NULL`,
 		[subscriber.type, subscriber.id],
 	);
 	if (typeof config.provider.deleteCustomer !== 'function') return { customersDeleted: 0 };

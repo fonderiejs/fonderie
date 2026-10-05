@@ -1088,6 +1088,27 @@ export class StripeProvider implements IBillingProvider {
 		}
 	}
 
+	// Compare-and-set on the customer's email. Stripe unsets a string field
+	// given an empty string. A deleted customer retrieves as { deleted: true }.
+	async replaceCustomerEmail(opts: {
+		customerId: string;
+		email: string;
+		replacement: string | null;
+	}): Promise<boolean> {
+		const stripe = await this.client();
+		let customer: { deleted?: boolean; email?: string | null };
+		try {
+			customer = await stripe.customers.retrieve(opts.customerId);
+		} catch (err) {
+			if ((err as { code?: string }).code === 'resource_missing') return false;
+			throw err;
+		}
+		if (customer.deleted) return false;
+		if ((customer.email ?? '').toLowerCase() !== opts.email.toLowerCase()) return false;
+		await stripe.customers.update(opts.customerId, { email: opts.replacement ?? '' });
+		return true;
+	}
+
 	// The customer's invoices, newest first (Stripe returns them so). Amounts
 	// stay in the smallest currency unit; currency is upper-cased to match the
 	// wallet/ledger DTO convention.
