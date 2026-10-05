@@ -377,6 +377,7 @@
       ],
       "tables": [
         "fonderie_account_deletion_codes",
+        "fonderie_account_erasures",
         "fonderie_consumed_tokens",
         "fonderie_email_verifications",
         "fonderie_login_events",

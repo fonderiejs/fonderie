@@ -129,6 +129,10 @@ WANT=$(node -e "console.log(require('./packages/thing/package.json').version)")
 until [ "$(npm view @fonderie/thing version)" = "$WANT" ]; do sleep 25; done
 ```
 
+Wait for **every package the release bumped**, not one or two — on 2026-10-05
+`@fonderie/react-auth@0.12.0` was reported published but 404'd for ~10 minutes
+while its siblings were live; a check on auth + client alone said "done".
+
 npm's registry reads lag behind a publish by up to a few minutes, so a `404` or
 a stale version immediately after the workflow succeeds is normal — keep
 polling rather than concluding the publish failed.
