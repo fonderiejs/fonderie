@@ -72,6 +72,7 @@ export {
 	useAdminLog,
 	useAdminUser,
 	useAdminUsers,
+	useAdminErasures,
 	useAdminUserSessions,
 	useAdminLoginHistory,
 	useAdminCatalog,

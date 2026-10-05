@@ -44,6 +44,7 @@ export { AdminClient } from './modules/admin';
 export type {
 	IAuthAdminClientOptions,
 	IAdminLoginHistoryQuery,
+	IAdminErasuresQuery,
 	IAdminUsersQuery,
 } from './modules/auth-admin';
 export { AuthAdminClient } from './modules/auth-admin';
@@ -154,6 +155,10 @@ export type {
 	IAdminMigrationModule,
 	IAdminMigrationsReport,
 	IAdminUserDTO,
+	IAdminDeletionDTO,
+	IAdminErasureDTO,
+	IAdminErasureExport,
+	IAdminErasurePageResult,
 	IAdminCatalog,
 	IAdminSubscriptionDTO,
 	IAdminWalletDTO,

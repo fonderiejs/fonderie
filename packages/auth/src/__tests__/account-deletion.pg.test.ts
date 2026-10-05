@@ -373,3 +373,148 @@ test('two schedulers at once erase each account exactly once', { skip }, async (
 	assert.equal(mine.length, 3, `each of my 3 accounts erased once: ${mine.length}`);
 	assert.equal(new Set(mine).size, 3);
 });
+
+// ── Phase 5: the operator's side — hold, cancel, erase now, receipts ────────
+
+// The routes exist only through @fonderie/admin; call their handlers directly.
+async function admin(
+	config: Record<string, unknown>,
+	method: string,
+	path: string,
+	body?: unknown,
+): Promise<{ status: number; reason?: string; result: any }> {
+	const { describeAuthAdminRoutes } = await import('../admin');
+	const bus = { emit: async (type: string, payload: Record<string, unknown>) => void emitted.push({ type, payload }) };
+	const url = new URL(`http://admin.test${path}`);
+	const parts = url.pathname.split('/').filter(Boolean);
+	const route = describeAuthAdminRoutes(store, bus as never, config as never).find((r) => {
+		const want = r.path.split('/').filter(Boolean);
+		return r.method === method && want.length === parts.length && want.every((w, i) => w.startsWith(':') || w === parts[i]);
+	});
+	assert.ok(route, `${method} ${path} is described`);
+	const params: Record<string, string> = {};
+	route!.path.split('/').filter(Boolean).forEach((w, i) => { if (w.startsWith(':')) params[w.slice(1)] = parts[i]!; });
+	const ctx = { request: new Request(url, { method }), meta: { params, body } } as never;
+	const run = (i: number): Promise<Response> =>
+		i < route!.handlers.length ? route!.handlers[i]!(ctx, () => run(i + 1)) : Promise.resolve(new Response(null, { status: 404 }));
+	const res = await run(0);
+	const json = (await res.json().catch(() => ({}))) as { reason?: string; result?: any };
+	return { status: res.status, ...(json.reason !== undefined ? { reason: json.reason } : {}), result: json.result };
+}
+
+const counting = (seen: string[]) => ({
+	jwtSecret: SECRET,
+	accountDeletion: { gracePeriodDays: 30, erasers: [{ name: 'count', erase: async (s: { userId: string }) => { seen.push(s.userId); return { erased: 1 }; } }] },
+});
+
+test('a legal hold stops the schedule — no reminder, no erasure, no "erase now" — until it is lifted', { skip }, async () => {
+	const { runAccountDeletionSchedule } = await import('../services/deletion-schedule');
+	const seen: string[] = [];
+	const config = counting(seen);
+	const due = await archived();
+	const remindable = await archived();
+	await daysAgo(due.id, 31);
+	await daysAgo(remindable.id, 24);
+
+	const noReason = await admin(config, 'POST', `/users/${due.id}/deletion/hold`, { reason: '  ' });
+	assert.deepEqual([noReason.status, noReason.reason], [422, 'INVALID_PARAMETER'], 'a hold says why');
+	const held = await admin(config, 'POST', `/users/${due.id}/deletion/hold`, { reason: 'open chargeback' });
+	assert.equal(held.status, 200, JSON.stringify(held));
+	assert.equal(held.result.deletion.hold.reason, 'open chargeback');
+	await admin(config, 'POST', `/users/${remindable.id}/deletion/hold`, { reason: 'court order' });
+
+	emitted.length = 0;
+	await runAccountDeletionSchedule(store, config as never, { emit: async (type, payload) => void emitted.push({ type, payload: payload as Record<string, unknown> }) });
+	assert.ok(!seen.includes(due.id), 'a held account is not erased on its date');
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_users WHERE id = $1`, [due.id])).length, 1);
+	assert.equal(sent('account-deletion-reminder', remindable.email), undefined, 'nor reminded');
+	const now = await admin(config, 'DELETE', `/users/${due.id}/deletion`);
+	assert.deepEqual([now.status, now.reason], [409, 'DELETION_HELD'], 'erase now refuses a held account');
+
+	const lifted = await admin(config, 'DELETE', `/users/${due.id}/deletion/hold`);
+	assert.equal(lifted.status, 200);
+	assert.equal(lifted.result.deletion.hold, null);
+	await runAccountDeletionSchedule(store, config as never);
+	assert.ok(seen.includes(due.id), 'erased once the hold is lifted');
+});
+
+test('cancel on request: the account is active again, billing hears it, the person is told', { skip }, async () => {
+	const config = counting([]);
+	const a = await archived();
+	await admin(config, 'POST', `/users/${a.id}/deletion/hold`, { reason: 'checking' });
+	emitted.length = 0;
+	const r = await admin(config, 'POST', `/users/${a.id}/deletion/cancel`);
+	assert.deepEqual([r.status, r.reason], [200, 'ACCOUNT_RESTORED'], JSON.stringify(r));
+	assert.equal(r.result.deletedAt, null);
+	const [row] = await store.query<{ deletedAt: Date | null; heldAt: Date | null }>(
+		`SELECT deleted_at AS "deletedAt", deletion_hold_at AS "heldAt" FROM fonderie_users WHERE id = $1`, [a.id]);
+	assert.deepEqual(row, { deletedAt: null, heldAt: null }, 'restored, and the hold went with the deletion');
+	assert.ok(emitted.some((e) => e.type === 'fonderie.user.restored' && e.payload['userId'] === a.id), 'billing resumes on restored');
+	assert.ok(sent('account-restored', a.email), 'told on the channel they deleted with');
+	assert.equal((await call('POST', '/auth/login', { email: a.email, password: PASSWORD })).status, 200, 'signs in again');
+
+	const again = await admin(config, 'POST', `/users/${a.id}/deletion/cancel`);
+	assert.deepEqual([again.status, again.reason], [409, 'NOT_PENDING_DELETION'], 'an active account has nothing to cancel');
+});
+
+test('erase now: only an account awaiting deletion, every eraser first, a receipt that says an operator did it', { skip }, async () => {
+	const seen: string[] = [];
+	const config = counting(seen);
+	const a = await archived();
+	const active = await account();
+
+	const notPending = await admin(config, 'DELETE', `/users/${active.id}/deletion`);
+	assert.deepEqual([notPending.status, notPending.reason], [409, 'NOT_PENDING_DELETION'], 'never an account nobody asked to delete');
+	assert.equal(seen.length, 0);
+	const noErasers = await admin({ jwtSecret: SECRET, accountDeletion: { gracePeriodDays: 30 } }, 'DELETE', `/users/${a.id}/deletion`);
+	assert.deepEqual([noErasers.status, noErasers.reason], [409, 'ERASERS_NOT_CONFIGURED'], 'not with every other brick’s data left behind');
+
+	emitted.length = 0;
+	const r = await admin(config, 'DELETE', `/users/${a.id}/deletion`);
+	assert.deepEqual([r.status, r.reason], [200, 'ACCOUNT_ERASED'], JSON.stringify(r));
+	assert.deepEqual(seen, [a.id], 'erasers ran — before its date');
+	assert.equal(r.result.initiatedBy, 'operator');
+	assert.deepEqual(r.result.outcomes.map((o: { brick: string }) => o.brick), ['auth', 'count']);
+	assert.ok(!JSON.stringify(r.result).includes(a.email), 'no personal data in the receipt');
+	assert.equal((await store.query(`SELECT 1 FROM fonderie_users WHERE id = $1`, [a.id])).length, 0, 'the row is gone');
+	assert.ok(emitted.some((e) => e.type === 'fonderie.user.purged' && e.payload['userId'] === a.id));
+	const twice = await admin(config, 'DELETE', `/users/${a.id}/deletion`);
+	assert.equal(twice.status, 404, 'gone');
+});
+
+test('receipts: found by the address the person used, listed, exported — never naming anyone', { skip }, async () => {
+	const config = counting([]);
+	const a = await archived();
+	await admin(config, 'DELETE', `/users/${a.id}/deletion`);
+
+	const typed = a.email.replace('@', '+news@').toUpperCase();
+	const found = await admin(config, 'GET', `/erasures?email=${encodeURIComponent(typed)}`);
+	assert.equal(found.status, 200);
+	assert.deepEqual(found.result.erasures.map((e: { userId: string }) => e.userId), [a.id], 'the +tag, upper-case address finds the account');
+	const other = await admin(config, 'GET', `/erasures?email=${encodeURIComponent(`nobody@${DOMAIN}`)}`);
+	assert.deepEqual(other.result.erasures, []);
+
+	const page = await admin(config, 'GET', '/erasures?limit=200');
+	assert.ok(page.result.erasures.some((e: { userId: string }) => e.userId === a.id), 'listed');
+	const exported = await admin(config, 'GET', '/erasures/export');
+	assert.equal(exported.result.truncated, false);
+	assert.ok(exported.result.erasures.some((e: { userId: string }) => e.userId === a.id), 'exported');
+	assert.ok(!JSON.stringify([found, page, exported]).includes(a.email.split('@')[0]!), 'no address anywhere');
+	const bad = await admin(config, 'GET', '/erasures?cursor=garbage');
+	assert.equal(bad.status, 422);
+});
+
+test('the deleted-accounts list says when each is deleted and whether it is held', { skip }, async () => {
+	const config = counting([]);
+	const a = await archived();
+	await admin(config, 'POST', `/users/${a.id}/deletion/hold`, { reason: 'dispute' });
+	const r = await admin(config, 'GET', `/users/${a.id}`);
+	const d = r.result.deletion;
+	assert.equal(d.channel, 'email');
+	assert.equal(Math.round((Date.parse(d.deleteOn) - Date.parse(d.requestedAt)) / 86_400_000), 30);
+	assert.equal(d.hold.reason, 'dispute');
+	const list = await admin(config, 'GET', '/users?deleted=1&limit=200');
+	assert.ok(list.result.users.some((u: { id: string; deletion?: { hold: unknown } }) => u.id === a.id && u.deletion?.hold));
+	const active = await account();
+	assert.equal((await admin(config, 'GET', `/users/${active.id}`)).result.deletion, null);
+});

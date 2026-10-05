@@ -18,6 +18,7 @@ const EXEMPT = new Map([
 	// is the path param; the handlers read no body at all.
 	['POST /_admin/users/:id/suspend', 'no body — the id is the path param; flips users.suspended'],
 	['POST /_admin/users/:id/unsuspend', 'no body — the id is the path param; flips users.suspended'],
+	['POST /_admin/users/:id/deletion/cancel', 'no body — the id is the path param; restores the archived account'],
 	['POST /billing/webhook', 'Stripe-shaped payload; signature-verified in handler'],
 	['POST /billing/webhook/payment', 'provider-shaped payload; signature-verified in handler'],
 	['POST /courier/delivery/sendgrid', 'provider webhook; signature-verified'],

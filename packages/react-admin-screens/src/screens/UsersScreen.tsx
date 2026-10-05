@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { statusLabel, statusTone, useSubscriptionIndex } from '../billing';
 import { styles } from '../styles';
 import { Empty, Icon, PageHeader, Pill } from '../ui';
+import { ErasuresPanel } from './ErasuresPanel';
 import { SubscriberBilling } from './SubscriberBilling';
 
 export interface IUsersScreenProps {
@@ -48,16 +49,29 @@ export function UsersScreen({
 	const plans = useSubscriptionIndex(billingClient);
 
 	// Soft-deleted accounts are their own view: they cannot sign in and are
-	// erased by the retention purge, but until then an operator can see them.
-	const [showDeleted, setShowDeleted] = useState(false);
+	// erased on their date, but until then an operator can see them, keep
+	// them, hold them or erase them now. Erased accounts leave only receipts.
+	const [view, setView] = useState<'active' | 'deleted' | 'erased'>('active');
+	const showDeleted = view === 'deleted';
+	const [erasureEmail, setErasureEmail] = useState<string | undefined>(undefined);
+	const [holdReason, setHoldReason] = useState('');
+	const [erasedNotice, setErasedNotice] = useState<string | null>(null);
 	const list = useAdminUsers(client, {
 		limit: pageSize,
 		...(showDeleted ? { deleted: true } : {}),
 	});
-	const { user, isLoading, error, suspend, unsuspend, revokeSessions } = useAdminUser(
-		client,
-		selected ?? {},
-	);
+	const {
+		user,
+		isLoading,
+		error,
+		suspend,
+		unsuspend,
+		revokeSessions,
+		cancelDeletion,
+		holdDeletion,
+		liftDeletionHold,
+		eraseNow,
+	} = useAdminUser(client, selected ?? {});
 	const userId = user?.id ?? null;
 	const sessions = useAdminUserSessions(client, userId);
 	const history = useAdminLoginHistory(client, userId, { limit: 20 });
@@ -78,7 +92,9 @@ export function UsersScreen({
 				onSubmit={(e) => {
 					e.preventDefault();
 					const email = input.trim();
-					setSelected(email ? { email } : null);
+					setErasedNotice(null);
+					if (view === 'erased') setErasureEmail(email || undefined);
+					else setSelected(email ? { email } : null);
 				}}
 			>
 				<input
@@ -120,18 +136,25 @@ export function UsersScreen({
 						}}
 						aria-label={t('users.whichAccounts')}
 					>
-						{[false, true].map((d) => (
+						{(['active', 'deleted', 'erased'] as const).map((v) => (
 							<button
-								key={String(d)}
+								key={v}
 								type="button"
-								aria-pressed={showDeleted === d}
-								onClick={() => setShowDeleted(d)}
+								aria-pressed={view === v}
+								onClick={() => {
+									setView(v);
+									setErasureEmail(undefined);
+								}}
 								style={{
-									...(showDeleted === d ? styles.buttonPrimary : styles.button),
+									...(view === v ? styles.buttonPrimary : styles.button),
 									height: 28,
 								}}
 							>
-								{d ? t('users.deletedAccounts') : t('users.activeAccounts')}
+								{v === 'active'
+									? t('users.activeAccounts')
+									: v === 'deleted'
+										? t('users.deletedAccounts')
+										: t('users.erasedAccounts')}
 							</button>
 						))}
 					</fieldset>
@@ -165,7 +188,15 @@ export function UsersScreen({
 					) : null}
 				</>
 			) : null}
-			{!selected ? (
+			{erasedNotice ? (
+				<div style={styles.notice} role="status">
+					{erasedNotice}
+				</div>
+			) : null}
+			{!selected && view === 'erased' ? (
+				<ErasuresPanel client={client} email={erasureEmail} pageSize={pageSize} locale={locale} />
+			) : null}
+			{!selected && view !== 'erased' ? (
 				<>
 					{list.error ? (
 						<p style={styles.error} role="alert">
@@ -184,6 +215,7 @@ export function UsersScreen({
 									<th style={styles.th}>{t('users.col.name')}</th>
 									{billingClient ? <th style={styles.th}>{t('users.col.plan')}</th> : null}
 									<th style={styles.th}>{t('users.col.created')}</th>
+									{showDeleted ? <th style={styles.th}>{t('users.deletion.deletesOn')}</th> : null}
 									<th style={styles.th}>{t('users.col.status')}</th>
 								</tr>
 							</thead>
@@ -225,6 +257,17 @@ export function UsersScreen({
 											</td>
 										) : null}
 										<td style={styles.td}>{formatAdminDate(u.createdAt, locale, 'date')}</td>
+										{showDeleted ? (
+											<td style={styles.td}>
+												{u.deletion ? formatAdminDate(u.deletion.deleteOn, locale, 'date') : '—'}
+												{u.deletion?.hold ? (
+													<>
+														{' '}
+														<Pill tone="warn">{t('users.deletion.held')}</Pill>
+													</>
+												) : null}
+											</td>
+										) : null}
 										<td style={styles.td}>
 											{u.suspended ? <Pill tone="warn">{t('common.status.suspended')}</Pill> : null}
 											{u.deletedAt ? (
@@ -300,12 +343,120 @@ export function UsersScreen({
 						</tbody>
 					</table>
 					{user.deletedAt ? (
-						<div style={{ ...styles.notice, marginTop: 12 }} role="status">
-							<strong>
-								{t('users.deletedOn', { date: formatAdminDate(user.deletedAt, locale) })}
-							</strong>{' '}
-							{t('users.deletedBody')}
-						</div>
+						<>
+							<div style={{ ...styles.notice, marginTop: 12 }} role="status">
+								<strong>
+									{t('users.deletedOn', { date: formatAdminDate(user.deletedAt, locale) })}
+								</strong>{' '}
+								{t('users.deletedBody')}
+							</div>
+							{user.deletion ? (
+								<>
+									<h2 style={styles.subtitle}>
+										{t('users.deletion.title')}{' '}
+										{user.deletion.hold ? <Pill tone="warn">{t('users.deletion.held')}</Pill> : null}
+									</h2>
+									<table style={styles.table}>
+										<tbody>
+											<tr>
+												<td style={styles.td}>{t('users.deletion.requested')}</td>
+												<td style={styles.td}>{formatAdminDate(user.deletion.requestedAt, locale)}</td>
+											</tr>
+											<tr>
+												<td style={styles.td}>{t('users.deletion.deletesOn')}</td>
+												<td style={styles.td}>{formatAdminDate(user.deletion.deleteOn, locale, 'date')}</td>
+											</tr>
+											<tr>
+												<td style={styles.td}>{t('users.deletion.channel')}</td>
+												<td style={styles.td}>{user.deletion.channel ?? '—'}</td>
+											</tr>
+											<tr>
+												<td style={styles.td}>{t('users.deletion.reminded')}</td>
+												<td style={styles.td}>
+													{user.deletion.remindedAt ? (
+														formatAdminDate(user.deletion.remindedAt, locale)
+													) : (
+														<span style={styles.muted}>{t('users.deletion.notYet')}</span>
+													)}
+												</td>
+											</tr>
+										</tbody>
+									</table>
+									{user.deletion.hold ? (
+										<div style={{ ...styles.notice, marginTop: 12 }} role="status">
+											<strong>
+												{t('users.deletion.heldSince', {
+													date: formatAdminDate(user.deletion.hold.at, locale),
+													reason: user.deletion.hold.reason ?? '—',
+												})}
+											</strong>{' '}
+											{t('users.deletion.heldBody')}
+										</div>
+									) : null}
+									<div style={{ ...styles.toolbar, marginTop: 12 }}>
+										<button
+											type="button"
+											style={styles.button}
+											disabled={isLoading}
+											onClick={() => {
+												if (window.confirm(t('users.deletion.cancelConfirm'))) void cancelDeletion();
+											}}
+										>
+											{t('users.deletion.cancel')}
+										</button>
+										{user.deletion.hold ? (
+											<button
+												type="button"
+												style={styles.button}
+												disabled={isLoading}
+												onClick={() => void liftDeletionHold()}
+											>
+												{t('users.deletion.liftHold')}
+											</button>
+										) : (
+											<button
+												type="button"
+												style={styles.buttonDanger}
+												disabled={isLoading}
+												onClick={() => {
+													if (!window.confirm(t('users.deletion.eraseConfirm'))) return;
+													void eraseNow().then((receipt) => {
+														if (!receipt) return;
+														setErasedNotice(t('users.deletion.erased', { id: receipt.id }));
+														setSelected(null);
+														void list.refresh();
+													});
+												}}
+											>
+												{t('users.deletion.eraseNow')}
+											</button>
+										)}
+									</div>
+									{!user.deletion.hold ? (
+										<form
+											style={{ ...styles.toolbar, marginTop: 8 }}
+											onSubmit={(e) => {
+												e.preventDefault();
+												const reason = holdReason.trim();
+												if (reason) void holdDeletion(reason).then(() => setHoldReason(''));
+											}}
+										>
+											<input
+												value={holdReason}
+												onChange={(e) => setHoldReason(e.target.value)}
+												placeholder={t('users.deletion.holdReasonPlaceholder')}
+												aria-label={t('users.deletion.holdReasonLabel')}
+												maxLength={500}
+												style={{ ...styles.input, minWidth: 280 }}
+											/>
+											<button type="submit" style={styles.button} disabled={isLoading || !holdReason.trim()}>
+												{t('users.deletion.hold')}
+											</button>
+										</form>
+									) : null}
+								</>
+							) : null}
+						</>
 					) : (
 						<div style={{ ...styles.toolbar, marginTop: 12 }}>
 							{user.suspended ? (

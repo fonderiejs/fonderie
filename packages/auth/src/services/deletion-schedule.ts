@@ -22,6 +22,10 @@ import type { IAccountEraser, IAuthConfig, IErasureSubject } from '../config';
 //      (auth's own tables cascade), an erasure receipt is written (no personal
 //      data: keyed hashes only) and `fonderie.user.purged` is announced
 //      (billing deletes the payment provider's customer).
+//
+// An account under a LEGAL HOLD (set by an operator) is neither reminded nor
+// erased until the hold is lifted. An operator can also erase one account now
+// (`eraseAccountNow`) — the same steps, recorded as `initiated_by: 'operator'`.
 
 type ScheduleConfig = Pick<IAuthConfig, 'jwtSecret' | 'accountDeletion'>;
 
@@ -85,6 +89,7 @@ export async function runAccountDeletionSchedule(
 	}>(
 		`UPDATE fonderie_users u SET deletion_reminded_at = now()
 		 WHERE u.deleted_at IS NOT NULL
+		   AND u.deletion_hold_at IS NULL
 		   AND u.deletion_reminded_at IS NULL
 		   AND u.deleted_at + make_interval(days => $1) - make_interval(days => $2) <= now()
 		   AND u.deleted_at + make_interval(days => $1) > now()
@@ -113,17 +118,16 @@ export async function runAccountDeletionSchedule(
 	}
 
 	// ── 2. Purge — one account at a time, erasers first ─────────────────────
-	const erasers: IAccountEraser[] = [authEraser(store), ...(config.accountDeletion?.erasers ?? [])];
+	const erasers = erasersOf(store, config);
 	const limit = options.batchSize ?? 100;
 	const skipped = new Set<string>();
 	for (let i = 0; i < limit; i++) {
 		const outcome = await store.transaction(async (tx) => {
-			const [u] = await tx.query<{
-				id: string; email: string | null; phone: string | null; deletedAt: Date; remindedAt: Date | null;
-			}>(
-				`SELECT id, email, phone, deleted_at AS "deletedAt", deletion_reminded_at AS "remindedAt"
+			const [u] = await tx.query<IDueAccount>(
+				`SELECT ${DUE_COLUMNS}
 				 FROM fonderie_users
 				 WHERE deleted_at IS NOT NULL
+				   AND deletion_hold_at IS NULL
 				   AND deleted_at + make_interval(days => $1) <= now()
 				   AND NOT (id = ANY($2::uuid[]))
 				 ORDER BY deleted_at
@@ -132,25 +136,12 @@ export async function runAccountDeletionSchedule(
 				[graceDays, [...skipped]],
 			);
 			if (!u) return 'done' as const;
-			const subject: IErasureSubject = { userId: u.id, email: u.email, phone: u.phone };
-			const outcomes: Array<{ brick: string; erased: number; kept?: string }> = [];
-			for (const eraser of erasers) {
-				try {
-					const r = await eraser.erase(subject);
-					outcomes.push({ brick: eraser.name, erased: r.erased, ...(r.kept ? { kept: r.kept } : {}) });
-				} catch (err) {
-					result.failed.push({ userId: u.id, eraser: eraser.name, error: err instanceof Error ? err.message : String(err) });
-					skipped.add(u.id);
-					return 'failed' as const;
-				}
+			const erased = await eraseLocked(tx, u, erasers, config, 'schedule');
+			if ('eraser' in erased) {
+				result.failed.push({ userId: u.id, eraser: erased.eraser, error: erased.error });
+				skipped.add(u.id);
+				return 'failed' as const;
 			}
-			await tx.query(`DELETE FROM fonderie_users WHERE id = $1`, [u.id]);
-			await tx.query(
-				`INSERT INTO fonderie_account_erasures (user_id, email_hash, phone_hash, requested_at, reminded_at, outcomes)
-				 VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-				 ON CONFLICT (user_id) DO NOTHING`,
-				[u.id, erasureHash(config.jwtSecret, u.email), erasureHash(config.jwtSecret, u.phone), u.deletedAt, u.remindedAt, JSON.stringify(outcomes)],
-			);
 			return u.id;
 		});
 		if (outcome === 'done') break;
@@ -158,6 +149,101 @@ export async function runAccountDeletionSchedule(
 		result.purged++;
 		await bus?.emit(EVENT_KEYS.userPurged, { userId: outcome });
 	}
+	return result;
+}
+
+interface IDueAccount {
+	id: string;
+	email: string | null;
+	phone: string | null;
+	deletedAt: Date;
+	remindedAt: Date | null;
+}
+
+const DUE_COLUMNS = `id, email, phone, deleted_at AS "deletedAt", deletion_reminded_at AS "remindedAt"`;
+
+/** What each brick did, as the erasure receipt records it. */
+export type ErasureOutcomes = Array<{ brick: string; erased: number; kept?: string }>;
+
+function erasersOf(store: IStoreAdapter, config: ScheduleConfig): IAccountEraser[] {
+	return [authEraser(store), ...(config.accountDeletion?.erasers ?? [])];
+}
+
+// Erase one account whose row the caller holds locked: every eraser first —
+// the first failure stops it, and the account stays archived — then the row
+// goes (auth's tables cascade) and the receipt is written.
+async function eraseLocked(
+	tx: IStoreAdapter,
+	u: IDueAccount,
+	erasers: IAccountEraser[],
+	config: ScheduleConfig,
+	initiatedBy: 'schedule' | 'operator',
+): Promise<{ outcomes: ErasureOutcomes } | { eraser: string; error: string }> {
+	const subject: IErasureSubject = { userId: u.id, email: u.email, phone: u.phone };
+	const outcomes: ErasureOutcomes = [];
+	for (const eraser of erasers) {
+		try {
+			const r = await eraser.erase(subject);
+			outcomes.push({ brick: eraser.name, erased: r.erased, ...(r.kept ? { kept: r.kept } : {}) });
+		} catch (err) {
+			return { eraser: eraser.name, error: err instanceof Error ? err.message : String(err) };
+		}
+	}
+	await tx.query(`DELETE FROM fonderie_users WHERE id = $1`, [u.id]);
+	await tx.query(
+		`INSERT INTO fonderie_account_erasures (user_id, email_hash, phone_hash, requested_at, reminded_at, outcomes, initiated_by)
+		 VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+		 ON CONFLICT (user_id) DO NOTHING`,
+		[u.id, erasureHash(config.jwtSecret, u.email), erasureHash(config.jwtSecret, u.phone), u.deletedAt, u.remindedAt, JSON.stringify(outcomes), initiatedBy],
+	);
+	return { outcomes };
+}
+
+export type EraseNowResult =
+	| { status: 'erased'; outcomes: ErasureOutcomes }
+	/** No such account, or it is not awaiting deletion — erase only what the person asked to delete. */
+	| { status: 'not-pending' }
+	/** Under a legal hold: lift it first. */
+	| { status: 'held' }
+	/** Another eraser (the schedule, a second operator) holds it right now. */
+	| { status: 'busy' }
+	/** The app gave no erasers: erasing now would leave every other brick's data behind. */
+	| { status: 'no-erasers' }
+	| { status: 'failed'; eraser: string; error: string };
+
+/**
+ * Erase ONE archived account now, without waiting for its date — an operator
+ * acting on an urgent, verified request. Only an account the person already
+ * asked to delete (archived), never one under a legal hold. The same steps as
+ * the schedule, under the same row lock; the receipt says an operator did it.
+ */
+export async function eraseAccountNow(
+	store: IStoreAdapter,
+	config: ScheduleConfig,
+	userId: string,
+	bus?: Bus,
+): Promise<EraseNowResult> {
+	if (!config.accountDeletion?.erasers) return { status: 'no-erasers' };
+	const erasers = erasersOf(store, config);
+	const result = await store.transaction(async (tx): Promise<EraseNowResult> => {
+		const [u] = await tx.query<IDueAccount & { heldAt: Date | null }>(
+			`SELECT ${DUE_COLUMNS}, deletion_hold_at AS "heldAt"
+			 FROM fonderie_users WHERE id = $1 AND deleted_at IS NOT NULL
+			 FOR UPDATE SKIP LOCKED`,
+			[userId],
+		);
+		if (!u) {
+			const [exists] = await tx.query<{ pending: boolean }>(
+				`SELECT deleted_at IS NOT NULL AS pending FROM fonderie_users WHERE id = $1`,
+				[userId],
+			);
+			return exists?.pending ? { status: 'busy' } : { status: 'not-pending' };
+		}
+		if (u.heldAt) return { status: 'held' };
+		const erased = await eraseLocked(tx, u, erasers, config, 'operator');
+		return 'eraser' in erased ? { status: 'failed', ...erased } : { status: 'erased', outcomes: erased.outcomes };
+	});
+	if (result.status === 'erased') await bus?.emit(EVENT_KEYS.userPurged, { userId });
 	return result;
 }
 

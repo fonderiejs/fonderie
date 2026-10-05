@@ -217,6 +217,7 @@ interface IAdminPendingMigration {
 
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
+    deletion?: IAdminDeletionDTO | null;
 }
 
 interface IAuthAdminClientOptions {
@@ -448,6 +449,12 @@ new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
   .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .cancelUserDeletion(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .holdUserDeletion(id: string, reason: string): Promise<IApiResponse<IAdminUserDTO>>
+  .liftUserDeletionHold(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .eraseUserNow(id: string): Promise<IApiResponse<IAdminErasureDTO>>
+  .listErasures(query?: IAdminErasuresQuery | undefined): Promise<IApiResponse<IAdminErasurePageResult>>
+  .exportErasures(): Promise<IApiResponse<IAdminErasureExport>>
 
 new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .catalog(): Promise<IApiResponse<IAdminCatalog>>
@@ -540,6 +547,10 @@ interface IUseAdminUserReturn {
     suspend: () => Promise<void>;
     unsuspend: () => Promise<void>;
     revokeSessions: () => Promise<void>;
+    cancelDeletion: () => Promise<void>;
+    holdDeletion: (reason: string) => Promise<void>;
+    liftDeletionHold: () => Promise<void>;
+    eraseNow: () => Promise<IAdminErasureDTO | null>;
 }
 
 interface IUseAdminUsersReturn {
@@ -658,6 +669,16 @@ interface IUseAdminOperatorsReturn {
     revokeLink: (id: string) => Promise<void>;
 }
 
+interface IUseAdminErasuresReturn {
+    erasures: IAdminErasureDTO[];
+    hasMore: boolean;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: () => Promise<void>;
+    loadMore: () => Promise<void>;
+    exportAll: () => Promise<IAdminErasureExport | null>;
+}
+
 function useAttention(client: AdminClient): IUseAttentionReturn
 
 function useManifest(client: AdminClient): IUseManifestReturn
@@ -677,6 +698,8 @@ function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">)
 function useAdminUser(client: AuthAdminClient, by: { email?: string; id?: string; }): IUseAdminUserReturn
 
 function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): IUseAdminUsersReturn
+
+function useAdminErasures(client: AuthAdminClient, query?: Omit<IAdminErasuresQuery, "cursor">): IUseAdminErasuresReturn
 
 function useAdminUserSessions(client: AuthAdminClient, userId: string | null): IUseAdminUserSessionsReturn
 

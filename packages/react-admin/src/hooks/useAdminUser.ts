@@ -1,4 +1,4 @@
-import type { AuthAdminClient, IAdminUserDTO } from '@fonderie/client';
+import type { AuthAdminClient, IAdminErasureDTO, IAdminUserDTO } from '@fonderie/client';
 import { FonderieApiError } from '@fonderie/client';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -11,6 +11,12 @@ export interface IUseAdminUserReturn {
 	unsuspend: () => Promise<void>;
 	// Signs the user out everywhere.
 	revokeSessions: () => Promise<void>;
+	// Account deletion (an archived account): keep it, hold it, or erase it now.
+	cancelDeletion: () => Promise<void>;
+	holdDeletion: (reason: string) => Promise<void>;
+	liftDeletionHold: () => Promise<void>;
+	// The account is gone afterwards: `user` becomes null; answers the receipt.
+	eraseNow: () => Promise<IAdminErasureDTO | null>;
 }
 
 // One of `email` or `id`; nothing loads until one is given.
@@ -74,5 +80,17 @@ export function useAdminUser(
 			await client.revokeUserSessions(userId);
 			return { result: undefined };
 		}),
+		cancelDeletion: act((userId) => client.cancelUserDeletion(userId)),
+		holdDeletion: (reason: string) => act((userId) => client.holdUserDeletion(userId, reason))(),
+		liftDeletionHold: act((userId) => client.liftUserDeletionHold(userId)),
+		eraseNow: async () => {
+			if (!user) return null;
+			let receipt: IAdminErasureDTO | null = null;
+			await wrap(async () => {
+				receipt = (await client.eraseUserNow(user.id)).result ?? null;
+				setUser(null);
+			});
+			return receipt;
+		},
 	};
 }
