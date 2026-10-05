@@ -658,7 +658,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 				const meta = requestMeta(ctx);
 				await loginEvents.recordSafe({
 					userId: null,
-					emailAttempted: claims.email ?? null,
+					emailAttempted: claims.email ? normalizeEmailSafe(claims.email) ?? claims.email : null,
 					method: 'oauth-apple',
 					outcome: 'failed',
 					failureReason: 'token_replayed',
@@ -712,7 +712,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 			if (!(await consumedTokens.consumeOnce(tokenHash, new Date(expMs)))) {
 				await loginEvents.recordSafe({
 					userId: null,
-					emailAttempted: claims.email ?? null,
+					emailAttempted: claims.email ? normalizeEmailSafe(claims.email) ?? claims.email : null,
 					method: 'oauth-google',
 					outcome: 'failed',
 					failureReason: 'token_replayed',

@@ -52,6 +52,9 @@ const errors: typeof en = {
 		OWNER_CANNOT_LEAVE: '離開前，請先將擁有權移轉給其他成員。',
 		OWNER_REQUIRED: '只有工作區擁有者可以執行這項操作。',
 		MANAGER_REQUIRED: '只有擁有者或管理員可以執行這項操作。',
+		SYSTEM_ROLE: '內建角色無法在此移除。只有擁有者可以移除管理員權限。',
+		LAST_ROLE: '成員至少保留一個角色。請改為移除該成員。',
+		ROLE_NOT_HELD: '此人沒有這個角色。',
 		// Billing
 		PLAN_UNCHANGED: '您目前已使用{plan}方案。',
 		SUBSCRIPTION_PAST_DUE: '您目前的方案有未繳款項，請先繳清再變更方案。',
