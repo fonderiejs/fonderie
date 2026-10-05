@@ -2,7 +2,7 @@ import { NOTIFICATION_EVENT } from '@fonderie/events';
 import type { ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { EVENT_KEYS, MESSAGE_KEYS } from '../config';
+import { EVENT_KEYS, MESSAGE_KEYS, OWNER_ALERT_EVENTS } from '../config';
 import { getWorkspaceSettings } from './workspaces';
 
 // Tell people when the team changes around them (docs/INSIDER-THREAT-DESIGN.md,
@@ -37,9 +37,14 @@ export const TEAM_NOTICE_EVENTS = [
 	EVENT_KEYS.ownershipOffered,
 	EVENT_KEYS.ownershipTransferred,
 	EVENT_KEYS.managerPaused,
+	OWNER_ALERT_EVENTS.webhookCreated,
+	OWNER_ALERT_EVENTS.planCancelRequested,
 ] as const;
 
 export async function sendTeamNotice(store: IStoreAdapter, bus: Bus, type: string, t: ITrail): Promise<void> {
+	if (type === OWNER_ALERT_EVENTS.webhookCreated || type === OWNER_ALERT_EVENTS.planCancelRequested) {
+		return sendOwnerAlert(store, bus, type, t);
+	}
 	if (!t.targetUserId || t.targetUserId === t.userId) return;
 	const extra = t as ITrail & { actions?: number; windowMinutes?: number };
 	const [ws] = await store.query<{ name: string; ownerId: string }>(
@@ -107,3 +112,42 @@ export async function sendTeamNotice(store: IStoreAdapter, bus: Bus, type: strin
 			return;
 	}
 }
+
+// Phase 6: someone other than the owner added a webhook (a live copy of every
+// event) or cancelled the plan — the owner hears it, with who and what.
+async function sendOwnerAlert(store: IStoreAdapter, bus: Bus, type: string, t: ITrail): Promise<void> {
+	if (!t.workspaceId || !t.userId) return;
+	const [ws] = await store.query<{ name: string; ownerId: string; isPersonal: boolean }>(
+		`SELECT name, owner_id AS "ownerId", is_personal AS "isPersonal" FROM fonderie_workspaces WHERE id = $1`,
+		[t.workspaceId],
+	);
+	if (!ws || ws.isPersonal || ws.ownerId === t.userId) return;
+	const people = new Map(
+		(
+			await store.query<IPerson>(
+				`SELECT id, email, phone, NULLIF(trim(concat_ws(' ', first_name, last_name)), '') AS name
+				 FROM fonderie_users WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL`,
+				[[ws.ownerId, t.userId]],
+			)
+		).map((p) => [p.id, p]),
+	);
+	const owner = people.get(ws.ownerId);
+	if (!owner || (!owner.email && !owner.phone)) return;
+	const actor = people.get(t.userId);
+	const actorName = actor?.name ?? actor?.email ?? '';
+	const { locale } = await getWorkspaceSettings(t.workspaceId, store);
+	const fact = t as ITrail & { host?: string; atPeriodEnd?: boolean };
+	const data =
+		type === OWNER_ALERT_EVENTS.webhookCreated
+			? { workspaceName: ws.name, actorName, host: fact.host ?? '' }
+			: { workspaceName: ws.name, actorName, immediately: fact.atPeriodEnd === false ? 'yes' : '', atPeriodEnd: fact.atPeriodEnd === false ? '' : 'yes' };
+	await bus.emit(NOTIFICATION_EVENT, {
+		type: type === OWNER_ALERT_EVENTS.webhookCreated ? MESSAGE_KEYS.webhookCreatedAlert : MESSAGE_KEYS.planCancelAlert,
+		fallbackLocale: locale,
+		recipient: owner.email
+			? { email: owner.email, phone: null, deviceToken: null }
+			: { email: null, phone: owner.phone, deviceToken: null },
+		data,
+	} satisfies ICourierMessage);
+}
+

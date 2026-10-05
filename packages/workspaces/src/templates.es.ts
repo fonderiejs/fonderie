@@ -56,6 +56,28 @@ Sigues siendo miembro de {{workspaceName}}, pero ya no puedes gestionar el equip
 
 Si no lo esperabas, contacta con el propietario del equipo.`,
 	},
+	[MESSAGE_KEYS.webhookCreatedAlert]: {
+		subject: '{{actorName}} añadió un webhook a {{workspaceName}}',
+		html: `<h1>Se añadió un webhook</h1>
+<p><strong>{{actorName}}</strong> añadió un webhook a <strong>{{workspaceName}}</strong>. Envía cada evento del espacio a <strong>{{host}}</strong>.</p>
+<p class="muted">Si no lo reconoces, elimínalo en las integraciones y revisa quién gestiona el equipo.</p>`,
+		text: `Se añadió un webhook
+
+{{actorName}} añadió un webhook a {{workspaceName}}. Envía cada evento del espacio a {{host}}.
+
+Si no lo reconoces, elimínalo en las integraciones y revisa quién gestiona el equipo.`,
+	},
+	[MESSAGE_KEYS.planCancelAlert]: {
+		subject: '{{actorName}} canceló el plan de {{workspaceName}}',
+		html: `<h1>Se canceló el plan</h1>
+<p><strong>{{actorName}}</strong> canceló el plan de <strong>{{workspaceName}}</strong>{{#immediately}}, con efecto inmediato{{/immediately}}{{#atPeriodEnd}}; termina al final del periodo pagado{{/atPeriodEnd}}.</p>
+<p class="muted">Si no estaba acordado, puedes reanudarlo o elegir un plan en la facturación.</p>`,
+		text: `Se canceló el plan
+
+{{actorName}} canceló el plan de {{workspaceName}}{{#immediately}}, con efecto inmediato{{/immediately}}{{#atPeriodEnd}}; termina al final del periodo pagado{{/atPeriodEnd}}.
+
+Si no estaba acordado, puedes reanudarlo o elegir un plan en la facturación.`,
+	},
 	[MESSAGE_KEYS.managerPaused]: {
 		subject: '{{memberName}} ya no puede eliminar nada en {{workspaceName}}',
 		html: `<h1>Eliminaciones pausadas</h1>

@@ -56,6 +56,28 @@ export const ZH_HANS_TEMPLATES = {
 
 如果这不在你的预期之内，请联系团队所有者。`,
 	},
+	[MESSAGE_KEYS.webhookCreatedAlert]: {
+		subject: '{{actorName}} 为 {{workspaceName}} 添加了 Webhook',
+		html: `<h1>已添加 Webhook</h1>
+<p><strong>{{actorName}}</strong> 为 <strong>{{workspaceName}}</strong> 添加了 Webhook，它会把工作区的每个事件发送到 <strong>{{host}}</strong>。</p>
+<p class="muted">如果你不认识它，请在集成设置中删除，并检查谁在管理团队。</p>`,
+		text: `已添加 Webhook
+
+{{actorName}} 为 {{workspaceName}} 添加了 Webhook，它会把工作区的每个事件发送到 {{host}}。
+
+如果你不认识它，请在集成设置中删除，并检查谁在管理团队。`,
+	},
+	[MESSAGE_KEYS.planCancelAlert]: {
+		subject: '{{actorName}} 取消了 {{workspaceName}} 的套餐',
+		html: `<h1>套餐已取消</h1>
+<p><strong>{{actorName}}</strong> 取消了 <strong>{{workspaceName}}</strong> 的套餐{{#immediately}}，立即生效{{/immediately}}{{#atPeriodEnd}}，将在已付费周期结束时终止{{/atPeriodEnd}}。</p>
+<p class="muted">如果这不是商定的，你可以在账单设置中恢复或重新选择套餐。</p>`,
+		text: `套餐已取消
+
+{{actorName}} 取消了 {{workspaceName}} 的套餐{{#immediately}}，立即生效{{/immediately}}{{#atPeriodEnd}}，将在已付费周期结束时终止{{/atPeriodEnd}}。
+
+如果这不是商定的，你可以在账单设置中恢复或重新选择套餐。`,
+	},
 	[MESSAGE_KEYS.managerPaused]: {
 		subject: '{{memberName}} 在 {{workspaceName}} 中的删除权限已暂停',
 		html: `<h1>删除已暂停</h1>

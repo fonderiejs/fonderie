@@ -766,3 +766,32 @@ test('a manager deleting too fast is paused from deleting — not from working �
 	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${mgr.id}/brake`, undefined, ws)).status, 404, 'nothing to release');
 });
 
+
+// ── Insider threat, Phase 6: the owner hears about big moves outside the team ─
+
+test('the owner is told when someone else adds a webhook or cancels the plan — not when they do it themselves', { skip }, async () => {
+	const { sendTeamNotice } = await import('../services/team-notices');
+	const { owner, ws } = await team();
+	const mgr = await join(owner, ws);
+	await call(owner.token, 'POST', `/workspaces/members/${mgr.id}/manager`, {}, ws);
+	const notices: Array<{ type: string; to: string; data: Record<string, string> }> = [];
+	const bus = { emit: async (_t: string, p: any) => void notices.push({ type: p.type, to: p.recipient.email, data: p.data }) };
+
+	await sendTeamNotice(store, bus, 'fonderie.webhook.endpoint.created', { workspaceId: ws, userId: mgr.id, endpointId: 'e1', host: 'hooks.acme.example' } as never);
+	await sendTeamNotice(store, bus, 'fonderie.billing.subscription.cancel_requested', { workspaceId: ws, userId: mgr.id, atPeriodEnd: false } as never);
+	await sendTeamNotice(store, bus, 'fonderie.billing.subscription.cancel_requested', { workspaceId: ws, userId: mgr.id, atPeriodEnd: true } as never);
+	assert.deepEqual(notices.map((x) => [x.type, x.to]), [
+		['workspace-webhook-created-alert', owner.email],
+		['workspace-plan-cancel-alert', owner.email],
+		['workspace-plan-cancel-alert', owner.email],
+	]);
+	assert.equal(notices[0]!.data['host'], 'hooks.acme.example');
+	assert.equal(notices[0]!.data['actorName'], 'Marco Tester');
+	assert.deepEqual([notices[1]!.data['immediately'], notices[1]!.data['atPeriodEnd']], ['yes', '']);
+	assert.deepEqual([notices[2]!.data['immediately'], notices[2]!.data['atPeriodEnd']], ['', 'yes']);
+
+	notices.length = 0;
+	await sendTeamNotice(store, bus, 'fonderie.webhook.endpoint.created', { workspaceId: ws, userId: owner.id, host: 'hooks.acme.example' } as never);
+	await sendTeamNotice(store, bus, 'fonderie.billing.subscription.cancel_requested', { subscriberType: 'user', subscriberId: mgr.id, userId: mgr.id } as never);
+	assert.deepEqual(notices, [], 'the owner acting, or a personal plan: nothing to tell');
+});
