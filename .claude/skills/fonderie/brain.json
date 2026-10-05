@@ -4,7 +4,7 @@
     "adapter-express": "5.4.9",
     "adapter-hono": "6.3.7",
     "adapter-koa": "5.4.10",
-    "admin": "1.7.11",
+    "admin": "1.7.12",
     "audit": "5.2.17",
     "auth": "7.24.0",
     "billing": "10.9.0",
@@ -13,7 +13,7 @@
     "core": "0.31.0",
     "courier": "7.15.0",
     "customers": "6.5.2",
-    "events": "5.12.3",
+    "events": "5.12.4",
     "geo": "0.5.12",
     "logger": "0.3.8",
     "media": "0.3.4",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.7.11",
+      "version": "1.7.12",
       "stability": "experimental",
       "requires": [
         "core",
@@ -1351,7 +1351,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.12.3",
+      "version": "5.12.4",
       "stability": "maturing",
       "requires": [
         "core",
