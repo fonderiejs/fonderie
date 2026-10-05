@@ -8,7 +8,7 @@
     "audit": "5.2.17",
     "auth": "7.23.0",
     "billing": "10.8.1",
-    "client": "3.13.1",
+    "client": "3.14.0",
     "config": "6.6.7",
     "core": "0.31.0",
     "courier": "7.15.0",
@@ -805,7 +805,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.13.1",
+      "version": "3.14.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
