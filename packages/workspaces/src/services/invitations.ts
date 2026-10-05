@@ -1,5 +1,6 @@
 import { randomBytes, randomInt } from 'node:crypto';
 
+import { sameEmail } from './email-key';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IInvitation } from '../types';
@@ -216,17 +217,21 @@ export async function acceptInvitationByPin(
 	// was actually addressed to that account — a guessed PIN for someone else's
 	// invite matches nothing. (The token path carries 32 bytes of entropy and
 	// needs no such binding.)
-	const [inv] = await store.query<{
+	// Matched in code, not SQL: the comparison is normalizeEmail's (case and
+	// '+tag'), the rule accounts are stored under.
+	const candidates = await store.query<{
 		id: string;
 		workspaceId: string;
 		roleId: string;
 		expiresAt: string;
+		email: string;
 	}>(
-		`SELECT id, workspace_id AS "workspaceId", role_id AS "roleId", expires_at AS "expiresAt"
+		`SELECT id, workspace_id AS "workspaceId", role_id AS "roleId", expires_at AS "expiresAt", email
 		 FROM fonderie_workspace_invitations
-		 WHERE pin = $1 AND lower(email) = lower($2) AND status = 'PENDING'`,
-		[opts.pin, opts.email],
+		 WHERE pin = $1 AND status = 'PENDING'`,
+		[opts.pin],
 	);
+	const inv = candidates.find((c) => sameEmail(c.email, opts.email));
 
 	if (!inv) throw new InvitationError('INVITATION_NOT_FOUND', 404, 'No pending invitation for this account matches that PIN.');
 	if (new Date() > new Date(inv.expiresAt)) throw expired();
@@ -266,9 +271,11 @@ export async function acceptInvitationByToken(
 	if (inv.status !== 'PENDING') throw new InvitationError('INVITATION_REVOKED', 410, 'This invitation was cancelled. Ask for a new one.');
 	if (new Date() > new Date(inv.expiresAt)) throw expired();
 
+	// Compared as ACCOUNTS are stored (normalizeEmail: case, '+tag'), so an
+	// invite sent to 'ana+crew@acme.example' is Ana's account 'ana@acme.example'.
 	const match = account.match ?? 'email-when-present';
-	const email = account.email?.trim().toLowerCase() || null;
-	if (match !== 'any' && (email ? email !== inv.email.trim().toLowerCase() : match === 'email')) {
+	const email = account.email?.trim() || null;
+	if (match !== 'any' && (email ? !sameEmail(email, inv.email) : match === 'email')) {
 		throw new InvitationError(
 			'INVITATION_EMAIL_MISMATCH',
 			403,

@@ -1004,8 +1004,28 @@ test('acceptInvitationByPin: lookup is bound to the accepting email', async () =
 		(err: unknown) => (err as { reason?: string }).reason === 'INVITATION_NOT_FOUND',
 	);
 	const lookup = captured[0]!;
-	assert.match(lookup.sql, /lower\(email\)\s*=\s*lower\(\$2\)/i, 'PIN lookup is email-bound');
-	assert.deepEqual(lookup.params, ['123456', 'me@example.com']);
+	assert.match(lookup.sql, /WHERE pin = \$1/i);
+	assert.deepEqual(lookup.params, ['123456']);
+});
+
+test("acceptInvitationByPin: a PIN for SOMEONE ELSE'S invitation redeems nothing", async () => {
+	const { acceptInvitationByPin } = await import('../services/invitations');
+	let redeemed = false;
+	const store = {
+		query: async (sql: string) => {
+			if (sql.includes('WHERE pin = $1')) {
+				return [{ id: 'inv-1', workspaceId: 'ws-1', roleId: 'r-1', email: 'victim@example.com', expiresAt: new Date(Date.now() + 60_000).toISOString() }];
+			}
+			if (sql.includes("SET status = 'ACCEPTED'")) redeemed = true;
+			return [];
+		},
+		transaction: async (fn: (tx: unknown) => unknown) => fn(store),
+	} as unknown as IStoreAdapter;
+	await assert.rejects(
+		acceptInvitationByPin({ pin: '123456', userId: 'u-1', email: 'attacker@example.com' }, store),
+		(err: unknown) => (err as { reason?: string }).reason === 'INVITATION_NOT_FOUND',
+	);
+	assert.equal(redeemed, false);
 });
 
 test('generatePin path: createInvitation mints a CSPRNG 6-digit pin', async () => {

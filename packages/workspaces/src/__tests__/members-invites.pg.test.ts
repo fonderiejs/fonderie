@@ -213,6 +213,25 @@ test('a link only joins the account it was sent to: another signed-in account is
 	assert.equal((await call(invited.token, 'POST', '/workspaces/invitations/accept', { token })).status, 200);
 });
 
+test("an invite sent to a '+tag' address is the same person: link and PIN both join the base account", { skip }, async () => {
+	const { owner, ws } = await team();
+	const [byLink, byPin] = [await person('Lin'), await person('Pia')];
+	const alias = (email: string) => email.replace('@', '+crew@').replace(/^./, (c) => c.toUpperCase());
+
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: alias(byLink.email) }, ws);
+	const link = lastInvitationEmail();
+	assert.equal(link.recipient.email, alias(byLink.email).toLowerCase(), 'the email goes to the address as typed');
+	const l = await call(byLink.token, 'POST', '/workspaces/invitations/accept', { token: link.data['token'] });
+	assert.equal(l.status, 200, JSON.stringify(l));
+
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: alias(byPin.email) }, ws);
+	const p = await call(byPin.token, 'POST', '/workspaces/invitations/accept', { pin: lastInvitationEmail().data['pin'] });
+	assert.equal(p.status, 200, JSON.stringify(p));
+
+	const joined = (await members(owner, ws)).map((m) => m['userId'] ?? m['id']);
+	assert.ok(joined.includes(byLink.id) && joined.includes(byPin.id), JSON.stringify(joined));
+});
+
 test('an expired or cancelled invitation says which', { skip }, async () => {
 	const { owner, ws } = await team();
 	const [p, q] = [await person('Eve'), await person('Cy')];

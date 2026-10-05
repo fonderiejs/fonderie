@@ -9,6 +9,7 @@ import { getWorkspaceSettings } from '../services/workspaces';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
 import { InvitationError } from '../services/invitations';
+import { emailKey as accountKey } from '../services/email-key';
 import type { InvitationAccountMatch } from '../services/invitations';
 import { MemberModel } from '../models/member.model';
 import { toInvitationDTO } from '../dtos/workspace';
@@ -27,6 +28,8 @@ function seatLimitFromMeta(ctx: IFonderieContext): number | null {
 	if (!status || status.type === 'feature' || typeof status.limit !== 'number') return null;
 	return status.limit;
 }
+
+const seatKey = (email: string): string => accountKey(email) ?? email.trim().toLowerCase();
 
 export interface IInvitationControllerOptions {
 	// See IWorkspacesConfig.invitationUrl.
@@ -138,10 +141,12 @@ export function invitationController(
 						 JOIN fonderie_users u ON u.id = ruw.user_id
 						 WHERE ruw.workspace_id = $1 AND ruw.removed = false AND u.email IS NOT NULL`,
 						[ctx.workspace.id],
-					)).map((r) => r.email),
+					)).map((r) => seatKey(r.email)),
 				);
+				// Keyed like accounts (normalizeEmail), so inviting 'ana+crew@' when
+				// 'ana@' is already a member takes no new seat.
 				const adding = new Set(
-					entries.map((e) => String(e['email']).trim().toLowerCase()).filter((e) => !known.has(e)),
+					entries.map((e) => seatKey(String(e['email']))).filter((e) => !known.has(e)),
 				).size;
 				if (occupied + adding > seatLimit) {
 					return setApiResponse(

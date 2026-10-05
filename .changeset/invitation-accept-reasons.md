@@ -20,4 +20,12 @@ account it was sent to.
   the link. Configure with `invitationAccountMatch`: `'email-when-present'`
   (default), `'email'` (also refuse accounts without email) or `'any'` (previous
   behaviour).
+- **'+tag' addresses are the same person.** Accounts are stored under
+  `normalizeEmail` (lowercase, `+tag` dropped), but invitations compared the
+  typed address by case only — so an invite to `ana+crew@acme.example` could
+  never be accepted by PIN by Ana's account `ana@acme.example` (and would not
+  have matched the new link check either), and inviting an alias of an existing
+  member counted a new seat. Invitations now compare with the same rule
+  (pinned to auth's `normalizeEmail` by a test). The email still goes to the
+  address as typed.
 - `@fonderie/client` translates the new reasons in en, fr, es, zh-Hans and zh-Hant.
