@@ -523,3 +523,67 @@ test('race: removing a member while a role is assigned to them never leaves a re
 		assert.equal(live.length, 0, `round ${round}: the removed person still holds a live role`);
 	}
 });
+
+// ── Insider threat, Phase 1 (docs/INSIDER-THREAT-DESIGN.md) ─────────────────
+
+const trailOf = (type: string) => emitted.filter((e) => e.type === type).map((e) => e.payload);
+
+test('a rogue manager cannot remove another manager; the owner can; anyone else they can', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [rogue, peer, plain] = [await join(owner, ws), await join(owner, ws), await join(owner, ws)];
+	for (const p of [rogue, peer]) assert.equal((await call(owner.token, 'POST', `/workspaces/members/${p.id}/manager`, {}, ws)).status, 200);
+
+	const r = await call(rogue.token, 'DELETE', `/workspaces/members/${peer.id}`, undefined, ws);
+	assert.deepEqual([r.status, r.reason], [403, 'MANAGER_PROTECTED']);
+	assert.ok((await members(owner, ws)).some((m) => m['userId'] === peer.id), 'the other manager is still in the team');
+	assert.equal(trailOf('fonderie.workspace.member.removed').length, 0, 'a refused removal leaves no trail event');
+
+	assert.equal((await call(rogue.token, 'DELETE', `/workspaces/members/${plain.id}`, undefined, ws)).status, 200, 'a manager still removes a plain member');
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/members/${peer.id}`, undefined, ws)).status, 200, 'the owner removes a manager');
+	assert.equal((await call(rogue.token, 'POST', '/workspaces/leave', undefined, ws)).status, 200, 'a manager can still leave');
+});
+
+test('only the owner archives the workspace', { skip }, async () => {
+	const { owner, ws } = await team();
+	const m = await join(owner, ws);
+	assert.equal((await call(owner.token, 'POST', `/workspaces/members/${m.id}/manager`, {}, ws)).status, 200);
+	const r = await call(m.token, 'POST', '/workspaces/archive', undefined, ws);
+	assert.deepEqual([r.status, r.reason], [403, 'OWNER_REQUIRED']);
+	assert.equal((await call(owner.token, 'POST', '/workspaces/archive', undefined, ws)).status, 200);
+	assert.deepEqual(trailOf('fonderie.workspace.archived').map((p) => p['userId']), [owner.id]);
+});
+
+test('every team change leaves a trail event: which workspace, who did it, to whom — ids only', { skip }, async () => {
+	const { owner, ws } = await team();
+	const m = await join(owner, ws);
+	const target = await join(owner, ws);
+	await call(owner.token, 'POST', `/workspaces/members/${m.id}/manager`, {}, ws);
+	const role = await call(m.token, 'POST', '/workspaces/roles', { name: 'Crew lead' }, ws);
+	const roleId = role.result['role'].id as string;
+	await call(m.token, 'POST', `/workspaces/roles/${roleId}/permissions`, { permissions: [] }, ws);
+	await call(m.token, 'POST', `/workspaces/members/${target.id}/roles`, { roleId }, ws);
+	await call(m.token, 'DELETE', `/workspaces/members/${target.id}/roles/${roleId}`, undefined, ws);
+	await call(m.token, 'DELETE', `/workspaces/members/${target.id}`, undefined, ws);
+	await call(m.token, 'DELETE', `/workspaces/roles/${roleId}`, undefined, ws);
+	await call(owner.token, 'DELETE', `/workspaces/members/${m.id}/manager`, undefined, ws);
+
+	const expect = (type: string, facts: Record<string, unknown>) => {
+		const hit = trailOf(type).find((p) => Object.entries({ workspaceId: ws, ...facts }).every(([k, v]) => p[k] === v));
+		assert.ok(hit, `${type} ${JSON.stringify(facts)} in ${JSON.stringify(trailOf(type))}`);
+	};
+	expect('fonderie.workspace.invitation.accepted', { userId: target.id });
+	expect('fonderie.workspace.manager.set', { userId: owner.id, targetUserId: m.id });
+	expect('fonderie.workspace.role.created', { userId: m.id, roleId });
+	expect('fonderie.workspace.role.permissions.set', { userId: m.id, roleId });
+	expect('fonderie.workspace.member.role.added', { userId: m.id, targetUserId: target.id, roleId });
+	expect('fonderie.workspace.member.role.removed', { userId: m.id, targetUserId: target.id, roleId });
+	expect('fonderie.workspace.member.removed', { userId: m.id, targetUserId: target.id });
+	expect('fonderie.workspace.role.deleted', { userId: m.id, roleId });
+	expect('fonderie.workspace.manager.unset', { userId: owner.id, targetUserId: m.id });
+	const invites = trailOf('fonderie.workspace.invitation.created').filter((p) => p['workspaceId'] === ws);
+	assert.ok(invites.length >= 2 && invites.every((p) => Array.isArray(p['inviteIds']) && (p['inviteIds'] as string[]).length === 1));
+
+	const all = JSON.stringify(emitted.filter((e) => e.type.startsWith('fonderie.workspace.')));
+	for (const p of [owner, m, target]) assert.ok(!all.includes(p.email), 'no address in the trail');
+	assert.ok(!all.includes('Crew lead'), 'no names in the trail');
+});
