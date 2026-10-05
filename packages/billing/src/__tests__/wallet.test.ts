@@ -338,6 +338,10 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 		return [];
 	}
 
+	// The provider-customer record (services/provider-customers.ts): written
+	// when a checkout creates a customer; nothing in these tests reads it.
+	if (sql.includes('fonderie_billing_customers')) return [];
+
 	throw new Error(`walletEmulator: unhandled SQL: ${sql.slice(0, 80)}`);
 }
 

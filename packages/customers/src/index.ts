@@ -43,3 +43,8 @@ export type {
 // Request validation — enforced contract for body-taking routes; exported
 // for docs generation and typed clients.
 export * as schemas from './schemas';
+
+// Account erasure (deletion design Phase 4): pass to auth's
+// `accountDeletion.erasers`.
+export { accountEraser } from './eraser';
+export type { ICustomersAccountEraser, ICustomersErasureSubject } from './eraser';
