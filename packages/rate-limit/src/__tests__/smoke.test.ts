@@ -214,6 +214,23 @@ test('middleware: dual limits — account key trips independently of IP', async 
 	assert.equal((await hit('10.0.0.3')).status, 429);
 });
 
+test("byBodyField(normalize): a rotating '+tag' on one account shares ONE bucket", async () => {
+	const store = new MemoryStore();
+	const stripTag = (v: string) => v.trim().toLowerCase().replace(/\+[^@]*@/, '@');
+	const mw = rateLimit({ store, rule: { capacity: 2, refillPerSec: 0.01 }, key: byBodyField('login', 'email', stripTag) });
+	const hit = (email: string) => mw(makeCtx({ ip: '10.0.0.1', body: { email } }), async () => new Response('ok'));
+	assert.equal((await hit('jane+1@example.com')).status, 200);
+	assert.equal((await hit('jane+2@example.com')).status, 200);
+	assert.equal((await hit('jane+3@example.com')).status, 429);
+	// …while a different person still has their own bucket.
+	assert.equal((await hit('john@example.com')).status, 200);
+	// A normalizer that rejects the value (null) falls back to case-folding, never to "no limit".
+	const lax = rateLimit({ store: new MemoryStore(), rule: { capacity: 1, refillPerSec: 0.01 }, key: byBodyField('x', 'email', () => null) });
+	const laxHit = () => lax(makeCtx({ ip: '10.0.0.1', body: { email: 'not-an-address' } }), async () => new Response('ok'));
+	assert.equal((await laxHit()).status, 200);
+	assert.equal((await laxHit()).status, 429);
+});
+
 test('middleware: missing clientIp skips the IP limiter (no shared-bucket collapse)', async () => {
 	const store = new MemoryStore();
 	const mw = rateLimit({ store, rule: { capacity: 1, refillPerSec: 0.001 }, key: byIp('login') });

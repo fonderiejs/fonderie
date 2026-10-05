@@ -54,19 +54,28 @@ function ipv6Prefix(ip: string): string {
 }
 
 // A field of the request body — e.g. the login email — normalized so
-// "Jane@x.com" and "jane@x.com " share a bucket, then hashed.
+// "Jane@x.com" and "jane@x.com " share a bucket, then hashed. Pass
+// `normalize` when the field has a stricter identity than case: auth passes
+// its normalizeEmail so 'jane+1@x.com', 'jane+2@x.com'… — the SAME account —
+// share one bucket instead of each getting a fresh one (a rotating '+tag'
+// would otherwise walk straight past the per-account login / reset limits).
 //
 // SECURITY: place this limiter AFTER validate() in the route chain so the
 // field is a bounded, well-typed string before it becomes a key. On an
 // unvalidated body a caller could submit huge or non-string values; the
 // length guard below is a backstop, not the primary control.
-export function byBodyField(scope: string, field: string): KeyFn {
+export function byBodyField(
+	scope: string,
+	field: string,
+	normalize?: (value: string) => string | null,
+): KeyFn {
 	return (ctx) => {
 		const body = ctx.meta['body'] as Record<string, unknown> | undefined;
 		const v = body?.[field];
 		if (typeof v !== 'string' || v.length === 0) return null;
 		// Backstop cap: an oversized value can't reach the hash unbounded.
-		const normalized = v.slice(0, 320).trim().toLowerCase();
+		const bounded = v.slice(0, 320);
+		const normalized = (normalize ? normalize(bounded) : null) ?? bounded.trim().toLowerCase();
 		if (normalized.length === 0) return null;
 		return hashed(`${scope}:${field}`, normalized);
 	};

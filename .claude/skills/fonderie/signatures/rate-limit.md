@@ -31,7 +31,7 @@ function rateLimit(...limits: IRateLimitOptions[]): Middleware
 
 function byIp(scope: string): KeyFn
 
-function byBodyField(scope: string, field: string): KeyFn
+function byBodyField(scope: string, field: string, normalize?: ((value: string) => string | null) | undefined): KeyFn
 
 interface IRateLimitOptions {
     store: IRateLimitStore;

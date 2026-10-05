@@ -1,5 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
+import { normalizeEmailSafe } from './services/email';
+
 // Migrating an existing user base onto Fonderie auth. `UserModel.create` is for
 // fresh sign-ups — it generates a new id and sets `created_at`/verification to
 // their defaults. A migration needs the opposite: preserve each user's original
@@ -49,7 +51,13 @@ export async function importUser(
 	};
 
 	if (user.id !== undefined) add('id', user.id);
-	add('email', user.email.toLowerCase().trim());
+	// Stored exactly as register / login / reset look accounts up
+	// (normalizeEmail: lowercase, '+tag' dropped). Imported with the tag, the
+	// account could never sign in, and the base address could register a
+	// second one beside it. An address that is not one is refused, not stored.
+	const email = normalizeEmailSafe(user.email);
+	if (!email) throw new Error(`[auth] importUser: '${user.email}' is not an email address`);
+	add('email', email);
 	if (user.passwordHash !== undefined) add('password_hash', user.passwordHash);
 	if (user.firstName !== undefined) add('first_name', user.firstName);
 	if (user.lastName !== undefined) add('last_name', user.lastName);

@@ -8,6 +8,7 @@ import {
 	type IRateLimitRule,
 	type IRateLimitStore,
 } from '@fonderie/rate-limit';
+import { normalizeEmailSafe } from './email';
 
 // Per-route brute-force protection for auth. Defaults are deliberately
 // conservative and, crucially, ON without the caller asking — the whole point
@@ -109,6 +110,8 @@ export function buildAuthAccountLimiter(
 	return rateLimit({
 		store: r.store,
 		rule: r.account.rule,
-		key: byBodyField(`auth:${route}`, r.account.field),
+		// The account bucket is keyed the way accounts are stored, so a rotating
+		// '+tag' on the same address does not buy fresh attempts.
+		key: byBodyField(`auth:${route}`, r.account.field, r.account.field === 'email' ? normalizeEmailSafe : undefined),
 	});
 }
