@@ -19,6 +19,8 @@ const errors: typeof en = {
 		// Sign-in and account
 		INVALID_CREDENTIALS: 'Le courriel ou le mot de passe est incorrect.',
 		ACCOUNT_SUSPENDED: 'Ce compte est suspendu. Veuillez communiquer avec le soutien.',
+		ACCOUNT_PENDING_DELETION: 'Ce compte sera supprimé le {deleteOn}. Vous pouvez encore le conserver.',
+		'ACCOUNT_PENDING_DELETION:short': 'Un compte utilisant cette adresse est en cours de suppression. Connectez-vous pour le conserver, ou attendez sa suppression.',
 		USER_ALREADY_EXISTS: 'Un compte existe déjà avec ce courriel.',
 		EMAIL_IN_USE: 'Ce courriel est déjà utilisé.',
 		PHONE_IN_USE: 'Ce numéro de téléphone est déjà utilisé.',

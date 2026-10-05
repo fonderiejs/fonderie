@@ -81,3 +81,15 @@ test('every {value} a reason message names is sent in that response\'s details',
 	}
 	assert.ok(checked >= 6, `checked ${checked} messages with values — not a vacuous pass`);
 });
+
+test('an archived account: the deletion date in the reader’s language; without it (sign-up), the short sentence', () => {
+	const signedIn = err('ACCOUNT_PENDING_DELETION', 403, { requestedAt: '2026-10-04T12:00:00.000Z', deleteOn: '2026-11-03T12:00:00.000Z' });
+	const fr = localizeApiError(signedIn, 'fr-CA');
+	assert.match(fr, /3 novembre 2026/, fr);
+	assert.ok(!fr.includes('T12:00'), 'no raw timestamp');
+	assert.match(localizeApiError(signedIn, 'es-US'), /noviembre/);
+	assert.equal(
+		localizeApiError(err('ACCOUNT_PENDING_DELETION', 409), 'zh-Hant'),
+		UI_DICTIONARIES['zh-Hant'].errors.reasons['ACCOUNT_PENDING_DELETION:short'],
+	);
+});

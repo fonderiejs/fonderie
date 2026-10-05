@@ -19,6 +19,8 @@ const errors: typeof en = {
 		// Sign-in and account
 		INVALID_CREDENTIALS: '電子郵件或密碼不正確。',
 		ACCOUNT_SUSPENDED: '此帳戶已遭停用，請聯絡客服。',
+		ACCOUNT_PENDING_DELETION: '此帳戶將於 {deleteOn} 刪除。您仍可保留它。',
+		'ACCOUNT_PENDING_DELETION:short': '使用此地址的帳戶已排定刪除。請登入以保留它，或等待刪除完成。',
 		USER_ALREADY_EXISTS: '已有帳戶使用這個電子郵件。',
 		EMAIL_IN_USE: '這個電子郵件已有人使用。',
 		PHONE_IN_USE: '這個電話號碼已有人使用。',
