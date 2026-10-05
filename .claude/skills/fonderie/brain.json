@@ -376,6 +376,7 @@
         "@fonderie/auth/env.json"
       ],
       "tables": [
+        "fonderie_account_deletion_codes",
         "fonderie_consumed_tokens",
         "fonderie_email_verifications",
         "fonderie_login_events",
@@ -386,7 +387,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 39,
+      "routeCount": 42,
       "routes": [
         {
           "method": "GET",
@@ -422,6 +423,11 @@
           "method": "POST",
           "path": "/_admin/users/:id/unsuspend",
           "mw": "setSuspended(false)"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/account/restore",
+          "mw": "ipLimit('login') → validate(restoreAccountSchema) → auth.restoreAccount"
         },
         {
           "method": "GET",
@@ -562,6 +568,16 @@
           "method": "GET",
           "path": "/users/export",
           "mw": "requireAuth → user.exportMe"
+        },
+        {
+          "method": "POST",
+          "path": "/users/me/deletion",
+          "mw": "requireAuth → verifyGate → validate(requestDeletionSchema) → user.requestDeletion"
+        },
+        {
+          "method": "POST",
+          "path": "/users/me/deletion/confirm",
+          "mw": "ipLimit('verify') → requireAuth → verifyGate → validate(confirmDeletionSchema) → user.confirmDeletion"
         },
         {
           "method": "PUT",
@@ -1679,6 +1695,7 @@
         "useLogin",
         "useLogout",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useMfaLogin",
         "useMfaSetup",
@@ -1999,6 +2016,7 @@
         "useGoogleSignIn",
         "useLogout",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useMfaLogin",
         "useMfaSetup",
@@ -2571,6 +2589,7 @@
         "useAuthProviders",
         "useUnlinkOauth",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useForgotPassword",
         "useLogin",
@@ -6072,6 +6091,11 @@
       "vue-auth"
     ],
     "useaccountdata": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "userestoreaccount": [
       "react-auth",
       "react-native-auth",
       "vue-auth"

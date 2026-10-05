@@ -45,3 +45,5 @@ export type { IImportWorkspace, IImportRole, IImportMembership } from './migrate
 
 // Cross-module erasure — remove a user's membership/role rows (no FK to auth).
 export { deleteUserData, exportUserData, workspaceExportContributor } from './retention';
+// Account deletion: refuse while the person owns a team with other members (D4).
+export { accountDeletionBlocker } from './account-deletion';

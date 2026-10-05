@@ -109,6 +109,13 @@ export const MESSAGE_KEYS = {
 	oauthRegistration: 'oauth-registration',
 	oauthLinked: 'oauth-linked',
 	oauthUnlinked: 'oauth-unlinked',
+	// Account deletion (docs/ACCOUNT-DELETION-DESIGN.md). Each goes to the ONE
+	// verified channel the person chose — route these types to both 'email'
+	// and 'sms' in courier: auth fills in only the chosen address, and the
+	// other channel skips. SMS sends each template's text.
+	accountDeletionCode: 'account-deletion-code',
+	accountDeletionScheduled: 'account-deletion-scheduled',
+	accountRestored: 'account-restored',
 } as const;
 
 export type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -118,6 +125,9 @@ export const EVENT_KEYS = {
 	userDeleted: 'fonderie.user.deleted',
 	// Emitted by purgeSoftDeletedUsers (given a bus) once the row is hard-deleted.
 	userPurged: 'fonderie.user.purged',
+	// An archived account was kept: { userId }. Undo what deletion paused
+	// (billing resumes a subscription set to end at the period's end).
+	userRestored: 'fonderie.user.restored',
 	emailVerified: 'fonderie.user.email_verified',
 	passwordChanged: 'fonderie.user.password_changed',
 	// Sessions the server revoked: { userId, sids (null = all), reason }. Reaches
@@ -188,7 +198,27 @@ export interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
 	// answer, CCPA's 45 days) before the purge erases it; meanwhile signing in
 	// says when it will be deleted and that it can still be kept. Purge with
 	// the SAME number (purgeSoftDeletedUsers / startUserRetention olderThanDays).
-	accountDeletion?: { gracePeriodDays?: number };
+	accountDeletion?: IAccountDeletionConfig;
+}
+
+export interface IAccountDeletionConfig {
+	/** Days an account stays archived (restorable) before the purge. Default 30. */
+	gracePeriodDays?: number;
+	/**
+	 * Reasons a person may not delete their account YET — each returns null
+	 * (fine) or the refusal to answer with. Other bricks own the facts: e.g.
+	 * @fonderie/workspaces' `accountDeletionBlocker` refuses while the person
+	 * owns a team with other members (transfer it first — design D4).
+	 */
+	blockers?: IAccountDeletionBlocker[];
+}
+
+export type IAccountDeletionBlocker = (userId: string) => Promise<IAccountDeletionRefusal | null>;
+
+export interface IAccountDeletionRefusal {
+	reason: string;
+	explanation: string;
+	details?: Record<string, unknown>;
 }
 
 /** The grace period an app configured, else the design default (30 days). */
@@ -213,6 +243,7 @@ export type AuthRouteId =
 	| 'verifyEmail' | 'sendVerification'
 	| 'logout'
 	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe' | 'exportMe'
+	| 'requestDeletion' | 'confirmDeletion' | 'restoreAccount'
 	| 'loginHistory' | 'listSessions' | 'terminateSession' | 'terminateOtherSessions'
 	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
 

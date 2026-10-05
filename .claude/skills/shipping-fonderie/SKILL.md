@@ -14,6 +14,12 @@ has a bot quirk that stalls silently**.
 CI runs **twenty-odd** gates, and the count grows. Running `typecheck` and `test` locally passes about a
 quarter of them. There is no composite script, so run them in CI's order:
 
+**Regenerate the docs FIRST.** `check:hook-coverage` reads routes from the
+generated `signatures/*-outcomes.md`, and `brain:test` reads `brain.json` — run
+`npm run docs:signatures && npm run docs:brain` before them, or they check the
+OLD route list and pass vacuously (a new route went unchecked this way until the
+docs were regenerated, 2026-10-05).
+
 **Never pipe a gate through `head`/`tail` inside an `&&` chain.** A pipeline
 exits with the status of its LAST command, so `tail`'s 0 masks the gate's 1 and
 the chain sails on — you get a "green" report for a gate that failed, and CI

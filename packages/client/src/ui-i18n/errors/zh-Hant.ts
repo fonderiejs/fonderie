@@ -21,6 +21,8 @@ const errors: typeof en = {
 		ACCOUNT_SUSPENDED: '此帳戶已遭停用，請聯絡客服。',
 		ACCOUNT_PENDING_DELETION: '此帳戶將於 {deleteOn} 刪除。您仍可保留它。',
 		'ACCOUNT_PENDING_DELETION:short': '使用此地址的帳戶已排定刪除。請登入以保留它，或等待刪除完成。',
+		OWNS_TEAM_WORKSPACE: '您擁有一個還有其他成員的團隊（{workspaces}）。請先將所有權轉讓給他人，再刪除帳戶。',
+		RESTORE_TOKEN_INVALID: '請重新登入以保留您的帳戶。',
 		USER_ALREADY_EXISTS: '已有帳戶使用這個電子郵件。',
 		EMAIL_IN_USE: '這個電子郵件已有人使用。',
 		PHONE_IN_USE: '這個電話號碼已有人使用。',

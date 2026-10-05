@@ -167,4 +167,30 @@ export const ZH_HANS_TEMPLATES = {
 
 如果是您本人移除的，无需任何操作。如果不是，请立即联系客服。`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionCode]: {
+		subject: `确认删除您的账户`,
+		html: `<h1>确认删除账户</h1>
+<p>请使用此验证码确认您要删除账户：</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">此验证码将在 15 分钟后失效。如果您没有申请删除账户，请忽略此消息并更改密码，您的账户将保持不变。</p>`,
+		text: `确认删除账户的验证码：{{code}}，15 分钟内有效。不是您本人操作？请忽略并更改密码。`,
+	},
+
+	[MESSAGE_KEYS.accountDeletionScheduled]: {
+		subject: `您的账户将于 {{deleteOn}} 删除`,
+		html: `<h1>您的账户已安排删除</h1>
+<p>我们已收到您的申请。您的账户已关闭，并将于 <strong>{{deleteOn}}</strong> 永久删除。</p>
+<p>改变主意了？请在该日期前登录并选择<strong>保留我的账户</strong>。</p>
+<p class="muted">如果这不是您本人的申请，请立即登录以保留账户并更改密码。</p>`,
+		text: `您的账户将于 {{deleteOn}} 永久删除。改变主意了？请在此前登录并选择“保留我的账户”。`,
+	},
+
+	[MESSAGE_KEYS.accountRestored]: {
+		subject: `您的账户已恢复`,
+		html: `<h1>欢迎回来</h1>
+<p>您的账户删除已取消，账户已重新启用。</p>
+<p class="muted">如果不是您本人操作，请立即更改密码。</p>`,
+		text: `您的账户删除已取消，账户已重新启用。不是您本人操作？请立即更改密码。`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;
