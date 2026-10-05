@@ -136,25 +136,53 @@ export function lockMinutes(op: IOperatorRow): number {
 		: 0;
 }
 
-/** Password check that costs the same whether or not the email exists. */
+/**
+ * Password check that costs the same whether or not the email exists.
+ *
+ * Attempts on one operator are SERIALIZED: the row is locked (FOR UPDATE) for
+ * the lock check, the verify and the failure count. Checked on a plain read,
+ * a burst of parallel guesses all saw "not locked" and were all verified
+ * before the first failure committed — the lockout counted them, but only
+ * afterwards. An admin console signs in rarely; holding a row lock for one
+ * bcrypt is the cheap price.
+ */
 export async function checkPassword(store: IStoreAdapter, email: string, password: string) {
-	const op = await findOperator(store, { email });
-	if (!op) {
-		await verifyPassword(password, await dummyHash());
-		return { op: null, ok: false } as const;
-	}
-	if (op.disabledAt) {
-		await verifyPassword(password, await dummyHash());
-		return { op: null, ok: false } as const;
-	}
-	if (isLocked(op)) return { op, ok: false, locked: true } as const;
-	const ok = await verifyPassword(password, op.passwordHash);
-	if (!ok) await recordFailure(store, op.id);
-	return { op, ok } as const;
+	return store.transaction(async (tx) => {
+		const [op] = await tx.query<IOperatorRow>(
+			`SELECT ${OP_COLS} FROM fonderie_admin_operators WHERE email = $1 FOR UPDATE`,
+			[normalizeEmail(email)],
+		);
+		if (!op || op.disabledAt) {
+			await verifyPassword(password, await dummyHash());
+			return { op: null, ok: false } as const;
+		}
+		if (isLocked(op)) return { op, ok: false, locked: true } as const;
+		const ok = await verifyPassword(password, op.passwordHash);
+		if (!ok) await recordFailure(tx, op.id);
+		return { op, ok } as const;
+	});
 }
 
 /** A time-step or a backup code. Consumes the backup code; records the step. */
 export async function checkSecondFactor(
+	store: IStoreAdapter,
+	box: ISecretBox,
+	op: IOperatorRow,
+	input: { code?: unknown; backupCode?: unknown },
+): Promise<{ ok: boolean; via?: 'totp' | 'backup'; backupLeft?: number }> {
+	// Serialized per operator, as checkPassword: the lock state is re-read under
+	// a row lock, so parallel guesses cannot all pass a stale "not locked".
+	return store.transaction(async (tx) => {
+		const [fresh] = await tx.query<IOperatorRow>(
+			`SELECT ${OP_COLS} FROM fonderie_admin_operators WHERE id = $1 FOR UPDATE`,
+			[op.id],
+		);
+		if (!fresh || fresh.disabledAt) return { ok: false };
+		return secondFactorLocked(tx, box, fresh, input);
+	});
+}
+
+async function secondFactorLocked(
 	store: IStoreAdapter,
 	box: ISecretBox,
 	op: IOperatorRow,

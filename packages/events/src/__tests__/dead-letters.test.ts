@@ -253,3 +253,29 @@ test('admin routes: list, retry and dismiss a dead delivery; refuse what is not 
 		await cleanup();
 	}
 });
+
+test('publishing is all-or-nothing: if a consumer row cannot be written, the event is not stored either', { skip }, async () => {
+	const consumer = `atomic-${randomUUID().slice(0, 8)}`;
+	// Make ONLY this consumer's pending row fail to insert.
+	await withStore((s) => s.query(`
+		CREATE OR REPLACE FUNCTION fonderie_test_refuse_consumer() RETURNS trigger AS $$
+		BEGIN
+		  IF NEW.consumer = '${consumer}' THEN RAISE EXCEPTION 'refused for the test'; END IF;
+		  RETURN NEW;
+		END $$ LANGUAGE plpgsql;
+		DROP TRIGGER IF EXISTS fonderie_test_refuse_consumer ON fonderie_event_consumers;
+		CREATE TRIGGER fonderie_test_refuse_consumer BEFORE INSERT ON fonderie_event_consumers
+		  FOR EACH ROW EXECUTE FUNCTION fonderie_test_refuse_consumer();`));
+	const publisher = new PGTransport({ connectionUrl: PG_URL!, consume: false });
+	publisher.subscribe(consumer, async () => {}, consumer);
+	await publisher.start();
+	const m = meta(consumer);
+	try {
+		await assert.rejects(publisher.publish(consumer, { n: 1 }, m), /refused for the test/);
+	} finally {
+		await publisher.stop();
+		await withStore((s) => s.query(`DROP TRIGGER IF EXISTS fonderie_test_refuse_consumer ON fonderie_event_consumers`));
+	}
+	const [stored] = await withStore((s) => s.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM fonderie_events WHERE id = $1`, [m.id]));
+	assert.equal(stored!.n, 0, 'no orphan event without its delivery rows');
+});
