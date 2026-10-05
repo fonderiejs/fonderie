@@ -122,24 +122,24 @@ export class PGTransport implements IEventTransport {
 		const hmac = this.integrityKey
 			? computeEventHmac(this.integrityKey, { id: meta.id, type, payload, meta })
 			: null;
+		// ONE statement: the event, a pending row for every consumer, and the
+		// wake signal. As three separate writes, a failure after the first left
+		// an event with no consumer rows — never delivered, and invisible to
+		// pendingCount() and deadLetters(). Now all of it lands, or none of it
+		// (the NOTIFY is sent at commit, so a listener never wakes for nothing).
 		await this.store.query(
-			`INSERT INTO fonderie_events (id, type, payload, meta, hmac)
-			 VALUES ($1, $2, $3, $4, $5)`,
-			[meta.id, type, JSON.stringify(payload), JSON.stringify(meta), hmac],
+			`WITH e AS (
+			   INSERT INTO fonderie_events (id, type, payload, meta, hmac)
+			   VALUES ($1, $2, $3, $4, $5)
+			   RETURNING id
+			 ), c AS (
+			   INSERT INTO fonderie_event_consumers (event_id, consumer, status, attempts)
+			   SELECT e.id, unnest($6::text[]), 'pending', 0 FROM e
+			   ON CONFLICT (event_id, consumer) DO NOTHING
+			 )
+			 SELECT pg_notify('fonderie_events', '') FROM e`,
+			[meta.id, type, JSON.stringify(payload), JSON.stringify(meta), hmac, this.matchingConsumers(type)],
 		);
-
-		const consumers = this.matchingConsumers(type);
-		if (consumers.length > 0) {
-			await this.store.query(
-				`INSERT INTO fonderie_event_consumers (event_id, consumer, status, attempts)
-				 SELECT $1, unnest($2::text[]), 'pending', 0
-				 ON CONFLICT (event_id, consumer) DO NOTHING`,
-				[meta.id, consumers],
-			);
-		}
-
-		// NOTIFY carries no payload — it is a wake signal only
-		await this.store.query(`SELECT pg_notify('fonderie_events', '')`);
 	}
 
 	async start(): Promise<void> {
