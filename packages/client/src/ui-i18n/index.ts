@@ -112,6 +112,23 @@ const GENERIC_BY_STATUS: Record<number, keyof UiMessages['errors']['generic']> =
  * missing, the generic message for the status. Never a half-filled sentence,
  * and never English to someone who reads another language.
  */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+/** A detail as a reader sees it: an ISO instant becomes a date in their language. */
+function formatDetail(value: unknown, locale: string | null | undefined): string {
+	if (typeof value === 'string' && ISO_INSTANT.test(value)) {
+		const d = new Date(value);
+		if (!Number.isNaN(d.getTime())) {
+			try {
+				return new Intl.DateTimeFormat(locale ?? undefined, { dateStyle: 'long' }).format(d);
+			} catch {
+				return d.toISOString().slice(0, 10);
+			}
+		}
+	}
+	return String(value);
+}
+
 export function localizeApiError(error: IApiErrorLike | null | undefined, locale: string | null | undefined): string {
 	if (!error) return '';
 	const lang = resolveUiLanguage(locale);
@@ -121,8 +138,13 @@ export function localizeApiError(error: IApiErrorLike | null | undefined, locale
 	if (!error.status) return dict.generic.network;
 	if (lang === 'en' && error.explanation) return error.explanation;
 	const details = (error.details && typeof error.details === 'object' ? error.details : {}) as Record<string, unknown>;
-	const template = error.reason ? (dict.reasons as Record<string, string>)[error.reason] : undefined;
-	if (template) {
+	const reasons = dict.reasons as Record<string, string>;
+	// A reason may have a ':short' sentence for when its details are absent —
+	// e.g. ACCOUNT_PENDING_DELETION carries the deletion date after sign-in
+	// (403) but not at sign-up (409).
+	for (const key of error.reason ? [error.reason, `${error.reason}:short`] : []) {
+		const template = reasons[key];
+		if (!template) continue;
 		let complete = true;
 		const text = template.replace(/\{(\w+)\}/g, (_, name: string) => {
 			const v = details[name];
@@ -130,7 +152,7 @@ export function localizeApiError(error: IApiErrorLike | null | undefined, locale
 				complete = false;
 				return '';
 			}
-			return String(v);
+			return formatDetail(v, locale);
 		});
 		if (complete) return text;
 	}
