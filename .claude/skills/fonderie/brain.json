@@ -4,11 +4,11 @@
     "adapter-express": "5.4.9",
     "adapter-hono": "6.3.7",
     "adapter-koa": "5.4.10",
-    "admin": "1.7.12",
+    "admin": "1.8.0",
     "audit": "5.2.17",
-    "auth": "7.25.0",
+    "auth": "7.26.0",
     "billing": "10.10.0",
-    "client": "3.15.0",
+    "client": "3.16.0",
     "config": "6.6.7",
     "core": "0.31.0",
     "courier": "7.16.0",
@@ -20,8 +20,8 @@
     "permissions": "5.1.3",
     "rate-limit": "4.1.0",
     "react": "0.11.0",
-    "react-admin": "1.2.2",
-    "react-admin-screens": "1.7.2",
+    "react-admin": "1.3.0",
+    "react-admin-screens": "1.8.0",
     "react-audit": "0.4.2",
     "react-audit-screens": "0.3.1",
     "react-auth": "0.12.0",
@@ -57,7 +57,7 @@
     "storage": "0.1.30",
     "store": "0.7.2",
     "vue": "0.11.0",
-    "vue-admin": "1.2.2",
+    "vue-admin": "1.3.0",
     "vue-admin-screens": "1.7.2",
     "vue-audit": "0.5.2",
     "vue-audit-screens": "0.3.1",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.7.12",
+      "version": "1.8.0",
       "stability": "experimental",
       "requires": [
         "core",
@@ -351,7 +351,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.25.0",
+      "version": "7.26.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -853,7 +853,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.15.0",
+      "version": "3.16.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1598,7 +1598,7 @@
       "hasOutcomes": false
     },
     "react-admin": {
-      "version": "1.2.2",
+      "version": "1.3.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -1638,7 +1638,7 @@
       "hasOutcomes": false
     },
     "react-admin-screens": {
-      "version": "1.7.2",
+      "version": "1.8.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
@@ -2497,7 +2497,7 @@
       "hasOutcomes": false
     },
     "vue-admin": {
-      "version": "1.2.2",
+      "version": "1.3.0",
       "stability": "experimental",
       "requires": [],
       "dependsOn": [
