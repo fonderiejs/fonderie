@@ -1,5 +1,13 @@
 # @fonderie/vue-workspaces-screens
 
+## 0.5.4
+
+### Patch Changes
+
+- Updated dependencies [09835c4]
+  - @fonderie/client@3.19.0
+  - @fonderie/vue-workspaces@0.13.0
+
 ## 0.5.3
 
 ### Patch Changes
