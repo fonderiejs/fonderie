@@ -4,6 +4,7 @@ import type { EventBus } from '@fonderie/events';
 import { requireAdminToken, requireAuth, validate } from '@fonderie/core/middlewares';
 
 import { requireBillingManager } from './middlewares/require-manager';
+import { requireStepUp } from './middlewares/require-step-up';
 
 import {
 	cancelSubscriptionSchema,
@@ -82,6 +83,12 @@ export function buildBillingRoutes(
 			requireAuth,
 			manager,
 			validate(cancelSubscriptionSchema),
+			// Ending the plan AT ONCE cuts the team off today: it asks for a fresh
+			// proof it's the person (docs/INSIDER-THREAT-DESIGN.md, Phase 4).
+			// Cancelling at period end does not — the team keeps what it paid for.
+			...(config.stepUp === false
+				? []
+				: [requireStepUp((ctx) => (ctx.meta['body'] as { atPeriodEnd?: boolean } | undefined)?.atPeriodEnd === false)]),
 			subscription.cancel,
 		],
 		['POST', '/billing/subscription/reactivate', requireAuth, manager, subscription.reactivate],

@@ -518,3 +518,54 @@ test('the deleted-accounts list says when each is deleted and whether it is held
 	const active = await account();
 	assert.equal((await admin(config, 'GET', `/users/${active.id}`)).result.deletion, null);
 });
+
+// ── Step-up: prove it's still you before a big move (insider threat, Phase 4) ─
+
+test('step-up: a password account confirms with its password or an emailed code; a wrong one fails', { skip }, async () => {
+	const a = await account();
+	const m = await call('GET', '/auth/step-up', undefined, a.token);
+	assert.deepEqual(m.result['methods'], ['password', 'email']);
+
+	const wrong = await call('POST', '/auth/step-up', { password: 'Zz9!wrong-wrong-wrong' }, a.token);
+	assert.deepEqual([wrong.status, wrong.reason], [401, 'STEP_UP_FAILED']);
+	const ok = await call('POST', '/auth/step-up', { password: PASSWORD }, a.token);
+	assert.deepEqual([ok.status, ok.reason, ok.result['method']], [200, 'STEP_UP_CONFIRMED', 'password']);
+	const left = Date.parse(ok.result['expiresAt']) - Date.now();
+	assert.ok(left > 4 * 60_000 && left <= 5 * 60_000, `five minutes: ${left}`);
+
+	assert.equal((await call('POST', '/auth/step-up/code', { channel: 'email' }, a.token)).status, 202);
+	const code = sent('step-up-code', a.email)!.data['code'];
+	assert.match(code, /^\d{6}$/);
+	const viaCode = await call('POST', '/auth/step-up', { code }, a.token);
+	assert.deepEqual([viaCode.status, viaCode.result['method']], [200, 'email']);
+	assert.equal((await call('POST', '/auth/step-up', { code }, a.token)).status, 401, 'a code is good once');
+	assert.equal((await call('POST', '/auth/step-up/code', { channel: 'sms' }, a.token)).reason, 'STEP_UP_METHOD_UNAVAILABLE', 'no phone on the account');
+	assert.equal((await call('POST', '/auth/step-up', {}, a.token)).status, 422, 'some proof is required');
+});
+
+test('step-up: with two-factor on, only the authenticator proves it — the password alone does not', { skip }, async () => {
+	const { generateTotpSecret, generateTotpCode } = await import('../services/mfa');
+	const a = await account();
+	const secret = generateTotpSecret();
+	await store.query(`UPDATE fonderie_users SET mfa_enabled = true, mfa_secret = $2 WHERE id = $1`, [a.id, secret]);
+	assert.deepEqual((await call('GET', '/auth/step-up', undefined, a.token)).result['methods'], ['mfa']);
+	assert.equal((await call('POST', '/auth/step-up', { password: PASSWORD }, a.token)).status, 401, 'a password is what a thief may have');
+	assert.equal((await call('POST', '/auth/step-up/code', { channel: 'email' }, a.token)).reason, 'STEP_UP_METHOD_UNAVAILABLE');
+	const ok = await call('POST', '/auth/step-up', { mfaCode: generateTotpCode(secret) }, a.token);
+	assert.deepEqual([ok.status, ok.result['method']], [200, 'mfa']);
+});
+
+test('step-up: the proof names its user, is not a session, and the verifier checks both', { skip }, async () => {
+	const { hasStepUp } = await import('../services/step-up');
+	const [a, b] = [await account(), await account()];
+	const token = (await call('POST', '/auth/step-up', { password: PASSWORD }, a.token)).result['stepUpToken'] as string;
+	// Not usable as a session.
+	assert.equal((await call('GET', '/users', undefined, token)).status, 401);
+	const ctx = (userId: string, header?: string) =>
+		({ user: { id: userId }, request: new Request('http://x/', { headers: header ? { 'x-step-up': header } : {} }), meta: {} }) as never;
+	const config = { jwtSecret: SECRET } as never;
+	assert.equal(hasStepUp(ctx(a.id, token), config), true);
+	assert.equal(hasStepUp(ctx(b.id, token), config), false, 'someone else');
+	assert.equal(hasStepUp(ctx(a.id), config), false, 'no proof');
+	assert.equal(hasStepUp(ctx(a.id, a.token), config), false, 'a session token is not a proof');
+});

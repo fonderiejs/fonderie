@@ -170,6 +170,15 @@ export const ZH_HANT_TEMPLATES = {
 如果是您本人移除的，無須採取任何行動。如果不是，請立即聯絡客服。`,
 	},
 
+	[MESSAGE_KEYS.stepUpCode]: {
+		subject: `你的確認碼`,
+		html: `<h1>確認是你本人</h1>
+<p>你的帳戶請求進行一項重要變更（例如轉讓團隊或立即終止方案）。請使用此驗證碼確認是你本人：</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">此驗證碼將在 10 分鐘後失效。如果不是你本人操作，請勿分享，並變更密碼。</p>`,
+		text: `你的確認碼：{{code}}。10 分鐘後失效。不是你本人操作？請勿分享，並變更密碼。`,
+	},
+
 	[MESSAGE_KEYS.accountDeletionCode]: {
 		subject: `確認刪除您的帳戶`,
 		html: `<h1>確認刪除帳戶</h1>

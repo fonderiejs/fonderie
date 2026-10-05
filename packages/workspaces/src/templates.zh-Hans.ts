@@ -56,17 +56,26 @@ export const ZH_HANS_TEMPLATES = {
 
 如果这不在你的预期之内，请联系团队所有者。`,
 	},
-	[MESSAGE_KEYS.ownershipReceived]: {
-		subject: '你现在是 {{workspaceName}} 的所有者',
-		html: `<h1>你现在拥有一个团队</h1>
-<p>你现在是 <strong>{{workspaceName}}</strong> 的所有者。</p>
-{{#previousOwnerName}}<p>{{previousOwnerName}} 已将其转交给你。</p>{{/previousOwnerName}}
-<p class="muted">作为所有者，你决定谁来管理团队，也只有你可以再次转让它。</p>`,
-		text: `你现在拥有一个团队
+	[MESSAGE_KEYS.ownershipOffered]: {
+		subject: '{{ownerName}} 想让你成为 {{workspaceName}} 的所有者',
+		html: `<h1>有人向你转让团队</h1>
+<p><strong>{{ownerName}}</strong> 想让你成为 <strong>{{workspaceName}}</strong> 的所有者。</p>
+<p class="muted">打开应用以接受或拒绝。此邀请将在 7 天后失效。成为所有者后，你将决定谁来管理团队。</p>`,
+		text: `有人向你转让团队
 
-你现在是 {{workspaceName}} 的所有者。
-{{#previousOwnerName}}{{previousOwnerName}} 已将其转交给你。{{/previousOwnerName}}
+{{ownerName}} 想让你成为 {{workspaceName}} 的所有者。
 
-作为所有者，你决定谁来管理团队，也只有你可以再次转让它。`,
+打开应用以接受或拒绝。此邀请将在 7 天后失效。成为所有者后，你将决定谁来管理团队。`,
+	},
+	[MESSAGE_KEYS.ownershipAccepted]: {
+		subject: '{{newOwnerName}} 现在是 {{workspaceName}} 的所有者',
+		html: `<h1>你的团队有了新所有者</h1>
+<p><strong>{{newOwnerName}}</strong> 已接受，现在是 <strong>{{workspaceName}}</strong> 的所有者。你仍然可以管理团队。</p>
+<p class="muted">如果你没有发出此邀请，请立即联系对方和你的支持团队。</p>`,
+		text: `你的团队有了新所有者
+
+{{newOwnerName}} 已接受，现在是 {{workspaceName}} 的所有者。你仍然可以管理团队。
+
+如果你没有发出此邀请，请立即联系对方和你的支持团队。`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplateCopy>;

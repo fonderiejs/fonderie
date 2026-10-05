@@ -129,6 +129,17 @@ client_kind              TEXT
 -- INDEX idx_fonderie_sessions_sid (sid)
 ```
 
+### `fonderie_step_up_codes`
+
+```sql
+user_id                  UUID PRIMARY KEY REFERENCES fonderie_users(id) ON DELETE CASCADE
+code_hash                TEXT NOT NULL
+channel                  TEXT NOT NULL CHECK (channel IN ('email', 'sms'))
+attempts                 INT NOT NULL DEFAULT 0
+expires_at               TIMESTAMPTZ NOT NULL
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_users`
 
 ```sql
@@ -209,6 +220,9 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | GET | `/auth/sessions` | `requireAuth → user.listSessions` |
 | DELETE | `/auth/sessions/:id` | `requireAuth → user.terminateSession` |
 | DELETE | `/auth/sessions/others` | `requireAuth → user.terminateOtherSessions` |
+| GET | `/auth/step-up` | `requireAuth → stepUp.methods` |
+| POST | `/auth/step-up` | `ipLimit('verify') → requireAuth → validate(stepUpSchema) → stepUp.confirm` |
+| POST | `/auth/step-up/code` | `ipLimit('verify') → requireAuth → validate(stepUpCodeSchema) → stepUp.sendCode` |
 | POST | `/auth/verify` | `ipLimit('verify') → requireAnyAuth → validate(verifySchema) → auth.verify` |
 | DELETE | `/users` | `requireAuth → verifyGate → user.deleteMe` |
 | GET | `/users` | `requireAuth → user.me` |

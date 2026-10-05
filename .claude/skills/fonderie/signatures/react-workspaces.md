@@ -223,7 +223,11 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .setManager(userId: string): Promise<IApiResponse<void>>
   .unsetManager(userId: string): Promise<IApiResponse<void>>
-  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<{ offer: IOwnershipOfferDTO; }>>
+  .getOwnershipOffer(opts?: IReadOptions | undefined): Promise<IApiResponse<{ offer: IOwnershipOfferDTO | null; }>>
+  .acceptOwnership(): Promise<IApiResponse<{ previousOwnerId: string; }>>
+  .declineOwnership(): Promise<IApiResponse<undefined>>
+  .withdrawOwnershipOffer(): Promise<IApiResponse<undefined>>
   .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
@@ -392,6 +396,18 @@ interface IUseDeletedRolesReturn {
     purge: (id: string) => Promise<void>;
 }
 
+interface IUseOwnershipOfferReturn {
+    offer: IOwnershipOfferDTO | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    accept: () => Promise<void>;
+    decline: () => Promise<void>;
+    withdraw: () => Promise<void>;
+}
+
 function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
 
 function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
@@ -421,4 +437,6 @@ function useWorkspace(workspaceId: string): IUseWorkspaceReturn
 function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
 
 function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRolesReturn
+
+function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
 ```

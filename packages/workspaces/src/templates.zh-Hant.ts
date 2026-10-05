@@ -56,17 +56,26 @@ export const ZH_HANT_TEMPLATES = {
 
 如果這不在你的預期之內，請聯絡團隊擁有者。`,
 	},
-	[MESSAGE_KEYS.ownershipReceived]: {
-		subject: '你現在是 {{workspaceName}} 的擁有者',
-		html: `<h1>你現在擁有一個團隊</h1>
-<p>你現在是 <strong>{{workspaceName}}</strong> 的擁有者。</p>
-{{#previousOwnerName}}<p>{{previousOwnerName}} 已將其轉交給你。</p>{{/previousOwnerName}}
-<p class="muted">身為擁有者，你決定誰來管理團隊，也只有你可以再次轉讓它。</p>`,
-		text: `你現在擁有一個團隊
+	[MESSAGE_KEYS.ownershipOffered]: {
+		subject: '{{ownerName}} 想讓你成為 {{workspaceName}} 的擁有者',
+		html: `<h1>有人向你轉讓團隊</h1>
+<p><strong>{{ownerName}}</strong> 想讓你成為 <strong>{{workspaceName}}</strong> 的擁有者。</p>
+<p class="muted">開啟應用程式以接受或拒絕。此邀請將在 7 天後失效。成為擁有者後，你將決定誰來管理團隊。</p>`,
+		text: `有人向你轉讓團隊
 
-你現在是 {{workspaceName}} 的擁有者。
-{{#previousOwnerName}}{{previousOwnerName}} 已將其轉交給你。{{/previousOwnerName}}
+{{ownerName}} 想讓你成為 {{workspaceName}} 的擁有者。
 
-身為擁有者，你決定誰來管理團隊，也只有你可以再次轉讓它。`,
+開啟應用程式以接受或拒絕。此邀請將在 7 天後失效。成為擁有者後，你將決定誰來管理團隊。`,
+	},
+	[MESSAGE_KEYS.ownershipAccepted]: {
+		subject: '{{newOwnerName}} 現在是 {{workspaceName}} 的擁有者',
+		html: `<h1>你的團隊有了新擁有者</h1>
+<p><strong>{{newOwnerName}}</strong> 已接受，現在是 <strong>{{workspaceName}}</strong> 的擁有者。你仍然可以管理團隊。</p>
+<p class="muted">如果你沒有發出此邀請，請立即聯絡對方和你的支援團隊。</p>`,
+		text: `你的團隊有了新擁有者
+
+{{newOwnerName}} 已接受，現在是 {{workspaceName}} 的擁有者。你仍然可以管理團隊。
+
+如果你沒有發出此邀請，請立即聯絡對方和你的支援團隊。`,
 	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplateCopy>;

@@ -1,6 +1,7 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IOwnershipOfferDTO,
 	IDeletedRoleDTO,
 	IRestoredRoleResult,
 	IReadOptions,
@@ -404,13 +405,54 @@ export class WorkspacesClient {
 		});
 	}
 
-	// Owner only: hand the workspace to another member (the previous owner stays
-	// as a manager).
+	// Owner only, after a step-up (auth.stepUp): OFFER the workspace to another
+	// member. It moves when they accept (acceptOwnership); the previous owner
+	// stays as a manager. 403 STEP_UP_REQUIRED without a fresh proof.
 	transferOwnership(userId: string) {
-		return this.http.request<IApiResponse<void>>({
+		return this.http.request<IApiResponse<{ offer: IOwnershipOfferDTO }>>({
 			method: 'POST',
 			path: '/workspaces/transfer-ownership',
 			body: { userId },
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// The open ownership offer of the selected workspace, if any.
+	getOwnershipOffer(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<{ offer: IOwnershipOfferDTO | null }>>({
+			method: 'GET',
+			path: '/workspaces/transfer-ownership',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// The member it is offered to takes the workspace.
+	acceptOwnership() {
+		return this.http.request<IApiResponse<{ previousOwnerId: string }>>({
+			method: 'POST',
+			path: '/workspaces/transfer-ownership/accept',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	declineOwnership() {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'POST',
+			path: '/workspaces/transfer-ownership/decline',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Owner only: take the offer back.
+	withdrawOwnershipOffer() {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'DELETE',
+			path: '/workspaces/transfer-ownership',
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

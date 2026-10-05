@@ -133,3 +133,16 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export const deletionHoldSchema = z.object({
 	reason: z.string().trim().min(1, 'say why the deletion is held').max(500),
 });
+
+// Step-up (docs/INSIDER-THREAT-DESIGN.md, Phase 4).
+export const stepUpCodeSchema = z.object({ channel: z.enum(['email', 'sms']) });
+export const stepUpSchema = z
+	.object({
+		password: z.string().min(1).max(128).optional(),
+		mfaCode: z.string().trim().min(1).max(32).optional(),
+		code: z.string().trim().regex(/^\d{6}$/, 'code must be the 6-digit code that was sent').optional(),
+	})
+	.refine((b) => b.password !== undefined || b.mfaCode !== undefined || b.code !== undefined, {
+		message: 'Give your password, an authenticator code or the code that was sent.',
+	});
+

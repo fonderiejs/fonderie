@@ -215,7 +215,7 @@ Raw SQL ships in `node_modules/@fonderie/billing/dist/migrations/sql/` — read 
 | POST | `/billing/payment-method/setup` | `requireAuth → manager → account.setupPaymentMethod` |
 | POST | `/billing/portal` | `requireAuth → manager → checkout.createPortal` |
 | GET | `/billing/subscription` | `requireAuth → subscription.get` |
-| POST | `/billing/subscription/cancel` | `requireAuth → manager → validate(cancelSubscriptionSchema) → subscription.cancel` |
+| POST | `/billing/subscription/cancel` | `requireAuth → manager → validate(cancelSubscriptionSchema) → ...(config.stepUp === false ? [] : [requireStepUp((ctx) => (ctx.meta['body'] as { atPeriodEnd?: boolean } | undefined)?.atPeriodEnd === false)]) → subscription.cancel` |
 | POST | `/billing/subscription/reactivate` | `requireAuth → manager → subscription.reactivate` |
 | POST | `/billing/usage` | `requireAuth → validate(recordUsageSchema) → usage.record` |
 | GET | `/billing/usage/:metric` | `requireAuth → usage.get` |

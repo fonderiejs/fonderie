@@ -1,6 +1,6 @@
 # Insider threat: a rogue manager or owner
 
-Status: Phases 1–3 shipped (2026-10-05); 4–5 planned.
+Status: Phases 1–4 shipped (2026-10-05); 5 planned.
 
 ## 1. The scenario
 
@@ -83,8 +83,13 @@ only the owner empties one early; `empty*Bin` from the app's cron. Snapshot +
 hard delete rather than a deleted-flag: no query anywhere changes, and unique
 constraints are not held by invisible rows.
 
-**Phase 4 — Step-up** on transfer / immediate cancel / webhook delete; transfer
-acceptance.
+**Phase 4 — Step-up.** ✅ `POST /auth/step-up` (authenticator when two-factor is
+on, else password or an emailed/SMS code) → a 5-minute `X-Step-Up` proof;
+AuthModule installs a verifier other bricks ask by shape. Required for handing a
+team over, ending a plan at once, creating a webhook or changing its URL (webhook
+DELETE no longer needs it: the undo bin covers it — CREATE is the exfiltration
+move). Ownership is OFFERED and moves when the member accepts (7-day expiry,
+claimed + moved in one transaction).
 
 **Phase 5 — Velocity brake**, built on @fonderie/risk (decide ≠ enforce: risk
 decides, workspaces suspends the manager role, the owner restores).

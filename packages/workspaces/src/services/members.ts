@@ -217,7 +217,18 @@ export async function transferOwnership(
 	store: IStoreAdapter,
 	managerRole = 'ADMIN',
 ): Promise<boolean> {
-	return store.transaction(async (tx) => {
+	return store.transaction((tx) => transferOwnershipIn(tx, workspaceId, fromUserId, toUserId, managerRole));
+}
+
+/** transferOwnership inside a caller's transaction (the accepted offer claims and hands over at once). */
+export async function transferOwnershipIn(
+	tx: IStoreAdapter,
+	workspaceId: string,
+	fromUserId: string,
+	toUserId: string,
+	managerRole = 'ADMIN',
+): Promise<boolean> {
+	{
 		// Workspace row first, then the new owner's membership: a concurrent
 		// removal of the new owner cannot land between the check and the
 		// hand-over (which left a workspace owned by a removed member).
@@ -242,7 +253,7 @@ export async function transferOwnership(
 			[fromUserId, workspaceId, managerRole],
 		);
 		return true;
-	});
+	}
 }
 
 export async function addMember(

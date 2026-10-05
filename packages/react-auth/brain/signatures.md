@@ -29,6 +29,9 @@ new AuthClient(http: HttpClient, tokens: TokenStore): AuthClient
   .changePassword(input: IChangePasswordInput): Promise<IApiResponse<undefined>>
   .exportData(): Promise<IApiResponse<unknown>>
   .deleteUser(): Promise<IApiResponse<undefined>>
+  .stepUpMethods(): Promise<IApiResponse<IStepUpMethodsResult>>
+  .requestStepUpCode(channel: "email" | "sms"): Promise<IApiResponse<{ channel: "email" | "sms"; expiresInSeconds: number; }>>
+  .stepUp(proof: IStepUpProof): Promise<IApiResponse<IStepUpResult>>
   .requestAccountDeletion(input: IRequestAccountDeletionInput): Promise<IApiResponse<IRequestAccountDeletionResult>>
   .confirmAccountDeletion(input: IConfirmAccountDeletionInput): Promise<IApiResponse<IAccountDeletionResult>>
   .restoreAccount(input: IRestoreAccountInput): Promise<IApiResponse<ILoginResult>>
@@ -347,6 +350,15 @@ interface IUseSessionsReturn {
     terminateOthers: () => Promise<void>;
 }
 
+interface IUseStepUpReturn {
+    methods: StepUpMethod[];
+    loadMethods: () => Promise<StepUpMethod[]>;
+    requestCode: (channel: 'email' | 'sms') => Promise<void>;
+    confirm: (proof: IStepUpProof) => Promise<void>;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+}
+
 function useAuthProviders(client?: AuthClient | undefined): IUseAuthProvidersReturn
 
 function useUnlinkOauth(client?: AuthClient | undefined): IUseUnlinkOauthReturn
@@ -380,6 +392,8 @@ function useVerifyEmail(client?: AuthClient | undefined): IUseVerifyEmailReturn
 function useLoginHistory(rawFilters?: IGetLoginHistoryInput | undefined): IUseLoginHistoryReturn
 
 function useSessions(client?: AuthClient | undefined): IUseSessionsReturn
+
+function useStepUp(client?: AuthClient | undefined): IUseStepUpReturn
 
 function clearToken(): void
 

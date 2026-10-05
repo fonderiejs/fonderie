@@ -367,7 +367,10 @@
         "MESSAGE_KEYS",
         "DEFAULT_TEMPLATES",
         "CLIENT_KINDS",
-        "SESSION_POLICY_PRESETS"
+        "SESSION_POLICY_PRESETS",
+        "STEP_UP_HEADER",
+        "STEP_UP_TTL_SECONDS",
+        "STEP_UP_VERIFIER"
       ],
       "subpaths": [
         "@fonderie/auth/types",
@@ -386,9 +389,10 @@
         "fonderie_password_resets",
         "fonderie_phone_verifications",
         "fonderie_sessions",
+        "fonderie_step_up_codes",
         "fonderie_users"
       ],
-      "routeCount": 48,
+      "routeCount": 51,
       "routes": [
         {
           "method": "GET",
@@ -574,6 +578,21 @@
           "method": "DELETE",
           "path": "/auth/sessions/others",
           "mw": "requireAuth → user.terminateOtherSessions"
+        },
+        {
+          "method": "GET",
+          "path": "/auth/step-up",
+          "mw": "requireAuth → stepUp.methods"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/step-up",
+          "mw": "ipLimit('verify') → requireAuth → validate(stepUpSchema) → stepUp.confirm"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/step-up/code",
+          "mw": "ipLimit('verify') → requireAuth → validate(stepUpCodeSchema) → stepUp.sendCode"
         },
         {
           "method": "POST",
@@ -762,7 +781,7 @@
         {
           "method": "POST",
           "path": "/billing/subscription/cancel",
-          "mw": "requireAuth → manager → validate(cancelSubscriptionSchema) → subscription.cancel"
+          "mw": "requireAuth → manager → validate(cancelSubscriptionSchema) → ...(config.stepUp === false ? [] : [requireStepUp((ctx) => (ctx.meta['body'] as { atPeriodEnd?: boolean } | undefined)?.atPeriodEnd === false)]) → subscription.cancel"
         },
         {
           "method": "POST",
@@ -1757,6 +1776,7 @@
         "useVerifyEmail",
         "useLoginHistory",
         "useSessions",
+        "useStepUp",
         "TOKEN_KEY"
       ],
       "subpaths": [],
@@ -2081,6 +2101,7 @@
         "useVerifyEmail",
         "useLoginHistory",
         "useSessions",
+        "useStepUp",
         "TOKEN_KEY"
       ],
       "subpaths": [],
@@ -2354,7 +2375,8 @@
         "useWorkspaceSettings",
         "useWorkspace",
         "useWorkspaces",
-        "useDeletedRoles"
+        "useDeletedRoles",
+        "useOwnershipOffer"
       ],
       "subpaths": [],
       "tables": [],
@@ -2658,6 +2680,7 @@
         "useSession",
         "useSessions",
         "useVerifyEmail",
+        "useStepUp",
         "TOKEN_KEY"
       ],
       "subpaths": [],
@@ -2984,7 +3007,8 @@
         "useWorkspaceSettings",
         "useWorkspace",
         "useWorkspaces",
-        "useDeletedRoles"
+        "useDeletedRoles",
+        "useOwnershipOffer"
       ],
       "subpaths": [],
       "tables": [],
@@ -3050,7 +3074,7 @@
         {
           "method": "POST",
           "path": "/webhooks",
-          "mw": "requireAuth → ws → manager → validate(createEndpointSchema) → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const body = ctx.meta['body'] as { url?: string; events?: string[] } | undefined; if (!body?.url) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_FIELD', 'url is required'); // Reject internal / non-public targets at registration (fail fast). // Delivery re-validates too, since DNS can change afterward. try { await assertPublicHttpUrl(body.url); } catch (err) { if (err instanceof SsrfError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message); throw err; } const endpoint = await new EndpointModel(store).create({ workspaceId: ctx.workspace.id, url: body.url, secret: generateSecret(), events: body.events ?? [], }); return setApiResponse( HTTP.CREATED, 'WEBHOOK_CREATED', 'Webhook endpoint registered.', toEndpointCreatedDTO(endpoint), ); }"
+          "mw": "requireAuth → ws → manager → stepUp → validate(createEndpointSchema) → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const body = ctx.meta['body'] as { url?: string; events?: string[] } | undefined; if (!body?.url) return setApiResponse(HTTP.UNPROCESSABLE, 'MISSING_FIELD', 'url is required'); // Reject internal / non-public targets at registration (fail fast). // Delivery re-validates too, since DNS can change afterward. try { await assertPublicHttpUrl(body.url); } catch (err) { if (err instanceof SsrfError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message); throw err; } const endpoint = await new EndpointModel(store).create({ workspaceId: ctx.workspace.id, url: body.url, secret: generateSecret(), events: body.events ?? [], }); return setApiResponse( HTTP.CREATED, 'WEBHOOK_CREATED', 'Webhook endpoint registered.', toEndpointCreatedDTO(endpoint), ); }"
         },
         {
           "method": "DELETE",
@@ -3065,7 +3089,7 @@
         {
           "method": "PATCH",
           "path": "/webhooks/:endpointId",
-          "mw": "requireAuth → ws → manager → validate(updateEndpointSchema) → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const body = ctx.meta['body'] as | { url?: string; events?: string[]; enabled?: boolean } | undefined; const patch: { url?: string; events?: string[]; enabled?: boolean } = {}; if (body?.url !== undefined) { try { await assertPublicHttpUrl(body.url); } catch (err) { if (err instanceof SsrfError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message); throw err; } patch.url = body.url; } if (body?.events !== undefined) patch.events = body.events; if (body?.enabled !== undefined) patch.enabled = body.enabled; const updated = await new EndpointModel(store).update(endpointId, ctx.workspace.id, patch); if (!updated) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return setApiResponse( HTTP.OK, 'WEBHOOK_UPDATED', 'Webhook endpoint updated.', toEndpointDTO(updated), ); }"
+          "mw": "requireAuth → ws → manager → validate(updateEndpointSchema) → stepUpOnUrl → withBody → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; const body = ctx.meta['body'] as | { url?: string; events?: string[]; enabled?: boolean } | undefined; const patch: { url?: string; events?: string[]; enabled?: boolean } = {}; if (body?.url !== undefined) { try { await assertPublicHttpUrl(body.url); } catch (err) { if (err instanceof SsrfError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_URL', err.message); throw err; } patch.url = body.url; } if (body?.events !== undefined) patch.events = body.events; if (body?.enabled !== undefined) patch.enabled = body.enabled; const updated = await new EndpointModel(store).update(endpointId, ctx.workspace.id, patch); if (!updated) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return setApiResponse( HTTP.OK, 'WEBHOOK_UPDATED', 'Webhook endpoint updated.', toEndpointDTO(updated), ); }"
         },
         {
           "method": "GET",
@@ -3129,9 +3153,10 @@
         "fonderie_role_user_workspaces",
         "fonderie_roles",
         "fonderie_workspace_invitations",
+        "fonderie_workspace_ownership_offers",
         "fonderie_workspaces"
       ],
-      "routeCount": 35,
+      "routeCount": 39,
       "routes": [
         {
           "method": "GET",
@@ -3304,9 +3329,29 @@
           "mw": "requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings"
         },
         {
+          "method": "DELETE",
+          "path": "/workspaces/transfer-ownership",
+          "mw": "requireAuth → wsCtx → owner → T(K.ownershipWithdrawn) → member.withdrawOwnershipOffer"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/transfer-ownership",
+          "mw": "requireAuth → wsCtx → member.getOwnershipOffer"
+        },
+        {
           "method": "POST",
           "path": "/workspaces/transfer-ownership",
-          "mw": "requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership"
+          "mw": "requireAuth → wsCtx → owner → stepUp → validate(transferOwnershipSchema) → T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/transfer-ownership/accept",
+          "mw": "requireAuth → wsCtx → T(K.ownershipTransferred, (_c, r) => ({ targetUserId: r?.['previousOwnerId'] as string | undefined })) → member.acceptOwnership"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/transfer-ownership/decline",
+          "mw": "requireAuth → wsCtx → T(K.ownershipDeclined) → member.declineOwnership"
         }
       ],
       "secures": [
@@ -5635,6 +5680,15 @@
     "session_policy_presets": [
       "auth"
     ],
+    "step_up_header": [
+      "auth"
+    ],
+    "step_up_ttl_seconds": [
+      "auth"
+    ],
+    "step_up_verifier": [
+      "auth"
+    ],
     "billingmodule": [
       "billing"
     ],
@@ -6247,6 +6301,11 @@
       "react-native-auth",
       "vue-auth"
     ],
+    "usestepup": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
     "token_key": [
       "react-auth",
       "react-native-auth",
@@ -6554,6 +6613,10 @@
       "vue-workspaces"
     ],
     "usedeletedroles": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useownershipoffer": [
       "react-workspaces",
       "vue-workspaces"
     ],

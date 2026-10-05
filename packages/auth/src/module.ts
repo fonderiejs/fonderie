@@ -1,4 +1,4 @@
-import type { IAdminDescription, IEventCatalogEntry, IFonderieModule, IFonderieApp } from '@fonderie/core';
+import type { IAdminDescription, IEventCatalogEntry, IFonderieContext, IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 
@@ -8,6 +8,7 @@ import { EVENT_KEYS, type IAuthConfig, type ISessionRevokedEvent } from './confi
 import { validateAuthConfig, collectAuthConfigProblems } from './services/config-guard';
 import { withSession } from './middlewares/session';
 import { describeAuthAdminRoutes } from './admin';
+import { STEP_UP_VERIFIER, hasStepUp } from './services/step-up';
 
 export class AuthModule implements IFonderieModule {
 	readonly name = '@fonderie/auth';
@@ -49,6 +50,14 @@ export class AuthModule implements IFonderieModule {
 
 	install(app: IFonderieApp): void {
 		app.use(withSession(this.store, this.config));
+		// Step-up (insider threat, Phase 4): a guarded route in any brick asks
+		// ctx.meta[STEP_UP_VERIFIER](ctx) whether this request carries a fresh
+		// proof for its user — no brick imports auth to ask.
+		const config = this.config;
+		app.use(async (ctx, next) => {
+			ctx.meta[STEP_UP_VERIFIER] = async (c: IFonderieContext) => hasStepUp(c, config);
+			return next();
+		});
 
 		// New users start in the app's system locale (core owns it) unless they
 		// signed up in another one.

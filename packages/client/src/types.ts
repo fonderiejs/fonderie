@@ -1435,3 +1435,37 @@ export interface IRestoredRoleResult {
 	reassigned: number;
 }
 
+// ── Step-up (docs/INSIDER-THREAT-DESIGN.md, Phase 4) ──────────────────────
+// A big move (hand a team over, end a plan at once, add a webhook) answers
+// 403 STEP_UP_REQUIRED until the person proves it's still them.
+
+export type StepUpMethod = 'password' | 'mfa' | 'email' | 'sms';
+
+export interface IStepUpMethodsResult {
+	/** Strongest first; with two-factor on, only 'mfa'. */
+	methods: StepUpMethod[];
+}
+
+export interface IStepUpProof {
+	password?: string;
+	mfaCode?: string;
+	/** The 6-digit code from requestStepUpCode. */
+	code?: string;
+}
+
+export interface IStepUpResult {
+	stepUpToken: string;
+	expiresAt: string;
+	method: StepUpMethod;
+}
+
+/** An open offer of a workspace to a member (Phase 4): it moves when they accept. */
+export interface IOwnershipOfferDTO {
+	workspaceId: string;
+	fromUserId: string;
+	toUserId: string;
+	createdAt: string;
+	/** When it lapses (7 days). */
+	expiresAt: string;
+}
+

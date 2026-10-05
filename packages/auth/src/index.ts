@@ -74,3 +74,7 @@ export {
 	sessionPolicyConfigKeys,
 } from './services/session-policy';
 export type { ClientKind, ISessionPolicy } from './services/session-policy';
+
+// Step-up (docs/INSIDER-THREAT-DESIGN.md, Phase 4)
+export { STEP_UP_HEADER, STEP_UP_TTL_SECONDS, STEP_UP_VERIFIER, hasStepUp, issueStepUpToken, stepUpMethods } from './services/step-up';
+export type { StepUpMethod } from './services/step-up';

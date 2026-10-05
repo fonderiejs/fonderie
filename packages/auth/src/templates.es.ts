@@ -174,6 +174,15 @@ inmediato y cambia tu contraseña — otra persona podría iniciar sesión como 
 Si fuiste tú, todo está en orden. Si no, contacta con soporte de inmediato.`,
 	},
 
+	[MESSAGE_KEYS.stepUpCode]: {
+		subject: `Tu código de confirmación`,
+		html: `<h1>Confirma que eres tú</h1>
+<p>Se solicitó un cambio importante desde tu cuenta (por ejemplo, traspasar un equipo o terminar un plan de inmediato). Usa este código para confirmar que eres tú:</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">Este código caduca en 10 minutos. Si no lo pediste, no lo compartas y cambia tu contraseña.</p>`,
+		text: `Tu código para confirmar que eres tú: {{code}}. Caduca en 10 minutos. ¿No lo pediste? No lo compartas y cambia tu contraseña.`,
+	},
+
 	[MESSAGE_KEYS.accountDeletionCode]: {
 		subject: `Confirma la eliminación de tu cuenta`,
 		html: `<h1>Confirmar la eliminación de la cuenta</h1>

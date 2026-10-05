@@ -26,10 +26,13 @@ import {
 	requestDeletionSchema,
 	confirmDeletionSchema,
 	restoreAccountSchema,
+	stepUpCodeSchema,
+	stepUpSchema,
 } from './schemas';
 
 import { mfaController } from './controllers/mfa.controller';
 import { authController } from './controllers/auth.controller';
+import { stepUpController } from './controllers/step-up.controller';
 import { userController } from './controllers/user.controller';
 import { oauthController } from './controllers/oauth.controller';
 
@@ -43,6 +46,7 @@ export function buildAuthRoutes(
 ): RouteDefinition[] {
 	const user = userController(store, config, bus);
 	const auth = authController(store, config, bus, locales);
+	const stepUp = stepUpController(store, config, bus);
 	const oauth = oauthController(store, config, bus);
 	const mfa = mfaController(store, config, config.appName ?? 'Fonderie', bus);
 
@@ -132,6 +136,11 @@ export function buildAuthRoutes(
 		R('confirmDeletion', 'POST', '/users/me/deletion/confirm', ipLimit('verify'), requireAuth, verifyGate, validate(confirmDeletionSchema), user.confirmDeletion),
 		R('restoreAccount', 'POST', '/auth/account/restore', ipLimit('login'), validate(restoreAccountSchema), auth.restoreAccount),
 		R('exportMe', 'GET', '/users/export', requireAuth, user.exportMe),
+
+		// Step-up: prove it's still you before a big move (insider threat, Phase 4).
+		R('stepUpMethods', 'GET', '/auth/step-up', requireAuth, stepUp.methods),
+		R('stepUpCode', 'POST', '/auth/step-up/code', ipLimit('verify'), requireAuth, validate(stepUpCodeSchema), stepUp.sendCode),
+		R('stepUp', 'POST', '/auth/step-up', ipLimit('verify'), requireAuth, validate(stepUpSchema), stepUp.confirm),
 
 		// Security surfaces (Protected; the caller's own login history + sessions).
 		// The literal /others route is registered before /:id so it isn't

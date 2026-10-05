@@ -38,6 +38,7 @@ export type {
 	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
 	IUseDeletedRolesReturn,
+	IUseOwnershipOfferReturn,
 } from './composables';
 export {
 	useCurrentWorkspace,
@@ -55,4 +56,5 @@ export {
 	useWorkspace,
 	useWorkspaces,
 	useDeletedRoles,
+	useOwnershipOffer,
 } from './composables';

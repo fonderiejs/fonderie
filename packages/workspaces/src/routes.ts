@@ -22,6 +22,7 @@ import { withWorkspace } from './middlewares/workspace-context';
 import { requireManager } from './middlewares/require-manager';
 import { requireOwner } from './middlewares/require-owner';
 import { inviteOf, roleOf, target, trail } from './middlewares/trail';
+import { requireStepUp } from './middlewares/require-step-up';
 
 import { workspaceController } from './controllers/workspace.controller';
 import { memberController } from './controllers/member.controller';
@@ -55,6 +56,8 @@ export function buildWorkspaceRoutes(
 
 	const workspace = workspaceController(store, config);
 	const owner = requireOwner();
+	// Big moves need a fresh proof it's the person (Phase 4); stepUp: false opts out.
+	const stepUp: Middleware = config.stepUp === false ? (_c, next) => next() : requireStepUp();
 	const member = memberController(store, config);
 	const role = roleController(store);
 	const access = accessController(store, config);
@@ -91,7 +94,13 @@ export function buildWorkspaceRoutes(
 		// Ownership decisions — the owner alone (requireOwner), not any manager.
 		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerSet, target), member.setManager),
 		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerUnset, target), member.unsetManager),
-		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, validate(transferOwnershipSchema), T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })), member.transferOwnership),
+		// Handing the team over (Phase 4): the owner OFFERS, after confirming it's
+		// them; the member accepts. Static paths before /workspaces/:id.
+		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, stepUp, validate(transferOwnershipSchema), T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })), member.transferOwnership),
+		R('getOwnershipOffer', 'GET', '/workspaces/transfer-ownership', requireAuth, wsCtx, member.getOwnershipOffer),
+		R('acceptOwnership', 'POST', '/workspaces/transfer-ownership/accept', requireAuth, wsCtx, T(K.ownershipTransferred, (_c, r) => ({ targetUserId: r?.['previousOwnerId'] as string | undefined })), member.acceptOwnership),
+		R('declineOwnership', 'POST', '/workspaces/transfer-ownership/decline', requireAuth, wsCtx, T(K.ownershipDeclined), member.declineOwnership),
+		R('withdrawOwnershipOffer', 'DELETE', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, T(K.ownershipWithdrawn), member.withdrawOwnershipOffer),
 		// Any member, for themselves.
 		R('leaveWorkspace', 'POST', '/workspaces/leave', requireAuth, wsCtx, T(K.memberLeft), member.leave),
 

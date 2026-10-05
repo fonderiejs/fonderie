@@ -26,3 +26,5 @@ export type { IUseWorkspacesReturn } from './useWorkspaces';
 export { useWorkspaces } from './useWorkspaces';
 export type { IUseDeletedRolesReturn } from './useDeletedRoles';
 export { useDeletedRoles } from './useDeletedRoles';
+export type { IUseOwnershipOfferReturn } from './useOwnershipOffer';
+export { useOwnershipOffer } from './useOwnershipOffer';

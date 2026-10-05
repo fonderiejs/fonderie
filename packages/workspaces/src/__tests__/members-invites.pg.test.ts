@@ -65,10 +65,11 @@ beforeEach(() => {
 interface Person { id: string; email: string; token: string }
 let n = 0;
 
-async function call(token: string | null, method: string, path: string, body?: unknown, workspaceId?: string) {
+async function call(token: string | null, method: string, path: string, body?: unknown, workspaceId?: string, extra: Record<string, string> = {}) {
 	const res = await fetch(`${base}${path}`, {
 		method,
 		headers: {
+			...extra,
 			'content-type': 'application/json',
 			...(token ? { authorization: `Bearer ${token}` } : {}),
 			...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
@@ -97,6 +98,21 @@ async function team(): Promise<{ owner: Person; ws: string }> {
 	const r = await call(owner.token, 'POST', '/workspaces', { name: `Crew ${n}-${Date.now()}` });
 	assert.equal(r.status, 201, JSON.stringify(r));
 	return { owner, ws: r.result['workspace'].id as string };
+}
+
+// Step-up (Phase 4): the five-minute proof a big move asks for, by password.
+async function stepUpToken(p: Person): Promise<Record<string, string>> {
+	const r = await call(p.token, 'POST', '/auth/step-up', { password: 'Aa1!aaaa-bbbb-cccc' });
+	assert.equal(r.status, 200, JSON.stringify(r));
+	return { 'x-step-up': r.result['stepUpToken'] as string };
+}
+
+// Hand the team over: the owner offers (after a step-up), the member accepts.
+async function handOver(owner: Person, ws: string, heir: Person): Promise<void> {
+	const offer = await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: heir.id }, ws, await stepUpToken(owner));
+	assert.equal(offer.status, 202, JSON.stringify(offer));
+	const ok = await call(heir.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws);
+	assert.equal(ok.status, 200, JSON.stringify(ok));
 }
 
 function lastInvitationEmail() {
@@ -325,7 +341,7 @@ test('deleting an account is refused while it owns a team with other members —
 	assert.match(String(refusal?.details?.['workspaceIds']), new RegExp(ws));
 	assert.equal(await blocker(m.id), null, 'a plain member is never blocked');
 	// Handed over: the former owner may go.
-	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws)).status, 200);
+	await handOver(owner, ws, m);
 	assert.equal(await blocker(owner.id), null);
 });
 
@@ -391,20 +407,50 @@ test('two role removals racing for a two-role member never leave them with none'
 	assert.deepEqual([last.status, last.reason], [404, 'ROLE_NOT_HELD']);
 });
 
-test('ownership moves to a member; the previous owner stays as a manager', { skip }, async () => {
+test('ownership is offered after a step-up and moves when the member accepts; the previous owner stays as a manager', { skip }, async () => {
 	const { owner, ws } = await team();
-	const m = await join(owner, ws);
-	assert.equal((await call(m.token, 'POST', '/workspaces/transfer-ownership', { userId: owner.id }, ws)).status, 403);
+	const [m, other] = [await join(owner, ws), await join(owner, ws)];
+	const proof = await stepUpToken(owner);
+	assert.equal((await call(m.token, 'POST', '/workspaces/transfer-ownership', { userId: owner.id }, ws, await stepUpToken(m))).status, 403, 'not the owner');
+	const bare = await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws);
+	assert.deepEqual([bare.status, bare.reason], [403, 'STEP_UP_REQUIRED'], 'a session alone cannot give the team away');
+	const forged = await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws, await stepUpToken(m));
+	assert.deepEqual([forged.status, forged.reason], [403, 'STEP_UP_REQUIRED'], "someone else's proof does not count");
 	const stranger = await person('Lee');
-	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: stranger.id }, ws)).status, 404);
-	const r = await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws);
-	assert.equal(r.status, 200, JSON.stringify(r));
+	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: stranger.id }, ws, proof)).status, 404);
+	const r = await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws, proof);
+	assert.deepEqual([r.status, r.reason], [202, 'OWNERSHIP_OFFERED'], JSON.stringify(r));
+	assert.equal((await members(owner, ws)).find((x) => x['userId'] === owner.id)!['isOwner'], true, 'nothing moves until they accept');
+	assert.equal((await call(m.token, 'GET', '/workspaces/transfer-ownership', undefined, ws)).result['offer'].toUserId, m.id);
+	assert.equal((await call(other.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 404, 'only the member it is for accepts');
+	assert.equal((await call(m.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 200);
+	assert.equal((await call(m.token, 'GET', '/workspaces/transfer-ownership', undefined, ws)).result['offer'], null, 'the offer is used up');
 	const rows = await members(m, ws);
 	assert.equal(rows.find((x) => x['userId'] === m.id)!['isOwner'], true);
 	const prev = rows.find((x) => x['userId'] === owner.id)!;
 	assert.equal(prev['isOwner'], false);
 	assert.equal(prev['isManager'], true);
-	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: owner.id }, ws)).status, 403);
+	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: owner.id }, ws, await stepUpToken(owner))).status, 403);
+});
+
+test('an offer can be declined or withdrawn, and is gone if the offerer stops being the owner', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [a, b] = [await join(owner, ws), await join(owner, ws)];
+	const offerTo = async (p: Person) =>
+		(await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: p.id }, ws, await stepUpToken(owner))).status;
+	assert.equal(await offerTo(a), 202);
+	assert.equal((await call(a.token, 'POST', '/workspaces/transfer-ownership/decline', undefined, ws)).status, 200);
+	assert.equal((await call(a.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 404, 'declined');
+	assert.equal(await offerTo(a), 202);
+	assert.equal(await offerTo(b), 202, 'a new offer replaces the open one');
+	assert.equal((await call(a.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 404, 'replaced');
+	assert.equal((await call(owner.token, 'DELETE', '/workspaces/transfer-ownership', undefined, ws)).status, 200);
+	assert.equal((await call(b.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 404, 'withdrawn');
+	// Expired offers do not count.
+	assert.equal(await offerTo(b), 202);
+	await store.query(`UPDATE fonderie_workspace_ownership_offers SET expires_at = now() - interval '1 minute' WHERE workspace_id = $1`, [ws]);
+	assert.equal((await call(b.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)).status, 404, 'lapsed');
+	assert.equal((await call(b.token, 'GET', '/workspaces/transfer-ownership', undefined, ws)).result['offer'], null);
 });
 
 test('a member can leave; the owner must hand over first', { skip }, async () => {
@@ -479,16 +525,14 @@ test('race: five invites at once with ONE seat left — exactly one gets it', { 
 	assert.equal(await countOccupiedSeats(ws, store), 1);
 });
 
-test('race: two ownership transfers at once — one applies, the other says so', { skip }, async () => {
+test('race: an offer accepted twice at once moves ownership once', { skip }, async () => {
 	const { owner, ws } = await team();
-	const [a, b] = [await join(owner, ws), await join(owner, ws)];
-	const replies = await Promise.all(
-		[a, b].map((p) => call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: p.id }, ws)),
-	);
+	const a = await join(owner, ws);
+	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: a.id }, ws, await stepUpToken(owner))).status, 202);
+	const replies = await Promise.all([1, 2].map(() => call(a.token, 'POST', '/workspaces/transfer-ownership/accept', undefined, ws)));
 	assert.deepEqual(replies.map((r) => r.status).sort(), [200, 404], JSON.stringify(replies.map((r) => r.reason)));
 	const [row] = await store.query<{ ownerId: string }>(`SELECT owner_id AS "ownerId" FROM fonderie_workspaces WHERE id = $1`, [ws]);
-	const winner = replies[0]!.status === 200 ? a : b;
-	assert.equal(row!.ownerId, winner.id, 'the owner is the one the successful transfer named');
+	assert.equal(row!.ownerId, a.id);
 });
 
 test('race: two saves of a role\'s permissions — the result is one of them, never the union', { skip }, async () => {
@@ -590,7 +634,7 @@ test('every team change leaves a trail event: which workspace, who did it, to wh
 
 // ── Insider threat, Phase 2: tell people ────────────────────────────────────
 
-test('people are told: the removed member, the owner when a manager removed them, the ex-manager, the new owner', { skip }, async () => {
+test('people are told: the removed member, the owner when a manager removed them, the ex-manager, the heir offered the team, the previous owner when accepted', { skip }, async () => {
 	const { sendTeamNotice } = await import('../services/team-notices');
 	const { owner, ws } = await team();
 	const [mgr, victim, heir] = [await join(owner, ws), await join(owner, ws), await join(owner, ws)];
@@ -607,7 +651,7 @@ test('people are told: the removed member, the owner when a manager removed them
 			await sendTeamNotice(store, bus, e.type, e.payload as never);
 	};
 	await replay();
-	await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: heir.id }, ws);
+	await handOver(owner, ws, heir);
 	await replay();
 
 	const got = (type: string) => notices.filter((x) => x.type === type);
@@ -615,8 +659,9 @@ test('people are told: the removed member, the owner when a manager removed them
 	assert.equal(got('workspace-member-removed')[0]!.data['actorName'], 'Marco Tester', 'and by whom');
 	assert.deepEqual(got('workspace-member-removed-alert').map((x) => x.to), [owner.email], 'the owner hears a manager removed someone');
 	assert.deepEqual(got('workspace-manager-removed').map((x) => x.to), [mgr.email]);
-	assert.deepEqual(got('workspace-ownership-received').map((x) => x.to), [heir.email]);
-	assert.equal(got('workspace-ownership-received')[0]!.data['previousOwnerName'], 'Olivia Tester');
+	assert.deepEqual(got('workspace-ownership-offered').map((x) => x.to), [heir.email], 'the heir is offered the team');
+	assert.equal(got('workspace-ownership-offered')[0]!.data['ownerName'], 'Olivia Tester');
+	assert.deepEqual(got('workspace-ownership-accepted').map((x) => x.to), [owner.email], 'the previous owner hears it was accepted');
 	assert.ok(notices.every((x) => x.data['workspaceName']?.startsWith('Crew ')));
 });
 

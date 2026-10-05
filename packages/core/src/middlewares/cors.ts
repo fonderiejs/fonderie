@@ -7,7 +7,8 @@ import type { Middleware } from '../types';
 //   traceparent    — W3C trace context (client >= 0.20)
 //   X-Workspace-ID — workspace scoping (setWorkspaceId)
 //   X-Client-Kind  — the platform at sign-in (mobile | desktop | web), for its session lifetimes
-export const FONDERIE_CLIENT_HEADERS = ['X-Request-ID', 'traceparent', 'X-Workspace-ID', 'X-Client-Kind'];
+// X-Step-Up: the five-minute proof (@fonderie/auth step-up) a big move asks for.
+export const FONDERIE_CLIENT_HEADERS = ['X-Request-ID', 'traceparent', 'X-Workspace-ID', 'X-Client-Kind', 'X-Step-Up'];
 
 export const DEFAULT_CORS_HEADERS = ['Content-Type', 'Authorization', ...FONDERIE_CLIENT_HEADERS];
 

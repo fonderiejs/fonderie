@@ -12,7 +12,8 @@ import { getWorkspaceSettings } from './workspaces';
 //
 //   member.removed        → the person removed; the owner too, when a manager did it
 //   manager.unset         → the person who is no longer a manager
-//   ownership.transferred → the new owner
+//   ownership.offered     → the member it is offered to (Phase 4)
+//   ownership.transferred → the PREVIOUS owner (the actor is the new owner)
 
 type Bus = { emit(type: string, payload: unknown): Promise<void> };
 
@@ -32,6 +33,7 @@ interface IPerson {
 export const TEAM_NOTICE_EVENTS = [
 	EVENT_KEYS.memberRemoved,
 	EVENT_KEYS.managerUnset,
+	EVENT_KEYS.ownershipOffered,
 	EVENT_KEYS.ownershipTransferred,
 ] as const;
 
@@ -86,8 +88,11 @@ export async function sendTeamNotice(store: IStoreAdapter, bus: Bus, type: strin
 		case EVENT_KEYS.managerUnset:
 			await send(target, MESSAGE_KEYS.managerRemoved, { workspaceName: ws.name });
 			return;
+		case EVENT_KEYS.ownershipOffered:
+			await send(target, MESSAGE_KEYS.ownershipOffered, { workspaceName: ws.name, ownerName: nameOf(actor) });
+			return;
 		case EVENT_KEYS.ownershipTransferred:
-			await send(target, MESSAGE_KEYS.ownershipReceived, { workspaceName: ws.name, previousOwnerName: nameOf(actor) });
+			await send(target, MESSAGE_KEYS.ownershipAccepted, { workspaceName: ws.name, newOwnerName: nameOf(actor) });
 			return;
 	}
 }

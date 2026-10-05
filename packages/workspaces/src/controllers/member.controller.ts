@@ -5,6 +5,21 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IWorkspacesConfig } from '../config';
 import { MemberModel } from '../models/member.model';
 import { toMemberDTO, toRoleDTO } from '../dtos/workspace';
+import {
+	acceptOwnershipOffer,
+	closeOwnershipOffer,
+	getOwnershipOffer,
+	offerOwnership,
+	type IOwnershipOffer,
+} from '../services/ownership-offers';
+
+const toOfferDTO = (o: IOwnershipOffer) => ({
+	workspaceId: o.workspaceId,
+	fromUserId: o.fromUserId,
+	toUserId: o.toUserId,
+	createdAt: new Date(o.createdAt).toISOString(),
+	expiresAt: new Date(o.expiresAt).toISOString(),
+});
 
 export function memberController(store: IStoreAdapter, config: IWorkspacesConfig = {}) {
 	const members = new MemberModel(store);
@@ -174,7 +189,8 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 			return setApiResponse(HTTP.OK, 'MANAGER_UNSET', 'Member is no longer a manager.');
 		},
 
-		// Owner only (route guard).
+		// Owner only, after confirming it's them (route guards). Offers the
+		// workspace; it moves when the member accepts (Phase 4).
 		async transferOwnership(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 			if (ctx.workspace.isPersonal) {
@@ -188,9 +204,42 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 			if (userId === ctx.user!.id) {
 				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_OPERATION', 'You already own this workspace');
 			}
-			const ok = await members.transferOwnership(ctx.workspace.id, ctx.user!.id, userId, managerRole);
-			if (!ok) return setApiResponse(HTTP.NOT_FOUND, 'MEMBER_NOT_FOUND', 'Ownership can only go to a member of this workspace.');
-			return setApiResponse(HTTP.OK, 'OWNERSHIP_TRANSFERRED', 'Ownership transferred.');
+			const r = await offerOwnership(store, ctx.workspace.id, ctx.user!.id, userId);
+			if (r.status === 'not-member') return setApiResponse(HTTP.NOT_FOUND, 'MEMBER_NOT_FOUND', 'Ownership can only go to a member of this workspace.');
+			if (r.status === 'not-owner') return setApiResponse(HTTP.FORBIDDEN, 'OWNER_REQUIRED', 'Only the workspace owner can do this');
+			return setApiResponse(HTTP.ACCEPTED, 'OWNERSHIP_OFFERED', 'Ownership offered: it moves when they accept.', { offer: toOfferDTO(r.offer) });
+		},
+
+		// Any member: the open offer, if any — the member it is for sees accept /
+		// decline, the owner sees it pending.
+		async getOwnershipOffer(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const offer = await getOwnershipOffer(store, ctx.workspace.id);
+			return setApiResponse(HTTP.OK, 'OWNERSHIP_OFFER', 'Ownership offer.', { offer: offer ? toOfferDTO(offer) : null });
+		},
+
+		// The member it is offered to takes the workspace.
+		async acceptOwnership(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const r = await acceptOwnershipOffer(store, ctx.workspace.id, ctx.user!.id, managerRole);
+			if (r.status === 'no-offer') return setApiResponse(HTTP.NOT_FOUND, 'NO_OWNERSHIP_OFFER', 'There is no open offer of this workspace for you.');
+			if (r.status === 'stale') return setApiResponse(HTTP.CONFLICT, 'OWNERSHIP_OFFER_STALE', 'This offer no longer stands: the team changed since it was made.');
+			return setApiResponse(HTTP.OK, 'OWNERSHIP_TRANSFERRED', 'You are now the owner.', { previousOwnerId: r.fromUserId });
+		},
+
+		async declineOwnership(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!(await closeOwnershipOffer(store, ctx.workspace.id, { toUserId: ctx.user!.id })))
+				return setApiResponse(HTTP.NOT_FOUND, 'NO_OWNERSHIP_OFFER', 'There is no open offer of this workspace for you.');
+			return setApiResponse(HTTP.OK, 'OWNERSHIP_DECLINED', 'Offer declined.');
+		},
+
+		// Owner only (route guard).
+		async withdrawOwnershipOffer(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if (!(await closeOwnershipOffer(store, ctx.workspace.id, { fromUserId: ctx.user!.id })))
+				return setApiResponse(HTTP.NOT_FOUND, 'NO_OWNERSHIP_OFFER', 'There is no open offer to withdraw.');
+			return setApiResponse(HTTP.OK, 'OWNERSHIP_OFFER_WITHDRAWN', 'Offer withdrawn.');
 		},
 
 		// Any member, for themselves. The owner hands the workspace over first.

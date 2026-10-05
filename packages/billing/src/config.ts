@@ -266,6 +266,9 @@ export interface IBillingConfig {
 	 * never gated by this.
 	 */
 	management?: 'owner-or-admin' | 'any-member';
+	// Ending a plan AT ONCE asks for a fresh proof it's the person (POST
+	// /auth/step-up, @fonderie/auth 7.27+). Default true; false turns it off.
+	stepUp?: boolean;
 	/**
 	 * Who a plan's free trial is "once per". Default 'subscriber': once per
 	 * user or per workspace. 'owner': a WORKSPACE subscriber gets no trial when

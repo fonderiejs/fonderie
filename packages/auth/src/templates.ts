@@ -185,6 +185,15 @@ change your password — someone else may be able to sign in as you.`,
 If you did this, you're all set. If not, contact support right away.`,
 	},
 
+	[MESSAGE_KEYS.stepUpCode]: {
+		subject: `Your confirmation code`,
+		html: `<h1>Confirm it's you</h1>
+<p>Someone signed in to your account wants to make an important change (for example hand over a team or end a plan at once). Use this code to confirm it's you:</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">This code expires in 10 minutes. If you didn&rsquo;t ask for this, don&rsquo;t share it &mdash; and change your password.</p>`,
+		text: `Your code to confirm it's you: {{code}}. It expires in 10 minutes. Didn't ask? Don't share it, and change your password.`,
+	},
+
 	[MESSAGE_KEYS.accountDeletionCode]: {
 		subject: `Confirm your account deletion`,
 		html: `<h1>Confirm account deletion</h1>
@@ -254,6 +263,7 @@ export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = 
 	[MESSAGE_KEYS.mfaBackupCodesRegenerated]: {},
 	[MESSAGE_KEYS.emailChanged]: { newEmail: 'new@example.com' },
 	[MESSAGE_KEYS.phoneChanged]: {},
+	[MESSAGE_KEYS.stepUpCode]: { code: '123456' },
 	[MESSAGE_KEYS.accountDeletionCode]: { code: '123456' },
 	[MESSAGE_KEYS.accountDeletionScheduled]: { deleteOn: 'November 3, 2026' },
 	[MESSAGE_KEYS.accountRestored]: {},
