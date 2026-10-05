@@ -1,5 +1,12 @@
 # @fonderie/permissions
 
+## 5.1.4
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+
 ## 5.1.3
 
 ### Patch Changes
