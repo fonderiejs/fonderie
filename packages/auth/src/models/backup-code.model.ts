@@ -24,10 +24,17 @@ export class BackupCodeModel {
 		return rows.map((r) => ({ id: r.id, codeHash: r.code_hash }));
 	}
 
-	async consume(id: string): Promise<void> {
-		await this.store.query(`UPDATE fonderie_mfa_backup_codes SET used_at = now() WHERE id = $1`, [
-			id,
-		]);
+	/**
+	 * Spend a backup code — once. Conditional on still being unused, so two
+	 * requests racing with the same code cannot both sign in: the second finds
+	 * it spent (false).
+	 */
+	async consume(id: string): Promise<boolean> {
+		const rows = await this.store.query<{ id: string }>(
+			`UPDATE fonderie_mfa_backup_codes SET used_at = now() WHERE id = $1 AND used_at IS NULL RETURNING id`,
+			[id],
+		);
+		return rows.length > 0;
 	}
 
 	async deleteByUser(userId: string): Promise<void> {

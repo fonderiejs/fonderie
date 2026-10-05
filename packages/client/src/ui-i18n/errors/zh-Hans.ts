@@ -21,6 +21,8 @@ const errors: typeof en = {
 		ACCOUNT_SUSPENDED: '此账户已被暂停，请联系客服。',
 		ACCOUNT_PENDING_DELETION: '此账户将于 {deleteOn} 删除。您仍可保留它。',
 		'ACCOUNT_PENDING_DELETION:short': '使用此地址的账户已安排删除。请登录以保留它，或等待删除完成。',
+		OWNS_TEAM_WORKSPACE: '您拥有一个还有其他成员的团队（{workspaces}）。请先将所有权转让给他人，再删除账户。',
+		RESTORE_TOKEN_INVALID: '请重新登录以保留您的账户。',
 		USER_ALREADY_EXISTS: '该电子邮箱已注册账户。',
 		EMAIL_IN_USE: '该电子邮箱已被使用。',
 		PHONE_IN_USE: '该手机号码已被使用。',

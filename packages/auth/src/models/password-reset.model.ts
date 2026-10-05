@@ -8,7 +8,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 // entropy (unguessable), and the 6-digit pin's real protection is the route
 // rate-limiter + short TTL + all-session-revoke, not the hash. Deterministic
 // (unsalted) so the lookup is a single indexed equality on the hash.
-const hashSecret = (value: string): string => createHash('sha256').update(value).digest('hex');
+export const hashSecret = (value: string): string => createHash('sha256').update(value).digest('hex');
 
 export class PasswordResetModel {
 	constructor(private store: IStoreAdapter) {}

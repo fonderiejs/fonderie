@@ -314,6 +314,21 @@ test('a member who deleted their account leaves the team list (no name, email or
 	assert.equal(await listed(), true, 'restored account back on the team');
 });
 
+test('deleting an account is refused while it owns a team with other members — not for a solo or handed-over team', { skip }, async () => {
+	const { accountDeletionBlocker } = await import('../account-deletion');
+	const blocker = accountDeletionBlocker(store);
+	const { owner, ws } = await team();
+	assert.equal(await blocker(owner.id), null, 'a team with nobody else in it goes with the account');
+	const m = await join(owner, ws);
+	const refusal = await blocker(owner.id);
+	assert.equal(refusal?.reason, 'OWNS_TEAM_WORKSPACE');
+	assert.match(String(refusal?.details?.['workspaceIds']), new RegExp(ws));
+	assert.equal(await blocker(m.id), null, 'a plain member is never blocked');
+	// Handed over: the former owner may go.
+	assert.equal((await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: m.id }, ws)).status, 200);
+	assert.equal(await blocker(owner.id), null);
+});
+
 test('only the owner makes or unmakes a manager', { skip }, async () => {
 	const { owner, ws } = await team();
 	const m = await join(owner, ws);

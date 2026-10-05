@@ -173,4 +173,30 @@ inmediato y cambia tu contraseña — otra persona podría iniciar sesión como 
 
 Si fuiste tú, todo está en orden. Si no, contacta con soporte de inmediato.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionCode]: {
+		subject: `Confirma la eliminación de tu cuenta`,
+		html: `<h1>Confirmar la eliminación de la cuenta</h1>
+<p>Usa este código para confirmar que quieres eliminar tu cuenta:</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">Este código vence en 15 minutos. Si no pediste eliminar tu cuenta, ignora este mensaje y cambia tu contraseña: tu cuenta seguirá igual.</p>`,
+		text: `Tu código para confirmar la eliminación de tu cuenta: {{code}}. Vence en 15 minutos. ¿No fuiste tú? Ignora esto y cambia tu contraseña.`,
+	},
+
+	[MESSAGE_KEYS.accountDeletionScheduled]: {
+		subject: `Tu cuenta se eliminará el {{deleteOn}}`,
+		html: `<h1>Tu cuenta está programada para eliminarse</h1>
+<p>Recibimos tu solicitud. Tu cuenta está cerrada y se eliminará de forma permanente el <strong>{{deleteOn}}</strong>.</p>
+<p>¿Cambiaste de opinión? Inicia sesión antes de esa fecha y elige <strong>Conservar mi cuenta</strong>.</p>
+<p class="muted">Si no lo pediste, inicia sesión ahora para conservar tu cuenta y cambia tu contraseña.</p>`,
+		text: `Tu cuenta se eliminará de forma permanente el {{deleteOn}}. ¿Cambiaste de opinión? Inicia sesión antes y elige Conservar mi cuenta.`,
+	},
+
+	[MESSAGE_KEYS.accountRestored]: {
+		subject: `Tu cuenta fue restablecida`,
+		html: `<h1>Bienvenido de nuevo</h1>
+<p>Se canceló la eliminación de tu cuenta y tu cuenta vuelve a estar activa.</p>
+<p class="muted">Si no fuiste tú, cambia tu contraseña de inmediato.</p>`,
+		text: `Se canceló la eliminación de tu cuenta; tu cuenta vuelve a estar activa. ¿No fuiste tú? Cambia tu contraseña ahora.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;

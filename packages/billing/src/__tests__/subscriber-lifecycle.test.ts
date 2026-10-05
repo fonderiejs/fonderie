@@ -8,6 +8,8 @@ import {
 	USER_PURGED_EVENT,
 	handleSubscriberDeleted,
 	handleSubscriberPurged,
+	handleSubscriberRestored,
+	USER_RESTORED_EVENT,
 } from '../services/subscriber-lifecycle';
 
 // What happens to a user's money when the user goes away. Real PostgreSQL (the
@@ -36,6 +38,10 @@ function fakeProvider(opts: { failCancel?: Error; failDelete?: Error } = {}) {
 					cancelAtPeriodEnd: arg.atPeriodEnd,
 					currentPeriodEnd: null,
 				};
+			},
+			reactivateSubscription: async (arg: { subscriptionId: string }) => {
+				calls.push({ op: 'reactivate', arg });
+				return { status: 'active', cancelAtPeriodEnd: false, currentPeriodEnd: null };
 			},
 			deleteCustomer: async (id: string) => {
 				calls.push({ op: 'deleteCustomer', arg: id });
@@ -79,7 +85,7 @@ test('deleted: cancels the user subscription NOW and disarms off-session chargin
 	try {
 		await seed(store);
 		const { provider, calls } = fakeProvider();
-		const out = await handleSubscriberDeleted(store, { provider }, { type: 'user', id: USER });
+		const out = await handleSubscriberDeleted(store, { provider, onSubscriberDeleted: 'cancel' }, { type: 'user', id: USER });
 		assert.deepEqual(out, { canceled: 'now', chargingDisarmed: true });
 		assert.deepEqual(calls, [
 			{ op: 'cancel', arg: { subscriptionId: 'sub_user_1', atPeriodEnd: false } },
@@ -143,6 +149,49 @@ test('deleted: policy cancel-at-period-end, keep, and an already-canceled subscr
 	}
 });
 
+test('by default deletion ends the subscription at the period end, and keeping the account resumes it', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		await seed(store);
+		const del = fakeProvider();
+		const out = await handleSubscriberDeleted(store, { provider: del.provider }, { type: 'user', id: USER });
+		assert.equal(out.canceled, 'at-period-end', 'the default is reversible (D7)');
+		assert.deepEqual(del.calls[0]?.arg, { subscriptionId: 'sub_user_1', atPeriodEnd: true });
+		// What the provider's webhook would record.
+		await store.query(`UPDATE fonderie_subscriptions SET cancel_at_period_end = true WHERE subscriber_id = $1`, [USER]);
+
+		const res = fakeProvider();
+		assert.deepEqual(await handleSubscriberRestored(store, { provider: res.provider }, { type: 'user', id: USER }), { resumed: true });
+		assert.deepEqual(res.calls, [{ op: 'reactivate', arg: { subscriptionId: 'sub_user_1' } }]);
+		// A second restore event (redelivery) does nothing more.
+		const again = fakeProvider();
+		assert.deepEqual(await handleSubscriberRestored(store, { provider: again.provider }, { type: 'user', id: USER }), { resumed: false });
+		assert.equal(again.calls.length, 0);
+	} finally {
+		await close(store);
+	}
+});
+
+test('a cancellation the person chose themselves is left alone by deletion AND by restore', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		await seed(store);
+		await store.query(`UPDATE fonderie_subscriptions SET cancel_at_period_end = true WHERE subscriber_id = $1`, [USER]);
+		const del = fakeProvider();
+		await handleSubscriberDeleted(store, { provider: del.provider }, { type: 'user', id: USER });
+		assert.equal(del.calls.filter((c) => c.op === 'cancel').length, 0, 'already ending: not touched');
+		const res = fakeProvider();
+		assert.deepEqual(await handleSubscriberRestored(store, { provider: res.provider }, { type: 'user', id: USER }), { resumed: false });
+		assert.equal(res.calls.length, 0, 'restore never undoes a cancellation they chose');
+	} finally {
+		await close(store);
+	}
+});
+
 test('deleted: a redelivery is harmless ("already canceled" at the provider is success); a real failure throws for retry', {
 	skip,
 }, async () => {
@@ -156,13 +205,13 @@ test('deleted: a redelivery is harmless ("already canceled" at the provider is s
 		});
 		const out = await handleSubscriberDeleted(
 			store,
-			{ provider: gone.provider },
+			{ provider: gone.provider, onSubscriberDeleted: 'cancel' },
 			{ type: 'user', id: USER },
 		);
 		assert.equal(out.canceled, 'now');
 		const down = fakeProvider({ failCancel: new Error('connection reset') });
 		await assert.rejects(
-			handleSubscriberDeleted(store, { provider: down.provider }, { type: 'user', id: USER }),
+			handleSubscriberDeleted(store, { provider: down.provider, onSubscriberDeleted: 'cancel' }, { type: 'user', id: USER }),
 			/connection reset/,
 		);
 	} finally {
@@ -212,7 +261,7 @@ test('BillingModule subscribes to both account events on the bus, and routes the
 		{ provider, plans: [], successUrl: 'x', cancelUrl: 'y' } as never,
 		bus as never,
 	);
-	assert.deepEqual([...handlers.keys()].sort(), [USER_DELETED_EVENT, USER_PURGED_EVENT].sort());
+	assert.deepEqual([...handlers.keys()].sort(), [USER_DELETED_EVENT, USER_PURGED_EVENT, USER_RESTORED_EVENT].sort());
 	await handlers.get(USER_DELETED_EVENT)!({ userId: USER });
 	assert.ok(
 		seen.some((q) => q.includes(`"user","${USER}"`)),

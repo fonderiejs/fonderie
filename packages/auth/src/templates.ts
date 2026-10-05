@@ -184,6 +184,32 @@ change your password — someone else may be able to sign in as you.`,
 
 If you did this, you're all set. If not, contact support right away.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionCode]: {
+		subject: `Confirm your account deletion`,
+		html: `<h1>Confirm account deletion</h1>
+<p>Use this code to confirm that you want to delete your account:</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">This code expires in 15 minutes. If you didn&rsquo;t ask to delete your account, ignore this message and change your password &mdash; your account stays as it is.</p>`,
+		text: `Your code to confirm deleting your account: {{code}}. It expires in 15 minutes. Didn't ask? Ignore this and change your password.`,
+	},
+
+	[MESSAGE_KEYS.accountDeletionScheduled]: {
+		subject: `Your account will be deleted on {{deleteOn}}`,
+		html: `<h1>Your account is scheduled for deletion</h1>
+<p>We received your request. Your account is closed and will be permanently deleted on <strong>{{deleteOn}}</strong>.</p>
+<p>Changed your mind? Sign in before that date and choose <strong>Keep my account</strong>.</p>
+<p class="muted">If you didn&rsquo;t ask for this, sign in now to keep your account and change your password.</p>`,
+		text: `Your account will be permanently deleted on {{deleteOn}}. Changed your mind? Sign in before then and choose Keep my account.`,
+	},
+
+	[MESSAGE_KEYS.accountRestored]: {
+		subject: `Your account was restored`,
+		html: `<h1>Welcome back</h1>
+<p>Your account deletion was cancelled and your account is active again.</p>
+<p class="muted">If you didn&rsquo;t do this, change your password right away.</p>`,
+		text: `Your account deletion was cancelled; your account is active again. Didn't do this? Change your password now.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplate>;
 
 // The English above, with every email's French, Spanish and Chinese (Simplified
@@ -219,4 +245,7 @@ export const SAMPLE_PAYLOADS: Record<AuthMessageKey, Record<string, unknown>> = 
 	[MESSAGE_KEYS.mfaBackupCodesRegenerated]: {},
 	[MESSAGE_KEYS.emailChanged]: { newEmail: 'new@example.com' },
 	[MESSAGE_KEYS.phoneChanged]: {},
+	[MESSAGE_KEYS.accountDeletionCode]: { code: '123456' },
+	[MESSAGE_KEYS.accountDeletionScheduled]: { deleteOn: 'November 3, 2026' },
+	[MESSAGE_KEYS.accountRestored]: {},
 };

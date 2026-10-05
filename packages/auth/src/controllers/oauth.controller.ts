@@ -295,7 +295,7 @@ export function oauthController(store: IStoreAdapter, config: IAuthConfig, bus?:
 				...meta,
 			});
 			// The web flow's one-time CSRF cookie is spent either way.
-			const res = pendingDeletionResponse(archived.deletedAt, config);
+			const res = pendingDeletionResponse({ ...archived, deletedAt: archived.deletedAt }, provider, config);
 			const headers = cookieHeaders(clearCookies);
 			headers.set('content-type', res.headers.get('content-type') ?? 'application/json');
 			return new Response(res.body, { status: res.status, headers });
