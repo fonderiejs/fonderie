@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
+import { binCustomer } from './customer-bin';
 import { DEFAULT_REFERENCE_CODE_PREFIX, REFERRAL_CODE_ALPHABET, REFERRAL_CODE_LENGTH } from '../config';
 import type {
 	ICustomer,
@@ -650,9 +651,12 @@ export class CustomerModel {
 	 * their emails, phones and notes were already gone. Now a refusal undoes
 	 * everything and surfaces as CustomerInUseError.
 	 */
-	async delete(id: string, workspaceId: string): Promise<void> {
+	async delete(id: string, workspaceId: string, deletedBy: string | null = null): Promise<void> {
 		try {
 			await this.store.transaction(async (tx) => {
+				// Into the undo bin first: restorable for 30 days. Same transaction,
+				// so a refused delete leaves no snapshot behind.
+				await binCustomer(tx, id, workspaceId, deletedBy);
 				await tx.query(
 					`DELETE FROM fonderie_addresses WHERE id IN (
 						SELECT addr_id FROM fonderie_customer_addresses WHERE customer_id = $1

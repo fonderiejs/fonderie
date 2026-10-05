@@ -24,3 +24,5 @@ export type { IUseWorkspaceReturn } from './useWorkspace';
 export { useWorkspace } from './useWorkspace';
 export type { IUseWorkspacesReturn } from './useWorkspaces';
 export { useWorkspaces } from './useWorkspaces';
+export type { IUseDeletedRolesReturn } from './useDeletedRoles';
+export { useDeletedRoles } from './useDeletedRoles';

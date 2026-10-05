@@ -5,11 +5,54 @@ import type { IStoreAdapter } from '@fonderie/store';
 import { RoleModel } from '../models/role.model';
 import { toRoleDTO } from '../dtos/workspace';
 import { permissionsEngine } from '../permissions-engine';
+import { listRoleBin, purgeRoleFromBin, restoreRole } from '../services/roles';
 
 export function roleController(store: IStoreAdapter) {
 	const roles = new RoleModel(store);
+	const roleIdOf = (ctx: IFonderieContext) => (ctx.meta['params'] as Record<string, string> | undefined)?.['roleId'];
 
 	return {
+		// ── The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3) ──────────
+		async listBin(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const rows = await listRoleBin(store, ctx.workspace.id);
+			return setApiResponse(HTTP.OK, 'ROLE_BIN', 'Deleted roles.', {
+				roles: rows.map((r) => ({
+					...r,
+					deletedAt: new Date(r.deletedAt).toISOString(),
+					purgeAt: new Date(r.purgeAt).toISOString(),
+				})),
+			});
+		},
+
+		async restore(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const roleId = roleIdOf(ctx);
+			if (!roleId) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
+			const r = await restoreRole(store, roleId, ctx.workspace.id);
+			if (r.status === 'not-in-bin')
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Nothing to restore: not deleted here, or deleted too long ago.');
+			if (r.status === 'conflict')
+				return setApiResponse(HTTP.CONFLICT, 'RESTORE_CONFLICT', 'A role with this name exists now. Rename it, then restore.');
+			const role = await roles.findById(roleId, ctx.workspace.id);
+			return setApiResponse(HTTP.OK, 'ROLE_RESTORED', 'Role restored.', {
+				role: role ? toRoleDTO(role) : null,
+				reassigned: r.reassigned,
+			});
+		},
+
+		// The owner only: a manager who could empty the bin could delete and
+		// then erase the undo.
+		async purge(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			if ((ctx.workspace as { ownerId?: string }).ownerId !== ctx.user?.id)
+				return setApiResponse(HTTP.FORBIDDEN, 'OWNER_REQUIRED', 'Only the workspace owner can empty the bin.');
+			const roleId = roleIdOf(ctx);
+			if (!roleId || !(await purgeRoleFromBin(store, roleId, ctx.workspace.id)))
+				return setApiResponse(HTTP.NOT_FOUND, 'NOT_IN_BIN', 'Not in the bin.');
+			return new Response(null, { status: HTTP.NO_CONTENT });
+		},
+
 		async create(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
@@ -126,7 +169,8 @@ export function roleController(store: IStoreAdapter) {
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 			}
 
-			const result = await roles.delete(roleId, ctx.workspace.id);
+			// Into the undo bin: restorable for 30 days.
+			const result = await roles.delete(roleId, ctx.workspace.id, ctx.user?.id ?? null);
 			if (!result) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Role not found');
 
 			// Members who held it lose it; anyone for whom it was the ONLY role

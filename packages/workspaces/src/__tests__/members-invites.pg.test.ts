@@ -631,3 +631,52 @@ test('no owner alert when the owner removed someone; nobody is written to about 
 	for (const e of emitted.filter((x) => x.payload['workspaceId'] === ws)) await sendTeamNotice(store, bus, e.type, e.payload as never);
 	assert.deepEqual(notices, [`workspace-member-removed→${a.email}`]);
 });
+
+// ── Insider threat, Phase 3: the undo bin for roles ─────────────────────────
+
+test('a deleted role comes back from the bin: same id, its permissions, its holders — and they leave the default role again', { skip }, async () => {
+	const { owner, ws } = await team();
+	const mgr = await join(owner, ws);
+	await call(owner.token, 'POST', `/workspaces/members/${mgr.id}/manager`, {}, ws);
+	const role = (await call(mgr.token, 'POST', '/workspaces/roles', { name: `Lead ${n}` }, ws)).result['role'] as { id: string };
+	// solo joins WITH this role as their only one; both holds it and another.
+	const [solo, both] = [await join(owner, ws, role.id), await join(owner, ws)];
+	const extra = (await call(mgr.token, 'POST', '/workspaces/roles', { name: `Extra ${n}` }, ws)).result['role'] as { id: string };
+	await call(mgr.token, 'POST', `/workspaces/roles/${role.id}/permissions`, { permissions: [{ permissionKey: 'customers', canCreate: true, canRead: true, canUpdate: false, canDelete: false }] }, ws);
+	await call(mgr.token, 'POST', `/workspaces/members/${both.id}/roles`, { roleId: role.id }, ws);
+	await call(mgr.token, 'POST', `/workspaces/members/${both.id}/roles`, { roleId: extra.id }, ws);
+	const guestOf = async (id: string) => ((await members(owner, ws)).find((m) => m['userId'] === id)!['roles'] as Array<{ name: string }>).map((r) => r.name).sort();
+	const roleNamesBefore = { solo: await guestOf(solo.id), both: await guestOf(both.id) };
+	assert.equal(roleNamesBefore.solo.length, 1, 'solo holds one role');
+	assert.match(roleNamesBefore.solo[0]!, /^Lead /, 'and it is this one');
+	const permsBefore = (await call(owner.token, 'GET', `/workspaces/roles/${role.id}/permissions`, undefined, ws)).result;
+
+	const del = await call(mgr.token, 'DELETE', `/workspaces/roles/${role.id}`, undefined, ws);
+	assert.equal(del.status, 200, JSON.stringify(del));
+	const bin = (await call(mgr.token, 'GET', '/workspaces/roles/bin', undefined, ws)).result['roles'] as Array<{ id: string; name: string; holders: number }>;
+	assert.deepEqual(bin.map((b) => [b.id, b.holders]), [[role.id, 2]]);
+	assert.deepEqual(await guestOf(solo.id), ['GUEST'], 'the delete moved solo to the default role');
+
+	// A manager cannot empty the bin — that would let them erase the undo.
+	const purge = await call(mgr.token, 'DELETE', `/workspaces/roles/bin/${role.id}`, undefined, ws);
+	assert.deepEqual([purge.status, purge.reason], [403, 'OWNER_REQUIRED']);
+
+	const r = await call(mgr.token, 'POST', `/workspaces/roles/bin/${role.id}/restore`, undefined, ws);
+	assert.deepEqual([r.status, r.reason, r.result['reassigned']], [200, 'ROLE_RESTORED', 2], JSON.stringify(r));
+	assert.equal(r.result['role'].id, role.id, 'same id');
+	assert.deepEqual((await call(owner.token, 'GET', `/workspaces/roles/${role.id}/permissions`, undefined, ws)).result, permsBefore, 'its permissions');
+	assert.deepEqual({ solo: await guestOf(solo.id), both: await guestOf(both.id) }, roleNamesBefore, 'everyone holds exactly what they held before');
+	assert.ok(trailOf('fonderie.workspace.role.restored').some((p) => p['roleId'] === role.id && p['userId'] === mgr.id), 'restore is in the trail');
+});
+
+test('a role whose name was taken meanwhile is not restored over it; the owner can empty the bin', { skip }, async () => {
+	const { owner, ws } = await team();
+	const role = (await call(owner.token, 'POST', '/workspaces/roles', { name: `Dup ${n}` }, ws)).result['role'] as { id: string; name: string };
+	await call(owner.token, 'DELETE', `/workspaces/roles/${role.id}`, undefined, ws);
+	assert.equal((await call(owner.token, 'POST', '/workspaces/roles', { name: role.name }, ws)).status, 201);
+	const r = await call(owner.token, 'POST', `/workspaces/roles/bin/${role.id}/restore`, undefined, ws);
+	assert.deepEqual([r.status, r.reason], [409, 'RESTORE_CONFLICT']);
+	assert.equal(((await call(owner.token, 'GET', '/workspaces/roles/bin', undefined, ws)).result['roles'] as unknown[]).length, 1, 'still in the bin');
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/roles/bin/${role.id}`, undefined, ws)).status, 204);
+	assert.equal((await call(owner.token, 'POST', `/workspaces/roles/bin/${role.id}/restore`, undefined, ws)).status, 404);
+});

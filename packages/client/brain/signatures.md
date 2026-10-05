@@ -614,6 +614,9 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .getCustomer(customerId: string, input?: IGetCustomerInput, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
+  .listDeletedCustomers(opts?: IReadOptions | undefined): Promise<IApiResponse<{ customers: IDeletedCustomerDTO[]; }>>
+  .restoreCustomer(id: string): Promise<IApiResponse<{ id: string; }>>
+  .purgeDeletedCustomer(id: string): Promise<undefined>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput): Promise<IApiResponse<undefined>>
   .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
@@ -682,6 +685,9 @@ new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .getEndpoint(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookEndpointDTO>>
   .updateEndpoint(endpointId: string, input: IUpdateWebhookEndpointInput): Promise<IApiResponse<IWebhookEndpointDTO>>
   .deleteEndpoint(endpointId: string): Promise<undefined>
+  .listDeletedWebhookEndpoints(opts?: IReadOptions | undefined): Promise<IApiResponse<{ endpoints: IDeletedWebhookEndpointDTO[]; }>>
+  .restoreWebhookEndpoint(id: string): Promise<IApiResponse<IWebhookEndpointDTO>>
+  .purgeDeletedWebhookEndpoint(id: string): Promise<undefined>
   .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
@@ -782,6 +788,9 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getRole(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleResult>>
   .updateRole(roleId: string, input: IUpdateRoleInput): Promise<IApiResponse<IRoleResult>>
   .removeRole(roleId: string): Promise<IApiResponse<IRoleDeleteResult>>
+  .listDeletedRoles(opts?: IReadOptions | undefined): Promise<IApiResponse<{ roles: IDeletedRoleDTO[]; }>>
+  .restoreRole(id: string): Promise<IApiResponse<IRestoredRoleResult>>
+  .purgeDeletedRole(id: string): Promise<undefined>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
   .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
@@ -1192,6 +1201,41 @@ interface IAdminErasureExport {
 interface IAdminErasurePageResult {
     erasures: IAdminErasureDTO[];
     nextCursor: string | null;
+}
+
+interface IDeletedWebhookEndpointDTO {
+    id: string;
+    url: string;
+    events: string[];
+    deletedBy: string | null;
+    deletedAt: string;
+    purgeAt: string;
+}
+
+interface IDeletedCustomerDTO {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    companyName: string | null;
+    referenceCode: string | null;
+    deletedBy: string | null;
+    deletedAt: string;
+    purgeAt: string;
+}
+
+interface IDeletedRoleDTO {
+    id: string;
+    name: string;
+    description: string | null;
+    holders: number;
+    deletedBy: string | null;
+    deletedAt: string;
+    purgeAt: string;
+}
+
+interface IRestoredRoleResult {
+    role: IRoleDTO | null;
+    reassigned: number;
 }
 
 interface IAdminCatalog {

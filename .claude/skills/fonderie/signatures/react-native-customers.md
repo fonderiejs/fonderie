@@ -21,6 +21,9 @@ new CustomersClient(http: HttpClient, tokens: TokenStore): CustomersClient
   .getCustomer(customerId: string, input?: IGetCustomerInput | undefined, opts?: IReadOptions | undefined): Promise<IApiResponse<ICustomerDetailDTO | ICustomerDetailD2DTO>>
   .updateCustomer(customerId: string, input: IUpdateCustomerInput): Promise<IApiResponse<ICustomerResult>>
   .deleteCustomer(customerId: string): Promise<IApiResponse<undefined>>
+  .listDeletedCustomers(opts?: IReadOptions | undefined): Promise<IApiResponse<{ customers: IDeletedCustomerDTO[]; }>>
+  .restoreCustomer(id: string): Promise<IApiResponse<{ id: string; }>>
+  .purgeDeletedCustomer(id: string): Promise<undefined>
   .blacklistCustomer(customerId: string, input?: IBlacklistCustomerInput | undefined): Promise<IApiResponse<undefined>>
   .archiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
   .unarchiveCustomer(customerId: string): Promise<IApiResponse<ICustomerResult>>
@@ -365,6 +368,17 @@ interface IUseCustomersReturn {
     unarchiveCustomer: (customerId: string) => Promise<void>;
 }
 
+interface IUseDeletedCustomersReturn {
+    customers: IDeletedCustomerDTO[];
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    restore: (id: string) => Promise<void>;
+    purge: (id: string) => Promise<void>;
+}
+
 function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
 
 function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerAddressesReturn
@@ -382,4 +396,6 @@ function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOpt
 function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerTagsReturn
 
 function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
+
+function useDeletedCustomers(client?: CustomersClient | undefined): IUseDeletedCustomersReturn
 ```

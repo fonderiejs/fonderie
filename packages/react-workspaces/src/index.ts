@@ -36,6 +36,7 @@ export type {
 	IUseWorkspaceSettingsReturn,
 	IUseWorkspaceReturn,
 	IUseWorkspacesReturn,
+	IUseDeletedRolesReturn,
 } from './hooks';
 export {
 	useCurrentWorkspace,
@@ -52,4 +53,5 @@ export {
 	useWorkspaceSettings,
 	useWorkspace,
 	useWorkspaces,
+	useDeletedRoles,
 } from './hooks';

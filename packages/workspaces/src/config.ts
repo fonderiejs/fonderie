@@ -35,6 +35,8 @@ export const EVENT_KEYS = {
 	roleCreated: 'fonderie.workspace.role.created',
 	roleUpdated: 'fonderie.workspace.role.updated',
 	roleDeleted: 'fonderie.workspace.role.deleted',
+	roleRestored: 'fonderie.workspace.role.restored',
+	roleBinPurged: 'fonderie.workspace.role.bin.purged',
 	rolePermissionsSet: 'fonderie.workspace.role.permissions.set',
 } as const;
 
@@ -98,6 +100,7 @@ export type WorkspaceRouteId =
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
 	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
-	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions';
+	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'
+	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };

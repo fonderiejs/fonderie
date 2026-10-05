@@ -28,6 +28,7 @@ import { customerNoteController } from './controllers/customer-note.controller';
 import { customerPhoneController } from './controllers/customer-phone.controller';
 import { customerTagController } from './controllers/customer-tag.controller';
 import { customerLabelController } from './controllers/customer-label.controller';
+import { customerBinController } from './controllers/customer-bin.controller';
 import { customerRelationshipController } from './controllers/customer-relationship.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
@@ -47,11 +48,17 @@ export function buildCustomerRoutes(
 	const tag = customerTagController(store);
 	const relationship = customerRelationshipController(store);
 	const label = customerLabelController(store);
+	const bin = customerBinController(store);
 
 	const routes: RouteDefinition[] = [
 		// ── Labels ───────────────────────────────────────────────────────
 		['GET',    '/customers/labels',            requireAuth, wsCtx, label.list],
 		['DELETE', '/customers/labels/:labelId',   requireAuth, wsCtx, label.remove],
+
+		// ── The undo bin — BEFORE /customers/:customerId (the router is first-match)
+		['GET',    '/customers/bin',                     requireAuth, wsCtx, bin.list],
+		['POST',   '/customers/bin/:customerId/restore', requireAuth, wsCtx, bin.restore],
+		['DELETE', '/customers/bin/:customerId',         requireAuth, wsCtx, bin.purge],
 
 		// ── Core customer CRUD ───────────────────────────────────────────
 		['GET', '/customers', requireAuth, wsCtx, customer.list],
@@ -118,6 +125,9 @@ export function operationFor(method: string, path: string): Operation {
 	if (method === 'GET') return 'read';
 	if (method === 'POST' && path === '/customers') return 'create';
 	if (method === 'DELETE' && path === '/customers/:customerId') return 'delete';
+	// The bin: restoring brings a customer back; emptying one deletes for good.
+	if (method === 'POST' && path === '/customers/bin/:customerId/restore') return 'create';
+	if (method === 'DELETE' && path === '/customers/bin/:customerId') return 'delete';
 	return 'update';
 }
 

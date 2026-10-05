@@ -50,6 +50,15 @@ interface IWebhookDelivery {
 
 type DeliveryStatus = 'pending' | 'delivered' | 'failed';
 
+interface IBinnedEndpoint {
+    id: string;
+    url: string;
+    events: string[];
+    deletedBy: string | null;
+    deletedAt: Date;
+    purgeAt: Date;
+}
+
 interface IWebhookEndpointDTO {
     id: string;
     url: string;
@@ -76,9 +85,22 @@ interface IWebhookDeliveryDTO {
     createdAt: string;
 }
 
+interface IBinnedEndpointDTO {
+    id: string;
+    url: string;
+    events: string[];
+    deletedBy: string | null;
+    deletedAt: string;
+    purgeAt: string;
+}
+
 namespace schemas — exports: createEndpointSchema, updateEndpointSchema
 
 function accountEraser(store: IStoreAdapter): IWebhooksAccountEraser
+
+const BIN_RETENTION_DAYS: 30
+
+function emptyEndpointBin(store: IStoreAdapter, options?: { olderThanDays?: number; }): Promise<number>
 
 interface IWebhooksAccountEraser {
     readonly name: 'webhooks';

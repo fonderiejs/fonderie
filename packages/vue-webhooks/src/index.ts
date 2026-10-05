@@ -13,9 +13,11 @@ export type {
 	IUseWebhookDeliveriesReturn,
 	IUseWebhookEndpointReturn,
 	IUseWebhookEndpointsReturn,
+	IUseDeletedWebhookEndpointsReturn,
 } from './composables';
 export {
 	useWebhookDeliveries,
 	useWebhookEndpoint,
 	useWebhookEndpoints,
+	useDeletedWebhookEndpoints,
 } from './composables';

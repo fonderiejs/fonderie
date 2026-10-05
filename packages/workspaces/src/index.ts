@@ -50,3 +50,7 @@ export { deleteUserData, exportUserData, workspaceExportContributor } from './re
 // workspaces only they used; keep (and report) a team others still belong to.
 export { accountDeletionBlocker, accountEraser } from './account-deletion';
 export type { IErasureSubject, IErasureResult } from './account-deletion';
+
+// The undo bin for roles (docs/INSIDER-THREAT-DESIGN.md, Phase 3)
+export { ROLE_BIN_RETENTION_DAYS, emptyRoleBin, listRoleBin, restoreRole } from './services/roles';
+export type { IBinnedRole, RestoreRoleOutcome } from './services/roles';

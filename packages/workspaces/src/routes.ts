@@ -103,6 +103,10 @@ export function buildWorkspaceRoutes(
 		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined), invitation.accept),
 
 		// ── Roles
+		// The undo bin — BEFORE /workspaces/roles/:roleId (the router is first-match).
+		R('listRoleBin', 'GET', '/workspaces/roles/bin', requireAuth, wsCtx, manager, role.listBin),
+		R('restoreRole', 'POST', '/workspaces/roles/bin/:roleId/restore', requireAuth, wsCtx, manager, T(K.roleRestored, roleOf), role.restore),
+		R('purgeRoleFromBin', 'DELETE', '/workspaces/roles/bin/:roleId', requireAuth, wsCtx, owner, T(K.roleBinPurged, roleOf), role.purge),
 		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, manager, validate(createRoleSchema), T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })), role.create),
 		R('listRoles', 'GET', '/workspaces/roles', requireAuth, wsCtx, role.list),
 		R('getRole', 'GET', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.get),

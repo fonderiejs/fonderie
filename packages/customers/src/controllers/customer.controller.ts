@@ -298,7 +298,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				return setApiResponse(HTTP.CONFLICT, 'CUSTOMER_IN_USE', inUse);
 			}
 			try {
-				await customers.delete(id, workspaceId);
+				await customers.delete(id, workspaceId, ctx.user?.id ?? null);
 			} catch (err) {
 				if (err instanceof CustomerInUseError) return setApiResponse(HTTP.CONFLICT, 'CUSTOMER_IN_USE', inUse);
 				throw err;

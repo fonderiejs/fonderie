@@ -1,6 +1,6 @@
 # Insider threat: a rogue manager or owner
 
-Status: Phases 1–2 shipped (2026-10-05); 3–5 planned.
+Status: Phases 1–3 shipped (2026-10-05); 4–5 planned.
 
 ## 1. The scenario
 
@@ -76,8 +76,12 @@ notice, and do everything a manager can.
 high-impact actions (webhook created, plan cancelled, deletion bursts) — those
 live in other bricks and need their own trail first.
 
-**Phase 3 — Undo bin** for roles, customers, webhooks (soft delete + restore +
-retention purge).
+**Phase 3 — Undo bin.** ✅ customers, custom roles, webhook endpoints: a
+snapshot of the record and everything attached, written in the delete's own
+transaction, restorable with the same ids for 30 days (`…/bin`, `…/bin/:id/restore`);
+only the owner empties one early; `empty*Bin` from the app's cron. Snapshot +
+hard delete rather than a deleted-flag: no query anywhere changes, and unique
+constraints are not held by invisible rows.
 
 **Phase 4 — Step-up** on transfer / immediate cancel / webhook delete; transfer
 acceptance.

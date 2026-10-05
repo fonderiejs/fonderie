@@ -1,6 +1,9 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
-import type { IWebhookEndpoint } from '../types';
+import type { IBinnedEndpoint, IWebhookEndpoint } from '../types';
+
+/** How long a deleted endpoint stays restorable. */
+export const BIN_RETENTION_DAYS = 30;
 
 const COLS = `id, workspace_id as "workspaceId", url, secret, events,
               enabled, created_at as "createdAt"`;
@@ -73,9 +76,59 @@ export class EndpointModel {
 		return row ?? null;
 	}
 
-	async delete(id: string, workspaceId: string): Promise<boolean> {
+	// Into the undo bin, in ONE statement: the row goes and its snapshot lands,
+	// or neither. Restorable for BIN_RETENTION_DAYS.
+	async delete(id: string, workspaceId: string, deletedBy?: string | null): Promise<boolean> {
 		const rows = await this.store.query<{ id: string }>(
-			`DELETE FROM fonderie_webhook_endpoints WHERE id = $1 AND workspace_id = $2 RETURNING id`,
+			`WITH gone AS (
+			   DELETE FROM fonderie_webhook_endpoints WHERE id = $1 AND workspace_id = $2 RETURNING *
+			 )
+			 INSERT INTO fonderie_webhook_endpoint_bin (id, workspace_id, snapshot, deleted_by)
+			 SELECT gone.id, gone.workspace_id, to_jsonb(gone), $3 FROM gone
+			 ON CONFLICT (id) DO UPDATE SET snapshot = EXCLUDED.snapshot, deleted_by = EXCLUDED.deleted_by, deleted_at = now()
+			 RETURNING id`,
+			[id, workspaceId, deletedBy ?? null],
+		);
+		return rows.length > 0;
+	}
+
+	// What the bin holds for this workspace, newest first — never the secret.
+	listBin(workspaceId: string, retentionDays = BIN_RETENTION_DAYS): Promise<IBinnedEndpoint[]> {
+		return this.store.query<IBinnedEndpoint>(
+			`SELECT id, snapshot->>'url' AS url,
+			        ARRAY(SELECT jsonb_array_elements_text(snapshot->'events')) AS events,
+			        deleted_by AS "deletedBy", deleted_at AS "deletedAt",
+			        deleted_at + make_interval(days => $2) AS "purgeAt"
+			 FROM fonderie_webhook_endpoint_bin
+			 WHERE workspace_id = $1 AND deleted_at > now() - make_interval(days => $2)
+			 ORDER BY deleted_at DESC`,
+			[workspaceId, retentionDays],
+		);
+	}
+
+	// Back from the bin, in ONE statement: the snapshot leaves the bin and the
+	// row returns with its id, URL, events and secret — or nothing changes.
+	async restore(id: string, workspaceId: string, retentionDays = BIN_RETENTION_DAYS): Promise<IWebhookEndpoint | null> {
+		const [row] = await this.store.query<IWebhookEndpoint>(
+			`WITH b AS (
+			   DELETE FROM fonderie_webhook_endpoint_bin
+			   WHERE id = $1 AND workspace_id = $2 AND deleted_at > now() - make_interval(days => $3)
+			   RETURNING snapshot
+			 ), r AS (
+			   INSERT INTO fonderie_webhook_endpoints
+			   SELECT (jsonb_populate_record(NULL::fonderie_webhook_endpoints, b.snapshot)).* FROM b
+			   RETURNING *
+			 )
+			 SELECT ${COLS} FROM r`,
+			[id, workspaceId, retentionDays],
+		);
+		return row ?? null;
+	}
+
+	// Gone for good — the owner's call (a rogue manager must not empty the bin).
+	async purgeFromBin(id: string, workspaceId: string): Promise<boolean> {
+		const rows = await this.store.query(
+			`DELETE FROM fonderie_webhook_endpoint_bin WHERE id = $1 AND workspace_id = $2 RETURNING id`,
 			[id, workspaceId],
 		);
 		return rows.length > 0;
@@ -90,4 +143,17 @@ export class EndpointModel {
 			[workspaceId, eventType],
 		);
 	}
+}
+
+/**
+ * Empty the undo bin of snapshots past the retention — run it from the app's
+ * cron (daily is plenty). Answers how many went.
+ */
+export async function emptyEndpointBin(store: IStoreAdapter, options: { olderThanDays?: number } = {}): Promise<number> {
+	const days = options.olderThanDays ?? BIN_RETENTION_DAYS;
+	const rows = await store.query(
+		`DELETE FROM fonderie_webhook_endpoint_bin WHERE deleted_at <= now() - make_interval(days => $1) RETURNING id`,
+		[days],
+	);
+	return rows.length;
 }

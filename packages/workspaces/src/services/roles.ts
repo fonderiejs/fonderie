@@ -119,6 +119,7 @@ export async function deleteRole(
 	id: string,
 	workspaceId: string,
 	store: IStoreAdapter,
+	deletedBy: string | null = null,
 ): Promise<IRoleDeleteResult | null> {
 	return store.transaction(async (tx) => {
 		const [role] = await tx.query<{ id: string }>(
@@ -167,6 +168,21 @@ export async function deleteRole(
 				[soleHolders, workspaceId, guest.id],
 			);
 		}
+
+		// Into the undo bin, in this transaction: the role, its permissions, who
+		// held it, and who moved to the default role because of it.
+		await tx.query(
+			`INSERT INTO fonderie_role_bin (id, workspace_id, snapshot, deleted_by)
+			 SELECT r.id, r.workspace_id, jsonb_build_object(
+			   'role', to_jsonb(r),
+			   'permissions', COALESCE((SELECT jsonb_agg(to_jsonb(p)) FROM fonderie_role_permissions p WHERE p.role_id = $1 AND p.workspace_id = $2), '[]'::jsonb),
+			   'holders', to_jsonb($3::text[]),
+			   'movedToDefault', to_jsonb($4::text[])
+			 ), $5
+			 FROM fonderie_roles r WHERE r.id = $1
+			 ON CONFLICT (id) DO UPDATE SET snapshot = EXCLUDED.snapshot, deleted_by = EXCLUDED.deleted_by, deleted_at = now()`,
+			[id, workspaceId, holders.map((h) => h.userId), soleHolders, deletedBy],
+		);
 
 		await tx.query(`DELETE FROM fonderie_role_user_workspaces WHERE role_id = $1 AND workspace_id = $2`, [id, workspaceId]);
 		await tx.query(`DELETE FROM fonderie_role_permissions WHERE role_id = $1 AND workspace_id = $2`, [id, workspaceId]);
@@ -245,4 +261,113 @@ export async function getRolePermissions(
 		  ORDER BY permission_key`,
 		[roleId, workspaceId],
 	);
+}
+
+// ── The undo bin (docs/INSIDER-THREAT-DESIGN.md, Phase 3) ─────────────────
+
+/** How long a deleted role stays restorable. */
+export const ROLE_BIN_RETENTION_DAYS = 30;
+
+export interface IBinnedRole {
+	id: string;
+	name: string;
+	description: string | null;
+	/** How many people held it when it was deleted. */
+	holders: number;
+	deletedBy: string | null;
+	deletedAt: Date;
+	purgeAt: Date;
+}
+
+export function listRoleBin(store: IStoreAdapter, workspaceId: string, retentionDays = ROLE_BIN_RETENTION_DAYS): Promise<IBinnedRole[]> {
+	return store.query<IBinnedRole>(
+		`SELECT id, snapshot->'role'->>'name' AS name, snapshot->'role'->>'description' AS description,
+		        jsonb_array_length(snapshot->'holders') AS holders,
+		        deleted_by AS "deletedBy", deleted_at AS "deletedAt",
+		        deleted_at + make_interval(days => $2) AS "purgeAt"
+		 FROM fonderie_role_bin
+		 WHERE workspace_id = $1 AND deleted_at > now() - make_interval(days => $2)
+		 ORDER BY deleted_at DESC`,
+		[workspaceId, retentionDays],
+	);
+}
+
+export type RestoreRoleOutcome =
+	| { status: 'restored'; reassigned: number }
+	| { status: 'not-in-bin' }
+	/** A role with the same name exists now. */
+	| { status: 'conflict' };
+
+/**
+ * Put a deleted role back, in one transaction: the role with its id, its
+ * permissions, and back on everyone who held it AND is still in the team.
+ * Whoever was moved to the default role because of the delete leaves it
+ * again — they hold the restored role instead, as before.
+ */
+export async function restoreRole(store: IStoreAdapter, id: string, workspaceId: string, retentionDays = ROLE_BIN_RETENTION_DAYS): Promise<RestoreRoleOutcome> {
+	try {
+		return await store.transaction(async (tx): Promise<RestoreRoleOutcome> => {
+			const [bin] = await tx.query<{ snapshot: { role: unknown; permissions: unknown[]; holders: string[]; movedToDefault: string[] } }>(
+				`DELETE FROM fonderie_role_bin
+				 WHERE id = $1 AND workspace_id = $2 AND deleted_at > now() - make_interval(days => $3)
+				 RETURNING snapshot`,
+				[id, workspaceId, retentionDays],
+			);
+			if (!bin) return { status: 'not-in-bin' };
+			const s = bin.snapshot;
+			await tx.query(
+				`INSERT INTO fonderie_roles SELECT * FROM jsonb_populate_record(NULL::fonderie_roles, $1::jsonb)`,
+				[JSON.stringify(s.role)],
+			);
+			await tx.query(
+				`INSERT INTO fonderie_role_permissions SELECT * FROM jsonb_populate_recordset(NULL::fonderie_role_permissions, $1::jsonb)`,
+				[JSON.stringify(s.permissions)],
+			);
+			// Lock the former holders' memberships (the same order as everywhere),
+			// then give the role back to those still in the team.
+			await tx.query(
+				`SELECT 1 FROM fonderie_role_user_workspaces
+				 WHERE workspace_id = $2 AND user_id = ANY($1::uuid[]) AND removed = false
+				 ORDER BY user_id, role_id FOR UPDATE`,
+				[s.holders, workspaceId],
+			);
+			const back = await tx.query<{ userId: string }>(
+				`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
+				 SELECT DISTINCT m.user_id, $2::uuid, $3::uuid, true
+				 FROM fonderie_role_user_workspaces m
+				 WHERE m.workspace_id = $2 AND m.user_id = ANY($1::uuid[]) AND m.removed = false
+				 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE SET removed = false
+				 RETURNING user_id AS "userId"`,
+				[s.holders, workspaceId, id],
+			);
+			// The default role they got only because of the delete goes again.
+			await tx.query(
+				`DELETE FROM fonderie_role_user_workspaces ruw
+				 USING fonderie_roles g
+				 WHERE g.id = ruw.role_id AND g.name = 'GUEST' AND g.workspace_id IS NULL AND g.is_system = true
+				   AND ruw.workspace_id = $2 AND ruw.user_id = ANY($1::uuid[])
+				   AND ruw.user_id = ANY($3::uuid[])`,
+				[s.movedToDefault, workspaceId, back.map((b) => b.userId)],
+			);
+			return { status: 'restored', reassigned: back.length };
+		});
+	} catch (err) {
+		if ((err as { code?: string }).code === '23505') return { status: 'conflict' };
+		throw err;
+	}
+}
+
+/** Gone for good — the owner's call. */
+export async function purgeRoleFromBin(store: IStoreAdapter, id: string, workspaceId: string): Promise<boolean> {
+	const rows = await store.query(`DELETE FROM fonderie_role_bin WHERE id = $1 AND workspace_id = $2 RETURNING id`, [id, workspaceId]);
+	return rows.length > 0;
+}
+
+/** Empty the bin of roles past the retention — run it from the app's cron. Answers how many went. */
+export async function emptyRoleBin(store: IStoreAdapter, options: { olderThanDays?: number } = {}): Promise<number> {
+	const rows = await store.query(
+		`DELETE FROM fonderie_role_bin WHERE deleted_at <= now() - make_interval(days => $1) RETURNING id`,
+		[options.olderThanDays ?? ROLE_BIN_RETENTION_DAYS],
+	);
+	return rows.length;
 }

@@ -30,7 +30,7 @@ type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 const MESSAGE_KEYS: { readonly workspaceInvitation: "workspace-invitation"; readonly memberRemoved: "workspace-member-removed"; readonly memberRemovedAlert: "workspace-member-removed-alert"; readonly managerRemoved: "workspace-manager-removed"; readonly ownershipReceived: "workspace-ownership-received"; }
 
-const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; readonly workspaceCreated: "fonderie.workspace.created"; readonly workspaceUpdated: "fonderie.workspace.updated"; readonly workspaceArchived: "fonderie.workspace.archived"; readonly workspaceRestored: "fonderie.workspace.restored"; readonly settingsUpdated: "fonderie.workspace.settings.updated"; readonly memberRemoved: "fonderie.workspace.member.removed"; readonly memberLeft: "fonderie.workspace.member.left"; readonly memberRoleAdded: "fonderie.workspace.member.role.added"; readonly memberRoleRemoved: "fonderie.workspace.member.role.removed"; readonly managerSet: "fonderie.workspace.manager.set"; readonly managerUnset: "fonderie.workspace.manager.unset"; readonly ownershipTransferred: "fonderie.workspace.ownership.transferred"; readonly invitationCreated: "fonderie.workspace.invitation.created"; readonly invitationCancelled: "fonderie.workspace.invitation.cancelled"; readonly invitationResent: "fonderie.workspace.invitation.resent"; readonly invitationAccepted: "fonderie.workspace.invitation.accepted"; readonly roleCreated: "fonderie.workspace.role.created"; readonly roleUpdated: "fonderie.workspace.role.updated"; readonly roleDeleted: "fonderie.workspace.role.deleted"; readonly rolePermissionsSet: "fonderie.workspace.role.permissions.set"; }
+const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; readonly workspaceCreated: "fonderie.workspace.created"; readonly workspaceUpdated: "fonderie.workspace.updated"; readonly workspaceArchived: "fonderie.workspace.archived"; readonly workspaceRestored: "fonderie.workspace.restored"; readonly settingsUpdated: "fonderie.workspace.settings.updated"; readonly memberRemoved: "fonderie.workspace.member.removed"; readonly memberLeft: "fonderie.workspace.member.left"; readonly memberRoleAdded: "fonderie.workspace.member.role.added"; readonly memberRoleRemoved: "fonderie.workspace.member.role.removed"; readonly managerSet: "fonderie.workspace.manager.set"; readonly managerUnset: "fonderie.workspace.manager.unset"; readonly ownershipTransferred: "fonderie.workspace.ownership.transferred"; readonly invitationCreated: "fonderie.workspace.invitation.created"; readonly invitationCancelled: "fonderie.workspace.invitation.cancelled"; readonly invitationResent: "fonderie.workspace.invitation.resent"; readonly invitationAccepted: "fonderie.workspace.invitation.accepted"; readonly roleCreated: "fonderie.workspace.role.created"; readonly roleUpdated: "fonderie.workspace.role.updated"; readonly roleDeleted: "fonderie.workspace.role.deleted"; readonly roleRestored: "fonderie.workspace.role.restored"; readonly roleBinPurged: "fonderie.workspace.role.bin.purged"; readonly rolePermissionsSet: "fonderie.workspace.role.permissions.set"; }
 
 const DEFAULT_TEMPLATES: { "workspace-invitation": IDefaultTemplate; "workspace-member-removed": IDefaultTemplate; "workspace-member-removed-alert": IDefaultTemplate; "workspace-manager-removed": IDefaultTemplate; "workspace-ownership-received": IDefaultTemplate; }
 
@@ -261,4 +261,31 @@ interface IErasureResult {
     erased: number;
     kept?: string;
 }
+
+const ROLE_BIN_RETENTION_DAYS: 30
+
+function emptyRoleBin(store: IStoreAdapter, options?: { olderThanDays?: number; }): Promise<number>
+
+function listRoleBin(store: IStoreAdapter, workspaceId: string, retentionDays?: number): Promise<IBinnedRole[]>
+
+function restoreRole(store: IStoreAdapter, id: string, workspaceId: string, retentionDays?: number): Promise<RestoreRoleOutcome>
+
+interface IBinnedRole {
+    id: string;
+    name: string;
+    description: string | null;
+    holders: number;
+    deletedBy: string | null;
+    deletedAt: Date;
+    purgeAt: Date;
+}
+
+type RestoreRoleOutcome = {
+    status: 'restored';
+    reassigned: number;
+} | {
+    status: 'not-in-bin';
+} | {
+    status: 'conflict';
+};
 ```

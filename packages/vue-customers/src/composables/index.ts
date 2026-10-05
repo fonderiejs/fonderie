@@ -16,3 +16,5 @@ export type { IUseCustomersReturn } from './useCustomers';
 export { useCustomers } from './useCustomers';
 export type { IUseCustomerTagsReturn } from './useCustomerTags';
 export { useCustomerTags } from './useCustomerTags';
+export type { IUseDeletedCustomersReturn } from './useDeletedCustomers';
+export { useDeletedCustomers } from './useDeletedCustomers';

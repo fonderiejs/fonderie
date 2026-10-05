@@ -1,6 +1,8 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IDeletedRoleDTO,
+	IRestoredRoleResult,
 	IReadOptions,
 	IAcceptInvitationInput,
 	IAcceptInvitationResult,
@@ -278,6 +280,36 @@ export class WorkspacesClient {
 		return this.http.request<IApiResponse<IRoleDeleteResult>>({
 			method: 'DELETE',
 			path: `/workspaces/roles/${encodeURIComponent(roleId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// ── The undo bin: deleted roles, restorable for 30 days ──────────────
+	listDeletedRoles(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<{ roles: IDeletedRoleDTO[] }>>({
+			method: 'GET',
+			path: '/workspaces/roles/bin',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	restoreRole(id: string) {
+		return this.http.request<IApiResponse<IRestoredRoleResult>>({
+			method: 'POST',
+			path: `/workspaces/roles/bin/${encodeURIComponent(id)}/restore`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// Gone for good — the workspace owner only.
+	purgeDeletedRole(id: string) {
+		return this.http.request<undefined>({
+			method: 'DELETE',
+			path: `/workspaces/roles/bin/${encodeURIComponent(id)}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});
