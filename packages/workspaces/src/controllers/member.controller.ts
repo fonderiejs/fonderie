@@ -121,12 +121,17 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 			if (!roleId)
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'roleId is required');
 
-			try {
-				await members.removeRole(userId, ctx.workspace.id, roleId);
-				return setApiResponse(HTTP.OK, 'ROLE_REMOVED', 'Role removed successfully.');
-			} catch (err) {
-				const message = err instanceof Error ? err.message : 'Failed';
-				return setApiResponse(HTTP.BAD_REQUEST, 'OPERATION_FAILED', message);
+			const outcome = await members.removeRole(userId, ctx.workspace.id, roleId);
+			switch (outcome) {
+				case 'removed':
+					return setApiResponse(HTTP.OK, 'ROLE_REMOVED', 'Role removed successfully.');
+				case 'system-role':
+					// Manager rights come off only through the owner's unsetManager.
+					return setApiResponse(HTTP.FORBIDDEN, 'SYSTEM_ROLE', 'Built-in roles cannot be removed here. Only the owner can remove manager rights.');
+				case 'last-role':
+					return setApiResponse(HTTP.BAD_REQUEST, 'LAST_ROLE', 'A member keeps at least one role. Remove the member instead.');
+				case 'not-held':
+					return setApiResponse(HTTP.NOT_FOUND, 'ROLE_NOT_HELD', 'That person does not hold this role.');
 			}
 		},
 

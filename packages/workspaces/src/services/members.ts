@@ -296,28 +296,43 @@ export async function addRoleToMember(
 	return rows.length > 0;
 }
 
+export type RemoveRoleOutcome = 'removed' | 'not-held' | 'system-role' | 'last-role';
+
+/**
+ * Take one role off a member via the HTTP surface — the mirror of
+ * addRoleToMember's guard. A SYSTEM role (ADMIN = manager rights, GUEST = the
+ * base membership) is never removable here: manager rights come off only
+ * through the owner-only unsetManager. Without this, any manager could strip
+ * ADMIN from every other manager — and from the owner — in two calls.
+ *
+ * Atomic: the member's role rows are locked (FOR UPDATE) for the check and the
+ * delete, so two removals racing for a two-role member cannot both pass "more
+ * than one role left" and leave them with none.
+ */
 export async function removeRoleFromMember(
 	userId: string,
 	workspaceId: string,
 	roleId: string,
 	store: IStoreAdapter,
-): Promise<void> {
-	const remaining = await store.query<{ count: string }>(
-		`SELECT COUNT(*) AS count
-		 FROM fonderie_role_user_workspaces
-		 WHERE user_id      = $1
-		   AND workspace_id = $2
-		   AND removed      = false`,
-		[userId, workspaceId],
-	);
-	const count = parseInt(remaining[0]?.count ?? '0', 10);
-	if (count <= 1) throw new Error('Cannot remove last role from member');
-
-	await store.query(
-		`DELETE FROM fonderie_role_user_workspaces
-		 WHERE user_id      = $1
-		   AND workspace_id = $2
-		   AND role_id      = $3`,
-		[userId, workspaceId, roleId],
-	);
+): Promise<RemoveRoleOutcome> {
+	return store.transaction(async (tx) => {
+		const held = await tx.query<{ roleId: string; isSystem: boolean }>(
+			`SELECT ruw.role_id AS "roleId", COALESCE(r.is_system, false) AS "isSystem"
+			 FROM fonderie_role_user_workspaces ruw
+			 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id
+			 WHERE ruw.user_id = $1 AND ruw.workspace_id = $2 AND ruw.removed = false
+			 FOR UPDATE OF ruw`,
+			[userId, workspaceId],
+		);
+		const target = held.find((h) => h.roleId === roleId);
+		if (!target) return 'not-held';
+		if (target.isSystem) return 'system-role';
+		if (held.length <= 1) return 'last-role';
+		await tx.query(
+			`DELETE FROM fonderie_role_user_workspaces
+			 WHERE user_id = $1 AND workspace_id = $2 AND role_id = $3`,
+			[userId, workspaceId, roleId],
+		);
+		return 'removed';
+	});
 }

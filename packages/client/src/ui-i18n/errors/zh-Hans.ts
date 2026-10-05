@@ -52,6 +52,9 @@ const errors: typeof en = {
 		OWNER_CANNOT_LEAVE: '请先将所有权转让给其他成员，然后再退出。',
 		OWNER_REQUIRED: '只有工作区所有者才能执行此操作。',
 		MANAGER_REQUIRED: '只有所有者或管理员才能执行此操作。',
+		SYSTEM_ROLE: '内置角色无法在此移除。只有所有者可以移除管理员权限。',
+		LAST_ROLE: '成员至少保留一个角色。请改为移除该成员。',
+		ROLE_NOT_HELD: '此人没有这个角色。',
 		// Billing
 		PLAN_UNCHANGED: '您当前已是{plan}套餐。',
 		SUBSCRIPTION_PAST_DUE: '您当前的套餐有未付款项，请先付清再更换套餐。',

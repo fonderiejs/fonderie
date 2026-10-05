@@ -52,6 +52,9 @@ const errors: typeof en = {
 		OWNER_CANNOT_LEAVE: 'Transférez la propriété à un autre membre avant de partir.',
 		OWNER_REQUIRED: "Seul le propriétaire de l'espace de travail peut faire cela.",
 		MANAGER_REQUIRED: 'Seul le propriétaire ou un administrateur peut faire cela.',
+		SYSTEM_ROLE: 'Les rôles intégrés ne peuvent pas être retirés ici. Seul le propriétaire peut retirer les droits de gestionnaire.',
+		LAST_ROLE: 'Un membre garde au moins un rôle. Retirez plutôt le membre.',
+		ROLE_NOT_HELD: 'Cette personne n’a pas ce rôle.',
 		// Billing
 		PLAN_UNCHANGED: 'Vous êtes déjà abonné au forfait {plan}.',
 		SUBSCRIPTION_PAST_DUE: 'Votre forfait actuel comporte un solde impayé. Veuillez le régler avant de changer de forfait.',
