@@ -18,7 +18,9 @@ import { requestMeta } from '../services/request-meta';
 import { hashPassword, verifyPasswordForLogin } from '../services/password';
 import { normalizeEmailSafe } from '../services/email';
 import { archivedAddressResponse, pendingDeletionResponse } from '../services/pending-deletion';
-import { PasswordResetModel } from '../models/password-reset.model';
+import { verifyRestoreToken } from '../services/restore-token';
+import { verifySecondFactor } from '../services/second-factor';
+import { PasswordResetModel, hashSecret } from '../models/password-reset.model';
 import { DEFAULT_VERIFICATION_COOLDOWN, MESSAGE_KEYS } from '../config';
 import { EmailVerificationModel } from '../models/email-verification.model';
 import { PhoneVerificationModel } from '../models/phone-verification.model';
@@ -289,7 +291,7 @@ export function authController(
 							failureReason: valid ? 'pending_deletion' : 'bad_password',
 							...meta,
 						});
-						if (valid) return pendingDeletionResponse(archived.deletedAt, config);
+						if (valid) return pendingDeletionResponse({ ...archived, deletedAt: archived.deletedAt }, 'email', config);
 						return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 					}
 				}
@@ -381,7 +383,9 @@ export function authController(
 			// ── Phone branch ──────────────────────────────────────────
 			const phone = body?.['phone'];
 			if (isValidPhone(phone)) {
-				const user = await users.findByPhone(normalizePhone(phone));
+				// An archived account gets a code like any other: the code it proves
+				// leads, at /auth/verify, to "scheduled for deletion — keep it?".
+				const user = (await users.findByPhone(normalizePhone(phone))) ?? (await users.findArchivedByPhone(normalizePhone(phone)));
 				if (!user) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
 				}
@@ -426,6 +430,70 @@ export function authController(
 				HTTP.UNPROCESSABLE,
 				'INVALID_PARAMETER',
 				'Provide email + password or a valid phone number',
+			);
+		},
+
+		/**
+		 * "Keep my account": the restoreToken from a sign-in to an archived account
+		 * (proof already given: password, Google / Apple, phone code), plus a
+		 * second factor when two-factor is on. Un-archives in one statement —
+		 * only the SAME archive the proof was for — then signs the person in.
+		 */
+		restoreAccount: async (ctx: IFonderieContext): Promise<Response> => {
+			const body = ctx.meta['body'] as Record<string, unknown> | undefined;
+			const proof = verifyRestoreToken(String(body?.['restoreToken'] ?? ''), config);
+			const invalid = () => setApiResponse(HTTP.UNAUTHORIZED, 'RESTORE_TOKEN_INVALID', 'Sign in again to keep your account.');
+			if (!proof) return invalid();
+			const archived = await users.findArchivedById(proof.sub);
+			if (!archived?.deletedAt || archived.deletedAt.toISOString() !== proof.archivedAt) return invalid();
+			if (archived.suspended) {
+				return setApiResponse(HTTP.FORBIDDEN, 'ACCOUNT_SUSPENDED', 'Account suspended. Please contact support.');
+			}
+			if (archived.mfaEnabled && !(await verifySecondFactor(store, config, archived.id, body?.['mfaCode']))) {
+				return setApiResponse(HTTP.UNAUTHORIZED, 'MFA_REQUIRED', 'Enter a code from your authenticator app (or a backup code) to keep your account.');
+			}
+
+			const [restored] = await store.query<{ channel: string | null }>(
+				`UPDATE fonderie_users
+				 SET deleted_at = NULL, deletion_channel = NULL, deletion_reminded_at = NULL, updated_at = now()
+				 -- The SAME archive the proof was for. Postgres keeps microseconds,
+				 -- the proof (a JS date) milliseconds: compare at that precision.
+				 WHERE id = $1 AND date_trunc('milliseconds', deleted_at) = date_trunc('milliseconds', $2::timestamptz)
+				 RETURNING (SELECT deletion_channel FROM fonderie_users WHERE id = $1) AS channel`,
+				[archived.id, proof.archivedAt],
+			);
+			if (!restored) return invalid();
+
+			const meta = requestMeta(ctx);
+			const method = proof.loginMethod === 'google' ? 'oauth-google' : proof.loginMethod === 'apple' ? 'oauth-apple' : proof.loginMethod === 'phone' ? 'phone' : 'password';
+			const { accessToken, refreshToken, sid } = issueTokenPair(archived.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
+				loginMethod: proof.loginMethod,
+				phoneVerified: proof.loginMethod === 'phone',
+			});
+			await sessions.create(archived.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+			await loginEvents.recordSafe({ userId: archived.id, emailAttempted: archived.email, method, outcome: 'success', ...meta });
+
+			const reqId = ctx.meta['requestId'] as string | undefined;
+			await background(bus?.emit(EVENT_KEYS.userRestored, { userId: archived.id }, reqId !== undefined ? { requestId: reqId } : undefined));
+			const viaSms = restored.channel === 'sms' || (!archived.email && !!archived.phone);
+			const address = viaSms ? archived.phone : archived.email;
+			if (address) {
+				await background(bus?.emit(NOTIFICATION_EVENT, {
+					type: MESSAGE_KEYS.accountRestored,
+					locale: archived.locale,
+					data: {},
+					recipient: viaSms ? { email: null, phone: address, deviceToken: null } : { email: address, phone: null, deviceToken: null },
+				} satisfies ICourierMessage));
+			}
+
+			const user = await users.findById(archived.id);
+			return Response.json(
+				{
+					reason: 'ACCOUNT_RESTORED',
+					explanation: 'Your account is active again.',
+					result: { tokens: { access: accessToken, refresh: refreshToken }, user: user ? toUserDTO(user) : null },
+				},
+				{ status: 200, headers: cookieHeaders(tokenPairCookies(accessToken, refreshToken, config)) },
 			);
 		},
 
@@ -612,8 +680,10 @@ export function authController(
 			// link — not brute-forceable) or the 6-digit PIN (route is
 			// IP-rate-limited). Token takes precedence when both are supplied.
 			let row: { userId: string; expiresAt: Date } | null;
+			let presented: string;
 			if (typeof rawToken === 'string' && rawToken.trim().length >= 32) {
-				row = await passwordReset.findByToken(rawToken.trim());
+				presented = rawToken.trim();
+				row = await passwordReset.findByToken(presented);
 			} else {
 				if (typeof raw !== 'string' || !/^\d{6}$/.test(raw.trim())) {
 					return setApiResponse(
@@ -622,7 +692,8 @@ export function authController(
 						'a 6-digit pin or a reset token is required',
 					);
 				}
-				row = await passwordReset.findByPin(raw.trim());
+				presented = raw.trim();
+				row = await passwordReset.findByPin(presented);
 			}
 
 			if (!row || new Date() > row.expiresAt) {
@@ -640,17 +711,22 @@ export function authController(
 			// statement: a code issued before the account was deleted never changes
 			// the archived account — same answer as an invalid code, no oracle.
 			const [changed] = await store.query<{ id: string }>(
-				`WITH changed AS (
+				`WITH spent AS (
+				   -- The code is spent HERE, and only what this statement spent
+				   -- changes a password: two resets racing with one code — the
+				   -- second finds it gone and changes nothing.
+				   DELETE FROM fonderie_password_resets
+				   WHERE user_id = $2 AND (pin = $3 OR token = $3) AND expires_at > now()
+				   RETURNING user_id
+				 ), changed AS (
 				   UPDATE fonderie_users SET password_hash = $1, updated_at = now()
-				   WHERE id = $2 AND deleted_at IS NULL
+				   WHERE id IN (SELECT user_id FROM spent) AND deleted_at IS NULL
 				   RETURNING id
-				 ), spent AS (
-				   DELETE FROM fonderie_password_resets WHERE user_id = $2
 				 ), revoked AS (
 				   DELETE FROM fonderie_sessions WHERE user_id IN (SELECT id FROM changed)
 				 )
 				 SELECT id FROM changed`,
-				[passwordHash, row.userId],
+				[passwordHash, row.userId, hashSecret(presented)],
 			);
 			if (!changed) {
 				return setApiResponse(
@@ -730,6 +806,20 @@ export function authController(
 					);
 				}
 				await phoneVerif.deleteByUser(ctx.user!.id);
+
+				// The phone is proven. An archived account is told when it will be
+				// deleted and offered to keep it — never handed a session.
+				if (ctx.user!.deletedAt) {
+					await loginEvents.recordSafe({
+						userId: ctx.user!.id,
+						emailAttempted: null,
+						method: 'phone',
+						outcome: 'failed',
+						failureReason: 'pending_deletion',
+						...phoneMeta,
+					});
+					return pendingDeletionResponse({ ...ctx.user!, deletedAt: ctx.user!.deletedAt }, 'phone', config);
+				}
 
 				const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'phone',

@@ -6,9 +6,9 @@
     "adapter-koa": "5.4.10",
     "admin": "1.7.11",
     "audit": "5.2.17",
-    "auth": "7.23.0",
-    "billing": "10.8.1",
-    "client": "3.14.0",
+    "auth": "7.24.0",
+    "billing": "10.9.0",
+    "client": "3.15.0",
     "config": "6.6.7",
     "core": "0.31.0",
     "courier": "7.15.0",
@@ -24,8 +24,8 @@
     "react-admin-screens": "1.7.2",
     "react-audit": "0.4.2",
     "react-audit-screens": "0.3.1",
-    "react-auth": "0.11.9",
-    "react-auth-screens": "0.5.1",
+    "react-auth": "0.12.0",
+    "react-auth-screens": "0.5.2",
     "react-billing": "0.11.4",
     "react-billing-screens": "0.4.1",
     "react-config-admin": "0.3.4",
@@ -37,8 +37,8 @@
     "react-media": "0.2.8",
     "react-native-audit": "0.1.4",
     "react-native-audit-screens": "0.3.1",
-    "react-native-auth": "0.13.6",
-    "react-native-auth-screens": "0.5.1",
+    "react-native-auth": "0.14.0",
+    "react-native-auth-screens": "0.5.2",
     "react-native-billing": "0.2.7",
     "react-native-billing-screens": "0.4.1",
     "react-native-customers": "0.1.5",
@@ -61,8 +61,8 @@
     "vue-admin-screens": "1.7.2",
     "vue-audit": "0.5.2",
     "vue-audit-screens": "0.3.1",
-    "vue-auth": "0.12.9",
-    "vue-auth-screens": "0.5.1",
+    "vue-auth": "0.13.0",
+    "vue-auth-screens": "0.5.2",
     "vue-billing": "0.12.4",
     "vue-billing-screens": "0.4.1",
     "vue-config-admin": "0.3.4",
@@ -77,7 +77,7 @@
     "vue-workspaces": "0.10.2",
     "vue-workspaces-screens": "0.5.1",
     "webhooks": "6.0.8",
-    "workspaces": "6.7.1"
+    "workspaces": "6.8.0"
   },
   "packages": {
     "adapter-express": {
@@ -351,7 +351,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.23.0",
+      "version": "7.24.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -376,6 +376,7 @@
         "@fonderie/auth/env.json"
       ],
       "tables": [
+        "fonderie_account_deletion_codes",
         "fonderie_consumed_tokens",
         "fonderie_email_verifications",
         "fonderie_login_events",
@@ -386,7 +387,7 @@
         "fonderie_sessions",
         "fonderie_users"
       ],
-      "routeCount": 39,
+      "routeCount": 42,
       "routes": [
         {
           "method": "GET",
@@ -422,6 +423,11 @@
           "method": "POST",
           "path": "/_admin/users/:id/unsuspend",
           "mw": "setSuspended(false)"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/account/restore",
+          "mw": "ipLimit('login') → validate(restoreAccountSchema) → auth.restoreAccount"
         },
         {
           "method": "GET",
@@ -564,6 +570,16 @@
           "mw": "requireAuth → user.exportMe"
         },
         {
+          "method": "POST",
+          "path": "/users/me/deletion",
+          "mw": "requireAuth → verifyGate → validate(requestDeletionSchema) → user.requestDeletion"
+        },
+        {
+          "method": "POST",
+          "path": "/users/me/deletion/confirm",
+          "mw": "ipLimit('verify') → requireAuth → verifyGate → validate(confirmDeletionSchema) → user.confirmDeletion"
+        },
+        {
           "method": "PUT",
           "path": "/users/password",
           "mw": "requireAuth → validate(changePasswordSchema) → user.changePassword"
@@ -594,7 +610,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.8.1",
+      "version": "10.9.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -805,7 +821,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.14.0",
+      "version": "3.15.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1664,7 +1680,7 @@
       "hasOutcomes": false
     },
     "react-auth": {
-      "version": "0.11.9",
+      "version": "0.12.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1679,6 +1695,7 @@
         "useLogin",
         "useLogout",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useMfaLogin",
         "useMfaSetup",
@@ -1700,7 +1717,7 @@
       "hasOutcomes": false
     },
     "react-auth-screens": {
-      "version": "0.5.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1984,7 +2001,7 @@
       "hasOutcomes": false
     },
     "react-native-auth": {
-      "version": "0.13.6",
+      "version": "0.14.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -1999,6 +2016,7 @@
         "useGoogleSignIn",
         "useLogout",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useMfaLogin",
         "useMfaSetup",
@@ -2022,7 +2040,7 @@
       "hasOutcomes": false
     },
     "react-native-auth-screens": {
-      "version": "0.5.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2559,7 +2577,7 @@
       "hasOutcomes": false
     },
     "vue-auth": {
-      "version": "0.12.9",
+      "version": "0.13.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2571,6 +2589,7 @@
         "useAuthProviders",
         "useUnlinkOauth",
         "useAccountData",
+        "useRestoreAccount",
         "useChangePassword",
         "useForgotPassword",
         "useLogin",
@@ -2595,7 +2614,7 @@
       "hasOutcomes": false
     },
     "vue-auth-screens": {
-      "version": "0.5.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -3007,7 +3026,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.7.1",
+      "version": "6.8.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -6072,6 +6091,11 @@
       "vue-auth"
     ],
     "useaccountdata": [
+      "react-auth",
+      "react-native-auth",
+      "vue-auth"
+    ],
+    "userestoreaccount": [
       "react-auth",
       "react-native-auth",
       "vue-auth"

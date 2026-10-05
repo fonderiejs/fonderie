@@ -25,6 +25,8 @@ const errors = {
 		ACCOUNT_SUSPENDED: 'This account is suspended. Please contact support.',
 		ACCOUNT_PENDING_DELETION: 'This account is scheduled for deletion on {deleteOn}. You can still keep it.',
 		'ACCOUNT_PENDING_DELETION:short': 'An account using this address is scheduled for deletion. Sign in to keep it, or wait until it is deleted.',
+		OWNS_TEAM_WORKSPACE: 'You own a team with other members ({workspaces}). Transfer ownership to someone else before deleting your account.',
+		RESTORE_TOKEN_INVALID: 'Please sign in again to keep your account.',
 		USER_ALREADY_EXISTS: 'An account with this email already exists.',
 		EMAIL_IN_USE: 'This email is already in use.',
 		PHONE_IN_USE: 'This phone number is already in use.',

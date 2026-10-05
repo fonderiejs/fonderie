@@ -19,8 +19,10 @@ import { createBackend } from './backends';
 import {
 	USER_DELETED_EVENT,
 	USER_PURGED_EVENT,
+	USER_RESTORED_EVENT,
 	handleSubscriberDeleted,
 	handleSubscriberPurged,
+	handleSubscriberRestored,
 } from './services/subscriber-lifecycle';
 
 export class BillingModule implements IFonderieModule {
@@ -46,6 +48,13 @@ export class BillingModule implements IFonderieModule {
 				await handleSubscriberDeleted(this.store, this.config, { type: 'user', id: userId });
 			},
 			'billing:user-deleted',
+		);
+		bus?.on<{ userId: string }>(
+			USER_RESTORED_EVENT,
+			async ({ userId }) => {
+				await handleSubscriberRestored(this.store, this.config, { type: 'user', id: userId });
+			},
+			'billing:user-restored',
 		);
 		bus?.on<{ userId: string }>(
 			USER_PURGED_EVENT,

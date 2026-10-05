@@ -1,5 +1,13 @@
 # @fonderie/vue-auth-screens
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [33ac39a]
+  - @fonderie/client@3.15.0
+  - @fonderie/vue-auth@0.13.0
+
 ## 0.5.1
 
 ### Patch Changes

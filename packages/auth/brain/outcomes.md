@@ -9,6 +9,17 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `fonderie_account_deletion_codes`
+
+```sql
+user_id                  UUID PRIMARY KEY REFERENCES fonderie_users(id) ON DELETE CASCADE
+code_hash                TEXT NOT NULL
+channel                  TEXT NOT NULL CHECK (channel IN ('email', 'sms'))
+attempts                 INT NOT NULL DEFAULT 0
+expires_at               TIMESTAMPTZ NOT NULL
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_consumed_tokens`
 
 ```sql
@@ -133,6 +144,8 @@ IF                       NOT EXISTS phone_verified_at TIMESTAMPTZ
 CONSTRAINT               fonderie_users_phone_unique UNIQUE (phone)
 mfa_secret_pending       TEXT
 mfa_secret_pending_expires_at TIMESTAMPTZ
+deletion_channel         TEXT
+deletion_reminded_at     TIMESTAMPTZ
 -- INDEX idx_fonderie_users_email (email)
 ```
 
@@ -149,6 +162,7 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | GET | `/_admin/users/:id/sessions` | `async (ctx) => { if (!(await users.findById(idOf(ctx)))) return NOT_FOUND(); const rows = await sessions.listLiveByUser(idOf(ctx)); return setApiResponse( HTTP.OK, 'SESSIONS', 'Live sessions', rows.map((r) => toSessionDTO(r, null)), ); }` |
 | POST | `/_admin/users/:id/suspend` | `setSuspended(true)` |
 | POST | `/_admin/users/:id/unsuspend` | `setSuspended(false)` |
+| POST | `/auth/account/restore` | `ipLimit('login') → validate(restoreAccountSchema) → auth.restoreAccount` |
 | GET | `/auth/apple` | `oauth.appleInit` |
 | POST | `/auth/apple/callback` | `ipLimit('login') → oauth.appleCallback` |
 | POST | `/auth/apple/native` | `ipLimit('login') → validate(appleNativeSchema) → oauth.appleNative` |
@@ -177,6 +191,8 @@ Raw SQL ships in `node_modules/@fonderie/auth/dist/migrations/sql/` — read it 
 | GET | `/users` | `requireAuth → user.me` |
 | PUT | `/users/email` | `requireAuth → verifyGate → validate(updateEmailSchema) → user.updateEmail` |
 | GET | `/users/export` | `requireAuth → user.exportMe` |
+| POST | `/users/me/deletion` | `requireAuth → verifyGate → validate(requestDeletionSchema) → user.requestDeletion` |
+| POST | `/users/me/deletion/confirm` | `ipLimit('verify') → requireAuth → verifyGate → validate(confirmDeletionSchema) → user.confirmDeletion` |
 | PUT | `/users/password` | `requireAuth → validate(changePasswordSchema) → user.changePassword` |
 | PUT | `/users/phone` | `requireAuth → verifyGate → validate(updatePhoneSchema) → user.updatePhone` |
 | PUT | `/users/preferences` | `requireAuth → verifyGate → validate(updatePreferencesSchema) → user.updatePreferences` |
