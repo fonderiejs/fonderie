@@ -57,7 +57,15 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 				);
 			}
 
-			await members.remove(userId, ctx.workspace.id);
+			// Re-checked under the workspace lock: ownership may have moved since
+			// this request started (withWorkspace read it).
+			const removed = await members.remove(userId, ctx.workspace.id);
+			if (removed === 'owner') {
+				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_OPERATION', 'Cannot remove the workspace owner');
+			}
+			if (removed === 'not-member') {
+				return setApiResponse(HTTP.NOT_FOUND, 'MEMBER_NOT_FOUND', 'That person is not a member of this workspace.');
+			}
 			return setApiResponse(HTTP.OK, 'MEMBER_REMOVED', 'Member removed successfully.');
 		},
 
@@ -91,13 +99,13 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 			// Assigning a role is not a way in: the person must already be a
 			// member (joined through an invitation they accepted). Otherwise a
 			// manager could add anyone to the team without their consent and
-			// without the seat check.
-			if (!(await members.get(userId, ctx.workspace.id))) {
+			// without the seat check. Checked under the member's lock, in the
+			// same transaction as the insert.
+			const assigned = await members.addRole(userId, ctx.workspace.id, roleId);
+			if (assigned === 'not-member') {
 				return setApiResponse(HTTP.NOT_FOUND, 'MEMBER_NOT_FOUND', 'That person is not a member of this workspace.');
 			}
-
-			const assigned = await members.addRole(userId, ctx.workspace.id, roleId);
-			if (!assigned) {
+			if (assigned === 'invalid-role') {
 				// Role doesn't belong to this workspace, is a system role, or doesn't
 				// exist — none are assignable through this route (see addRoleToMember).
 				return setApiResponse(
@@ -193,7 +201,10 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 					'Transfer ownership to another member before leaving',
 				);
 			}
-			await members.remove(ctx.user!.id, ctx.workspace.id);
+			const left = await members.remove(ctx.user!.id, ctx.workspace.id);
+			if (left === 'owner') {
+				return setApiResponse(HTTP.BAD_REQUEST, 'OWNER_CANNOT_LEAVE', 'Transfer ownership to another member before leaving');
+			}
 			return setApiResponse(HTTP.OK, 'WORKSPACE_LEFT', 'You left the workspace.');
 		},
 	};

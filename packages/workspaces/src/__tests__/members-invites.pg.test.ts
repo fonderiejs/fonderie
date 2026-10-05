@@ -458,3 +458,68 @@ test("an invitation is written in the business's language for someone without an
 	assert.equal(m?.payload['fallbackLocale'], 'fr-CA');
 	assert.equal(m?.payload['locale'], undefined, "no explicit locale: the invitee's own account, when they have one, wins in courier");
 });
+
+// ── Races: concurrent changes to one team are applied one at a time ──────────
+
+test('race: five invites at once with ONE seat left — exactly one gets it', { skip }, async () => {
+	const { invitationController } = await import('../controllers/invitation.controller');
+	const { owner, ws } = await team();
+	const ctrl = invitationController(store, '7d');
+	const ctx = (email: string) => ({
+		workspace: { id: ws, isPersonal: false, ownerId: owner.id },
+		user: { id: owner.id, email: owner.email },
+		meta: { body: { email }, billing: { statuses: { seats: { type: 'limit', limit: 1 } } } },
+		request: new Request('http://x/workspaces/invitations', { method: 'POST' }),
+	}) as never;
+	const replies = await Promise.all(
+		[1, 2, 3, 4, 5].map((i) => ctrl.invite(ctx(`seat${i}-${Date.now()}@${DOMAIN}`))),
+	);
+	const statuses = replies.map((r) => r.status).sort();
+	assert.deepEqual(statuses, [201, 402, 402, 402, 402], `the plan allows one seat: ${statuses}`);
+	assert.equal(await countOccupiedSeats(ws, store), 1);
+});
+
+test('race: two ownership transfers at once — one applies, the other says so', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [a, b] = [await join(owner, ws), await join(owner, ws)];
+	const replies = await Promise.all(
+		[a, b].map((p) => call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: p.id }, ws)),
+	);
+	assert.deepEqual(replies.map((r) => r.status).sort(), [200, 404], JSON.stringify(replies.map((r) => r.reason)));
+	const [row] = await store.query<{ ownerId: string }>(`SELECT owner_id AS "ownerId" FROM fonderie_workspaces WHERE id = $1`, [ws]);
+	const winner = replies[0]!.status === 200 ? a : b;
+	assert.equal(row!.ownerId, winner.id, 'the owner is the one the successful transfer named');
+});
+
+test('race: two saves of a role\'s permissions — the result is one of them, never the union', { skip }, async () => {
+	const { owner, ws } = await team();
+	const role = await call(owner.token, 'POST', '/workspaces/roles', { name: `Crew ${Date.now()}` }, ws);
+	const id = role.result['role'].id as string;
+	const sets = [
+		[{ permissionKey: 'jobs', canRead: true }],
+		[{ permissionKey: 'customers', canRead: true }, { permissionKey: 'estimates', canRead: true }],
+	];
+	for (let round = 0; round < 5; round++) {
+		await Promise.all(sets.map((permissions) => call(owner.token, 'POST', `/workspaces/roles/${id}/permissions`, { permissions }, ws)));
+		const keys = (await store.query<{ k: string }>(`SELECT permission_key AS k FROM fonderie_role_permissions WHERE role_id = $1 ORDER BY 1`, [id])).map((r) => r.k);
+		assert.ok(
+			JSON.stringify(keys) === '["jobs"]' || JSON.stringify(keys) === '["customers","estimates"]',
+			`round ${round}: ${JSON.stringify(keys)} is a mix of two saves`,
+		);
+	}
+});
+
+test('race: removing a member while a role is assigned to them never leaves a removed person holding a role', { skip }, async () => {
+	const { owner, ws } = await team();
+	const role = await call(owner.token, 'POST', '/workspaces/roles', { name: `Lead ${Date.now()}` }, ws);
+	for (let round = 0; round < 5; round++) {
+		const m = await join(owner, ws);
+		const [removed] = await Promise.all([
+			call(owner.token, 'DELETE', `/workspaces/members/${m.id}`, undefined, ws),
+			call(owner.token, 'POST', `/workspaces/members/${m.id}/roles`, { roleId: role.result['role'].id }, ws),
+		]);
+		assert.equal(removed.status, 200);
+		const live = await store.query(`SELECT 1 FROM fonderie_role_user_workspaces WHERE user_id = $1 AND workspace_id = $2 AND removed = false`, [m.id, ws]);
+		assert.equal(live.length, 0, `round ${round}: the removed person still holds a live role`);
+	}
+});

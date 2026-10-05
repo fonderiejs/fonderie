@@ -124,31 +124,6 @@ export async function cancelInvitation(
 	);
 }
 
-// Defense-in-depth re-check at ACCEPT time: the stored roleId was validated at
-// invite time, but re-confirm here so a role that has since become
-// non-assignable (or a hypothetical bad row written directly / by a future
-// invite-path bug) can never grant a privileged membership. Assignable =
-// exactly what an invitation may target: a workspace-local NON-system role, or
-// the seeded least-privilege system GUEST default. A system ADMIN (or any other
-// system role) and a foreign workspace's role are refused.
-async function assertRoleAssignable(
-	roleId: string,
-	workspaceId: string,
-	store: IStoreAdapter,
-): Promise<void> {
-	const rows = await store.query<{ id: string }>(
-		`SELECT id FROM fonderie_roles
-		 WHERE id = $1
-		   AND (
-		     (workspace_id = $2 AND is_system = false)
-		     OR (is_system = true AND name = 'GUEST')
-		   )`,
-		[roleId, workspaceId],
-	);
-	if (rows.length === 0) {
-		throw new InvitationError('INVITATION_ROLE_UNAVAILABLE', 409, 'The role this invitation gives no longer exists. Ask for a new invitation.');
-	}
-}
 
 /**
  * Why an invitation cannot be accepted — a reason code a screen can act on
@@ -187,25 +162,52 @@ export type InvitationAccountMatch = 'email-when-present' | 'email' | 'any';
 // one claims it and grants the role; the other is refused.
 async function redeem(
 	inv: { id: string; workspaceId: string; roleId: string },
+	credential: { token: string } | { pin: string },
 	userId: string,
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.transaction(async (tx) => {
-		const claimed = await tx.query<{ id: string }>(
+		// The claim re-checks EVERYTHING the lookup checked, in the same
+		// statement: still pending, not expired, and the credential is still the
+		// one presented (a resend replaces it). It returns the role to grant —
+		// never the one read before.
+		const [claimed] = await tx.query<{ workspaceId: string; roleId: string }>(
 			`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED'
-			 WHERE id = $1 AND status = 'PENDING'
-			 RETURNING id`,
-			[inv.id],
+			 WHERE id = $1 AND status = 'PENDING' AND expires_at > now()
+			   AND ${'token' in credential ? 'token = $2' : 'pin = $2'}
+			 RETURNING workspace_id AS "workspaceId", role_id AS "roleId"`,
+			[inv.id, 'token' in credential ? credential.token : credential.pin],
 		);
-		if (claimed.length === 0) throw new InvitationError('INVITATION_ALREADY_USED', 409, 'This invitation has already been used.');
-		await tx.query(
+		if (!claimed) throw await whyNotClaimed(tx, inv.id);
+		// The grant checks the role is still assignable in the same INSERT: a
+		// role deleted since the invitation was sent grants nothing, and the
+		// claim rolls back with it.
+		const granted = await tx.query<{ userId: string }>(
 			`INSERT INTO fonderie_role_user_workspaces (user_id, workspace_id, role_id, confirmed)
-			 VALUES ($1, $2, $3, true)
+			 SELECT $1, $2, r.id, true FROM fonderie_roles r
+			 WHERE r.id = $3
+			   AND ((r.workspace_id = $2 AND r.is_system = false) OR (r.is_system = true AND r.name = 'GUEST'))
 			 ON CONFLICT (user_id, workspace_id, role_id) DO UPDATE
-			 SET confirmed = true, removed = false`,
-			[userId, inv.workspaceId, inv.roleId],
+			 SET confirmed = true, removed = false
+			 RETURNING user_id AS "userId"`,
+			[userId, claimed.workspaceId, claimed.roleId],
 		);
+		if (granted.length === 0) {
+			throw new InvitationError('INVITATION_ROLE_UNAVAILABLE', 409, 'The role this invitation gives no longer exists. Ask for a new invitation.');
+		}
 	});
+}
+
+/** Why a claim matched nothing — read only on the failure path. */
+async function whyNotClaimed(store: IStoreAdapter, id: string): Promise<InvitationError> {
+	const [row] = await store.query<{ status: string; expired: boolean }>(
+		`SELECT status, expires_at <= now() AS expired FROM fonderie_workspace_invitations WHERE id = $1`,
+		[id],
+	);
+	if (row?.status === 'ACCEPTED') return new InvitationError('INVITATION_ALREADY_USED', 409, 'This invitation has already been used.');
+	if (row && row.status !== 'PENDING') return new InvitationError('INVITATION_REVOKED', 410, 'This invitation was cancelled. Ask for a new one.');
+	if (row?.expired) return new InvitationError('INVITATION_EXPIRED', 410, 'This invitation has expired. Ask for a new one.');
+	return new InvitationError('INVITATION_NOT_FOUND', 404, 'This invitation link is no longer valid. A newer one may have been sent — check your email.');
 }
 
 export async function acceptInvitationByPin(
@@ -235,9 +237,7 @@ export async function acceptInvitationByPin(
 
 	if (!inv) throw new InvitationError('INVITATION_NOT_FOUND', 404, 'No pending invitation for this account matches that PIN.');
 	if (new Date() > new Date(inv.expiresAt)) throw expired();
-	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
-
-	await redeem(inv, opts.userId, store);
+	await redeem(inv, { pin: opts.pin }, opts.userId, store);
 
 	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }
@@ -283,9 +283,7 @@ export async function acceptInvitationByToken(
 			{ email: maskEmail(inv.email) },
 		);
 	}
-	await assertRoleAssignable(inv.roleId, inv.workspaceId, store);
-
-	await redeem(inv, userId, store);
+	await redeem(inv, { token }, userId, store);
 
 	return { workspaceId: inv.workspaceId, roleId: inv.roleId };
 }
