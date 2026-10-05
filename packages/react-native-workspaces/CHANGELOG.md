@@ -1,5 +1,13 @@
 # @fonderie/react-native-workspaces
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [a299875]
+  - @fonderie/client@3.17.0
+  - @fonderie/react-workspaces@0.10.0
+
 ## 0.1.6
 
 ### Patch Changes

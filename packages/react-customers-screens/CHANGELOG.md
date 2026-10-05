@@ -1,5 +1,13 @@
 # @fonderie/react-customers-screens
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [a299875]
+  - @fonderie/client@3.17.0
+  - @fonderie/react-customers@0.7.0
+
 ## 0.3.1
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @fonderie/react-native-customers
 
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [a299875]
+  - @fonderie/client@3.17.0
+  - @fonderie/react-customers@0.7.0
+
 ## 0.1.5
 
 ### Patch Changes
