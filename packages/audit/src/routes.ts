@@ -2,6 +2,7 @@ import type { Middleware } from '@fonderie/core';
 import { setApiResponse, HTTP } from '@fonderie/core';
 import { requireAuth } from '@fonderie/core/middlewares';
 import type { IStoreAdapter } from '@fonderie/store';
+import { withWorkspace } from '@fonderie/workspaces';
 
 import { AuditEventModel } from './models/event.model';
 import { toAuditEventDTO, encodeCursor } from './dtos/audit';
@@ -25,6 +26,7 @@ export function buildAuditRoutes(store: IStoreAdapter, config: IAuditConfig = {}
 			'GET',
 			'/audit',
 			requireAuth,
+			resolveWorkspace(store),
 			...(config.permission ? [requireAuditRead(config.permission)] : []),
 			async (ctx) => {
 				if (!ctx.workspace)
@@ -93,5 +95,14 @@ function requireAuditRead(key: string): Middleware {
 		}
 		return next();
 	};
+}
+
+// The workspace the trail is for: from X-Workspace-ID, membership verified
+// (@fonderie/workspaces). Before, the route only READ ctx.workspace and nothing
+// set it — every request answered 422 MISSING_WORKSPACE unless the app ran its
+// own workspace middleware. One that already set it still wins.
+function resolveWorkspace(store: IStoreAdapter): Middleware {
+	const resolve = withWorkspace(store);
+	return (ctx, next) => (ctx.workspace ? next() : resolve(ctx, next));
 }
 
