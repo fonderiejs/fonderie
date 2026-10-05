@@ -8,6 +8,8 @@ import { NOTIFICATION_EVENT } from '@fonderie/events';
 import { getWorkspaceSettings } from '../services/workspaces';
 import { MESSAGE_KEYS } from '../config';
 import { InvitationModel } from '../models/invitation.model';
+import { InvitationError } from '../services/invitations';
+import type { InvitationAccountMatch } from '../services/invitations';
 import { MemberModel } from '../models/member.model';
 import { toInvitationDTO } from '../dtos/workspace';
 
@@ -29,6 +31,8 @@ function seatLimitFromMeta(ctx: IFonderieContext): number | null {
 export interface IInvitationControllerOptions {
 	// See IWorkspacesConfig.invitationUrl.
 	invitationUrl?: string;
+	// See IWorkspacesConfig.invitationAccountMatch.
+	invitationAccountMatch?: InvitationAccountMatch;
 }
 
 // Who the email says it is from, and which team: an invitation from an
@@ -257,7 +261,10 @@ export function invitationController(
 				// Token path (32-byte secret from the email link) — also the route
 				// for accounts without an email address (phone-registered users).
 				if (typeof token === 'string') {
-					const { workspaceId } = await invitations.acceptByToken(token, ctx.user!.id);
+					const { workspaceId } = await invitations.acceptByToken(token, ctx.user!.id, {
+						email: ctx.user!.email ?? null,
+						...(options.invitationAccountMatch ? { match: options.invitationAccountMatch } : {}),
+					});
 					return setApiResponse(HTTP.OK, 'INVITATION_ACCEPTED', 'Invitation accepted successfully.', {
 						workspaceId,
 					});
@@ -273,7 +280,7 @@ export function invitationController(
 				if (!email) {
 					return setApiResponse(
 						HTTP.BAD_REQUEST,
-						'INVITATION_FAILED',
+						'NO_EMAIL_ON_ACCOUNT',
 						'This account has no email address — use the invitation link instead of the PIN',
 					);
 				}
@@ -283,8 +290,10 @@ export function invitationController(
 					workspaceId,
 				});
 			} catch (err) {
-				const message = err instanceof Error ? err.message : 'Invalid invitation';
-				return setApiResponse(HTTP.BAD_REQUEST, 'INVITATION_FAILED', message);
+				// Each refusal has its own reason (expired / used / revoked / wrong
+				// account / role gone / not found); anything else is a real fault.
+				if (err instanceof InvitationError) return setApiResponse(err.status, err.reason, err.message, err.details);
+				throw err;
 			}
 		},
 	};

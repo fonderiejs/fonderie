@@ -75,8 +75,14 @@ async function call(token: string | null, method: string, path: string, body?: u
 		},
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
 	});
-	const json = (await res.json().catch(() => ({}))) as { reason?: string; result?: Record<string, unknown> };
-	return { status: res.status, reason: json.reason, result: (json.result ?? {}) as Record<string, any> };
+	const json = (await res.json().catch(() => ({}))) as { reason?: string; explanation?: string; result?: Record<string, unknown>; details?: Record<string, unknown> };
+	return {
+		status: res.status,
+		reason: json.reason,
+		explanation: json.explanation ?? '',
+		result: (json.result ?? {}) as Record<string, any>,
+		details: (json.details ?? {}) as Record<string, any>,
+	};
 }
 
 async function person(first = 'Ana'): Promise<Person> {
@@ -164,24 +170,84 @@ test('resend replaces the code: the old PIN stops working, the new one joins', {
 	assert.equal(re.status, 200, JSON.stringify(re));
 	const second = lastInvitationEmail().data;
 	assert.notEqual(second['pin'], first['pin']);
-	assert.equal((await call(p.token, 'POST', '/workspaces/invitations/accept', { pin: first['pin'] })).status, 400);
+	const old = await call(p.token, 'POST', '/workspaces/invitations/accept', { pin: first['pin'] });
+	assert.equal(old.status, 404);
+	assert.equal(old.reason, 'INVITATION_NOT_FOUND');
+	// …and the old LINK too: a resend replaces the token.
+	const oldLink = await call(p.token, 'POST', '/workspaces/invitations/accept', { token: first['token'] });
+	assert.equal(oldLink.reason, 'INVITATION_NOT_FOUND');
 	assert.equal((await call(p.token, 'POST', '/workspaces/invitations/accept', { pin: second['pin'] })).status, 200);
 });
 
-test('an invitation link joins ONE person, even when two race for it', { skip }, async () => {
+test('an invitation link joins ONCE, even when a double tap races it', { skip }, async () => {
 	const { owner, ws } = await team();
-	const [a, b] = [await person('Ana'), await person('Bea')];
+	const a = await person('Ana');
 	await call(owner.token, 'POST', '/workspaces/invitations', { email: a.email }, ws);
 	const { token } = lastInvitationEmail().data;
 	const results = await Promise.all([
 		call(a.token, 'POST', '/workspaces/invitations/accept', { token }),
-		call(b.token, 'POST', '/workspaces/invitations/accept', { token }),
+		call(a.token, 'POST', '/workspaces/invitations/accept', { token }),
 	]);
-	assert.deepEqual(results.map((r) => r.status).sort(), [200, 400], JSON.stringify(results));
-	const joined = (await members(owner, ws)).filter((m) => [a.id, b.id].includes(m['userId'] ?? m['id']));
+	assert.deepEqual(results.map((r) => r.status).sort(), [200, 409], JSON.stringify(results));
+	assert.equal(results.find((r) => r.status === 409)!.reason, 'INVITATION_ALREADY_USED');
+	const joined = (await members(owner, ws)).filter((m) => (m['userId'] ?? m['id']) === a.id);
 	assert.equal(joined.length, 1, JSON.stringify(joined));
-	// A used link stays used.
-	assert.equal((await call(a.token, 'POST', '/workspaces/invitations/accept', { token })).status, 400);
+	// A used link stays used — and says so.
+	const again = await call(a.token, 'POST', '/workspaces/invitations/accept', { token });
+	assert.equal(again.status, 409);
+	assert.equal(again.reason, 'INVITATION_ALREADY_USED');
+});
+
+test('a link only joins the account it was sent to: another signed-in account is told which email to use', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [invited, other] = [await person('Ana'), await person('Bea')];
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: invited.email }, ws);
+	const { token } = lastInvitationEmail().data;
+	const r = await call(other.token, 'POST', '/workspaces/invitations/accept', { token });
+	assert.equal(r.status, 403);
+	assert.equal(r.reason, 'INVITATION_EMAIL_MISMATCH');
+	assert.equal(r.details['email'], `p***@${DOMAIN}`);
+	assert.ok(!r.explanation.includes(invited.email), 'the full invited address is not revealed');
+	assert.equal((await members(owner, ws)).some((m) => (m['userId'] ?? m['id']) === other.id), false);
+	// The refusal did not spend the link: the invitee still joins with it.
+	assert.equal((await call(invited.token, 'POST', '/workspaces/invitations/accept', { token })).status, 200);
+});
+
+test('an expired or cancelled invitation says which', { skip }, async () => {
+	const { owner, ws } = await team();
+	const [p, q] = [await person('Eve'), await person('Cy')];
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: p.email }, ws);
+	const expiredToken = lastInvitationEmail().data['token']!;
+	await store.query(`UPDATE fonderie_workspace_invitations SET expires_at = now() - interval '1 day' WHERE token = $1`, [expiredToken]);
+	const e = await call(p.token, 'POST', '/workspaces/invitations/accept', { token: expiredToken });
+	assert.deepEqual([e.status, e.reason], [410, 'INVITATION_EXPIRED']);
+
+	await call(owner.token, 'POST', '/workspaces/invitations', { email: q.email }, ws);
+	const cancelledToken = lastInvitationEmail().data['token']!;
+	const inv = (await pending(owner, ws)).find((i) => i['email'] === q.email.toLowerCase());
+	assert.equal((await call(owner.token, 'DELETE', `/workspaces/invitations/${inv!['id']}`, undefined, ws)).status, 200);
+	const c = await call(q.token, 'POST', '/workspaces/invitations/accept', { token: cancelledToken });
+	assert.deepEqual([c.status, c.reason], [410, 'INVITATION_REVOKED']);
+
+	const nope = await call(q.token, 'POST', '/workspaces/invitations/accept', { token: 'not-a-real-token' });
+	assert.deepEqual([nope.status, nope.reason], [404, 'INVITATION_NOT_FOUND']);
+});
+
+test('an account with no email (phone sign-up) accepts with the link; "email" mode refuses it, "any" lets anyone', { skip }, async () => {
+	const { acceptInvitationByToken, InvitationError } = await import('../services/invitations');
+	const { owner, ws } = await team();
+	const phoneOnly = await person('Pat');
+	const fresh = async (): Promise<string> => {
+		await call(owner.token, 'POST', '/workspaces/invitations', { email: `x${++n}-${Date.now()}@${DOMAIN}` }, ws);
+		return lastInvitationEmail().data['token']!;
+	};
+	await assert.rejects(
+		acceptInvitationByToken(await fresh(), phoneOnly.id, store, { email: null, match: 'email' }),
+		(err: unknown) => err instanceof InvitationError && err.reason === 'INVITATION_EMAIL_MISMATCH',
+	);
+	assert.equal((await acceptInvitationByToken(await fresh(), phoneOnly.id, store, { email: null })).workspaceId, ws);
+	const someoneElse = await person('Zed');
+	assert.equal((await acceptInvitationByToken(await fresh(), someoneElse.id, store, { email: someoneElse.email, match: 'any' })).workspaceId, ws);
 });
 
 test('a non-manager cannot resend', { skip }, async () => {

@@ -33,6 +33,15 @@ export interface IWorkspacesConfig {
 	// email carries the 6-digit PIN only.
 	invitationUrl?: string;
 
+	// Which account may accept an invitation LINK (the PIN is always bound to
+	// the invited email). Default 'email-when-present': an account with an
+	// email must be the invited one (else 403 INVITATION_EMAIL_MISMATCH, with a
+	// masked hint of the right address) — a forwarded link or the wrong
+	// signed-in account cannot join; an account with no email (phone sign-up)
+	// accepts with the link, which only the invitee received. 'email' also
+	// refuses accounts with no email; 'any' is the pre-6.7 behaviour.
+	invitationAccountMatch?: 'email-when-present' | 'email' | 'any';
+
 	// Auto-create a personal workspace when user.registered fires.
 	// Requires an EventBus to be passed to WorkspacesModule. Default: true
 	personalWorkspace?: boolean;
