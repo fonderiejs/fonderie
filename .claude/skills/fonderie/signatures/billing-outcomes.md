@@ -9,6 +9,20 @@ downloading tarballs.
 
 ## Database tables (after all migrations)
 
+### `fonderie_billing_customers`
+
+```sql
+provider                 TEXT NOT NULL
+provider_customer_id     TEXT NOT NULL
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+created_by               UUID
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+erased_at                TIMESTAMPTZ
+-- CONSTRAINT fonderie_billing_customers_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- PRIMARY KEY (provider, provider_customer_id)
+```
+
 ### `fonderie_billing_notifications`
 
 ```sql

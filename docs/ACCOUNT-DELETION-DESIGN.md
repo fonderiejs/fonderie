@@ -111,7 +111,7 @@ request, once), purge pass (final notice → `fonderie.user.purging` fan-out →
 row delete → receipt). Fails closed per user: a brick that throws leaves the
 user pending and retried; the receipt records it.
 
-**Phase 4 — Erasure in every brick.** Each subscribes to
+**Phase 4 — Erasure in every brick.** ✅ each brick exports `accountEraser(…)`, run in-process by the Phase 3 scheduler (not via an event — an event would carry the person's data into the event log). Order: billing, workspaces, media, customers, courier, webhooks, events. Each subscribes to
 `fonderie.user.purging` and reports `{ brick, erased, kept, reason }`:
 workspaces (memberships, personal workspace, ownership rule D4), media/storage
 (avatars), courier (redact recipient), events (delete rows naming the user —

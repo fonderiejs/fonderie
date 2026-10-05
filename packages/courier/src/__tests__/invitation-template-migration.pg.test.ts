@@ -45,7 +45,13 @@ before(async () => {
 	if (!PG_URL) return;
 	const { PGAdapter } = await import('@fonderie/store');
 	store = new PGAdapter(PG_URL) as typeof store;
-	for (const f of files.filter((f) => f < '006')) await store.query(sql(f));
+	// Raw on purpose (this suite tests migration 006 itself) — but under the
+	// migration runner's advisory lock, so suites migrating the same database
+	// at the same moment cannot race the CREATE TABLEs (23505).
+	await store.transaction(async (tx) => {
+		await tx.query(`SELECT pg_advisory_xact_lock(hashtext('fonderie_migrations'))`);
+		for (const f of files.filter((f) => f < '006')) await tx.query(sql(f));
+	});
 });
 
 after(async () => {

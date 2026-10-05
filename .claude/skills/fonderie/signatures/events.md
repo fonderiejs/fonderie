@@ -154,6 +154,29 @@ interface IIntegrityReport {
     tampered: string[];
 }
 
+function accountEraser(store: IStoreAdapter, options?: IEventsEraserOptions): IEventsAccountEraser
+
+interface IEventsAccountEraser {
+    readonly name: 'events';
+    erase(subject: IEventsErasureSubject): Promise<IEventsErasureResult>;
+}
+
+interface IEventsEraserOptions {
+    integrityKey?: string;
+    retiredIntegrityKeys?: readonly string[];
+}
+
+interface IEventsErasureResult {
+    erased: number;
+    kept?: string;
+}
+
+interface IEventsErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
+
 function purgeEvents(store: IStoreAdapter, { olderThanDays }: IPurgeEventsOptions): Promise<number>
 
 function startEventRetention(store: IStoreAdapter, options: IRetentionScheduleOptions): { stop: () => void; }
@@ -173,6 +196,7 @@ interface IEventMeta {
     emittedAt: string;
     attempts: number;
     requestId?: string;
+    erasedAt?: string;
 }
 
 type IEventHandler<T = unknown> = (payload: T, meta: IEventMeta) => Promise<void>;

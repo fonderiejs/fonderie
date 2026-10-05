@@ -7,6 +7,9 @@ export { handleSendGridDelivery, handleMailgunDelivery, handleMailtrapDelivery }
 export { Dispatcher } from './dispatcher';
 export { messageStats } from './log';
 export type { IMessageStats } from './log';
+// Account deletion — the purge redacts the person's recipient in the message log.
+export { accountEraser } from './eraser';
+export type { ICourierAccountEraser, ICourierErasureResult, ICourierErasureSubject } from './eraser';
 export { SmsChannel } from './channels/sms';
 export { PushChannel } from './channels/push';
 export { EmailChannel } from './channels/email';
