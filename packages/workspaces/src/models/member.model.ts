@@ -41,8 +41,12 @@ export class MemberModel {
 		return addMember(opts, this.store);
 	}
 
-	remove(userId: string, workspaceId: string): ReturnType<typeof removeMember> {
-		return removeMember(userId, workspaceId, this.store);
+	remove(
+		userId: string,
+		workspaceId: string,
+		by?: { actorId: string; managerRoles: string[] },
+	): ReturnType<typeof removeMember> {
+		return removeMember(userId, workspaceId, this.store, by);
 	}
 
 	getUserRoles(userId: string, workspaceId: string): Promise<IRole[]> {

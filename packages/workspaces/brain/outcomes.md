@@ -89,34 +89,34 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | Method | Path | Middleware chain (auth / validation / handler) |
 |---|---|---|
 | GET | `/workspaces` | `requireAuth → workspace.list` |
-| POST | `/workspaces` | `requireAuth → validate(createWorkspaceSchema) → workspace.create` |
-| PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → workspace.update` |
+| POST | `/workspaces` | `requireAuth → validate(createWorkspaceSchema) → T(K.workspaceCreated, () => ({}), (r) => (r?.['workspace'] as { id?: string } | undefined)?.id) → workspace.create` |
+| PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
-| POST | `/workspaces/archive` | `requireAuth → wsCtx → manager → workspace.archive` |
+| POST | `/workspaces/archive` | `requireAuth → wsCtx → owner → T(K.workspaceArchived) → workspace.archive` |
 | GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
 | GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
-| POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → invitation.invite` |
-| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → invitation.cancel` |
-| POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → invitation.resend` |
-| POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → invitation.accept` |
-| POST | `/workspaces/leave` | `requireAuth → wsCtx → member.leave` |
+| POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite` |
+| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
+| POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → T(K.invitationResent, inviteOf) → invitation.resend` |
+| POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined) → invitation.accept` |
+| POST | `/workspaces/leave` | `requireAuth → wsCtx → T(K.memberLeft) → member.leave` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
-| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → member.remove` |
-| DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → member.unsetManager` |
-| POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → member.setManager` |
+| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → T(K.memberRemoved, target) → member.remove` |
+| DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerUnset, target) → member.unsetManager` |
+| POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerSet, target) → member.setManager` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
-| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → member.addRole` |
-| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → member.removeRole` |
+| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole` |
+| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole` |
 | GET | `/workspaces/permissions/catalog` | `requireAuth → wsCtx → access.catalog` |
-| POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → workspace.restore` |
+| POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → T(K.workspaceRestored) → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
-| POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → role.create` |
-| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → role.remove` |
+| POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create` |
+| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → T(K.roleDeleted, roleOf) → role.remove` |
 | GET | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.get` |
-| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → role.update` |
+| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update` |
 | GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |
-| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → role.setPermissions` |
+| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
-| PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → workspace.updateSettings` |
-| POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → member.transferOwnership` |
+| PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings` |
+| POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |

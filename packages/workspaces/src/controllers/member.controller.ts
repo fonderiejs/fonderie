@@ -59,9 +59,14 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 
 			// Re-checked under the workspace lock: ownership may have moved since
 			// this request started (withWorkspace read it).
-			const removed = await members.remove(userId, ctx.workspace.id);
+			const removed = await members.remove(userId, ctx.workspace.id, { actorId: ctx.user!.id, managerRoles });
 			if (removed === 'owner') {
 				return setApiResponse(HTTP.BAD_REQUEST, 'INVALID_OPERATION', 'Cannot remove the workspace owner');
+			}
+			if (removed === 'manager') {
+				// Managers are peers: one cannot purge the others. The owner removes
+				// a manager (or takes their manager rights away first).
+				return setApiResponse(HTTP.FORBIDDEN, 'MANAGER_PROTECTED', 'Only the workspace owner can remove a manager.');
 			}
 			if (removed === 'not-member') {
 				return setApiResponse(HTTP.NOT_FOUND, 'MEMBER_NOT_FOUND', 'That person is not a member of this workspace.');
