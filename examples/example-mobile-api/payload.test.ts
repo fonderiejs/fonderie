@@ -54,9 +54,14 @@ test('the organization update body satisfies updateWorkspaceSchema', () => {
 	assert.ok(schemas.updateWorkspaceSchema.safeParse({ description: 'Hello' }).success);
 });
 
-test('a body of only unsupported fields is rejected, which is why we filter', () => {
-	// A workspace has no logo, so forwarding { logoUrl } unfiltered would strip
-	// every key and fail the "provide at least one field" rule.
-	const parsed = schemas.updateWorkspaceSchema.safeParse({ logoUrl: 'https://x/y.png' });
+test('a logo-only organization update is accepted (workspaces carry a logo since the business profile)', () => {
+	assert.ok(schemas.updateWorkspaceSchema.safeParse({ logoUrl: 'https://cdn.acme.example/logo.png' }).success);
+	assert.ok(schemas.updateWorkspaceSchema.safeParse({ logoUrl: null }).success, 'null removes the logo');
+});
+
+test('a body of only unsupported fields is still rejected, which is why we filter', () => {
+	// Forwarded unfiltered, it would strip every key and fail the "provide at
+	// least one field" rule.
+	const parsed = schemas.updateWorkspaceSchema.safeParse({ favoriteColor: 'teal' });
 	assert.equal(parsed.success, false, 'if this passes, the filter in /organization can be dropped');
 });

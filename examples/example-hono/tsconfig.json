@@ -5,8 +5,7 @@
 		"moduleResolution": "Bundler",
 		"strict":           true,
 		"skipLibCheck":     true,
-		"types":            ["node"],
-		"baseUrl":          "."
+		"types":            ["node"]
 	},
 	"include": ["./**/*.ts"]
 }
