@@ -9,6 +9,7 @@ import { WorkspaceModel } from './models/workspace.model';
 import { RoleModel } from './models/role.model';
 import { MemberModel } from './models/member.model';
 import { background } from '@fonderie/core';
+import { TEAM_NOTICE_EVENTS, sendTeamNotice } from './services/team-notices';
 
 // Mirror of @fonderie/auth EVENT_KEYS.userRegistered — avoids a runtime
 // dependency on the auth package while remaining explicit about the contract.
@@ -40,6 +41,18 @@ export class WorkspacesModule implements IFonderieModule {
 				(payload) => this.provisionPersonalWorkspace(payload),
 				'workspaces',
 			);
+		}
+
+		// Tell people when the team changes around them (insider threat, Phase 2).
+		if (this.bus && this.config.teamNotices !== false) {
+			const bus = this.bus;
+			for (const type of TEAM_NOTICE_EVENTS) {
+				bus.on<{ workspaceId: string; userId: string | null; targetUserId?: string }>(
+					type,
+					(payload) => sendTeamNotice(this.store, bus, type, payload),
+					'workspaces-notices',
+				);
+			}
 		}
 
 		const routes = buildWorkspaceRoutes(this.store, this.config, this.bus);
