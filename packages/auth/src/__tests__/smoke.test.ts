@@ -112,6 +112,21 @@ test('importUser: preserves supplied identity fields, omits the rest', async () 
 	assert.doesNotMatch(capturedSql, /first_name|mfa_enabled|locale/);
 });
 
+test("importUser: stores the address the way sign-in looks it up ('+tag' dropped); refuses a non-address", async () => {
+	const { importUser } = await import('../migrate');
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(_sql: string, p?: unknown[]): Promise<T[]> => {
+			params = p ?? [];
+			return [{ id: 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await importUser(store, { email: '  Jane+Legacy@Example.com ' });
+	assert.equal(params[0], 'jane@example.com');
+	await assert.rejects(importUser(store, { email: 'not-an-address' }), /not an email address/);
+});
+
 test('importUser: omitting id lets the table generate one', async () => {
 	const { importUser } = await import('../migrate');
 	let capturedSql = '';
@@ -2862,6 +2877,23 @@ test('rate limit: 6th login attempt for one account 429s out of the box', async 
 	const body = (await last.json()) as any;
 	assert.equal(body.reason, 'RATE_LIMITED');
 	assert.ok(last.headers.get('Retry-After'));
+});
+
+test("rate limit: a rotating '+tag' does not buy fresh login attempts on the same account", async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const accountLimit = (login as any[])[4];
+	let last: Response = new Response();
+	for (let i = 0; i < 6; i++) {
+		last = await accountLimit(
+			// target+0@ … target+5@ all sign in to target@ — one account, one bucket.
+			makeCtx({ body: { email: `Target+${i}@Example.com`, password: 'x'.repeat(10) } }),
+			async () => new Response('ok'),
+		);
+	}
+	assert.equal(last.status, 429);
 });
 
 test('rate limit: IP phase (before validation) sheds a flood from one IP', async () => {

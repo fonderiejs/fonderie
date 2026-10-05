@@ -7,6 +7,7 @@ import { background } from '@fonderie/core';
 
 import { decodeLoginCursor, toLoginHistoryPageDTO, toSessionDTO } from './dtos/login-activity';
 import { toUserDTO } from './dtos/user';
+import { normalizeEmailSafe } from './services/email';
 import type { IUserDTO } from './dtos/user';
 import { LoginEventModel } from './models/login-event.model';
 import { SessionModel } from './models/session.model';
@@ -84,7 +85,10 @@ function adminRouteTable(store: IStoreAdapter, bus?: EventBus): Array<[string, s
 			// see anything cannot discover who signed up this morning.
 			async (ctx) => {
 				const params = new URL(ctx.request.url).searchParams;
-				const email = params.get('email')?.trim().toLowerCase();
+				// Accounts are stored under normalizeEmail: a search for the address a
+				// user typed ('Jane+work@x.com') finds the account ('jane@x.com').
+				const raw = params.get('email')?.trim();
+				const email = raw ? normalizeEmailSafe(raw) ?? raw.toLowerCase() : undefined;
 				if (email) {
 					const user = await users.findByEmail(email);
 					return user ? setApiResponse(HTTP.OK, 'USER', 'User', toAdminUserDTO(user)) : NOT_FOUND();
