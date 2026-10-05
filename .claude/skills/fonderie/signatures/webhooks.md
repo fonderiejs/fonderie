@@ -157,4 +157,6 @@ type WebhookTransport = (url: string, init: {
     body: string;
     timeoutMs?: number;
 }, maxResponseBytes?: number) => Promise<IWebhookResponse>;
+
+const WEBHOOK_EVENTS: { readonly endpointCreated: "fonderie.webhook.endpoint.created"; readonly endpointUpdated: "fonderie.webhook.endpoint.updated"; readonly endpointDeleted: "fonderie.webhook.endpoint.deleted"; readonly endpointRestored: "fonderie.webhook.endpoint.restored"; }
 ```

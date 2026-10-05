@@ -8,12 +8,24 @@ import { toAuditEventDTO, encodeCursor } from './dtos/audit';
 
 type Route = [string, string, ...Middleware[]];
 
-export function buildAuditRoutes(store: IStoreAdapter): Route[] {
+export interface IAuditConfig {
+	/**
+	 * Who may read the workspace's trail (docs/INSIDER-THREAT-DESIGN.md, I1).
+	 * A permission key: reading requires `read` on it, through
+	 * @fonderie/permissions (fail closed when that module is missing). Unset,
+	 * any member of the workspace reads it — the trail names who did what to
+	 * whom, so most apps grant it to managers only.
+	 */
+	permission?: string;
+}
+
+export function buildAuditRoutes(store: IStoreAdapter, config: IAuditConfig = {}): Route[] {
 	return [
 		[
 			'GET',
 			'/audit',
 			requireAuth,
+			...(config.permission ? [requireAuditRead(config.permission)] : []),
 			async (ctx) => {
 				if (!ctx.workspace)
 					return setApiResponse(
@@ -63,3 +75,23 @@ export function buildAuditRoutes(store: IStoreAdapter): Route[] {
 		],
 	];
 }
+
+// @fonderie/permissions is not a dependency: its module puts its engine on every
+// request. Read by shape; missing while a permission is configured → refuse.
+function requireAuditRead(key: string): Middleware {
+	return async (ctx, next) => {
+		if (!ctx.user) return setApiResponse(HTTP.UNAUTHORIZED, 'UNAUTHORIZED', 'Unauthorized');
+		const engine = ctx.meta['fonderie.permissions.engine'] as
+			| { can?: (u: string, op: 'read', k: string, ws: string) => Promise<boolean> }
+			| undefined;
+		if (typeof engine?.can !== 'function') {
+			return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Permissions module not installed');
+		}
+		if (!ctx.workspace) return next(); // the handler answers 422
+		if (!(await engine.can(ctx.user.id, 'read', key, ctx.workspace.id))) {
+			return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', `Permission denied: read:${key}`);
+		}
+		return next();
+	};
+}
+

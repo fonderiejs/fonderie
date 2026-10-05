@@ -56,6 +56,28 @@ export const ZH_HANT_TEMPLATES = {
 
 如果這不在你的預期之內，請聯絡團隊擁有者。`,
 	},
+	[MESSAGE_KEYS.webhookCreatedAlert]: {
+		subject: '{{actorName}} 為 {{workspaceName}} 新增了 Webhook',
+		html: `<h1>已新增 Webhook</h1>
+<p><strong>{{actorName}}</strong> 為 <strong>{{workspaceName}}</strong> 新增了 Webhook，它會把工作區的每個事件傳送到 <strong>{{host}}</strong>。</p>
+<p class="muted">如果你不認得它，請在整合設定中刪除，並檢查誰在管理團隊。</p>`,
+		text: `已新增 Webhook
+
+{{actorName}} 為 {{workspaceName}} 新增了 Webhook，它會把工作區的每個事件傳送到 {{host}}。
+
+如果你不認得它，請在整合設定中刪除，並檢查誰在管理團隊。`,
+	},
+	[MESSAGE_KEYS.planCancelAlert]: {
+		subject: '{{actorName}} 取消了 {{workspaceName}} 的方案',
+		html: `<h1>方案已取消</h1>
+<p><strong>{{actorName}}</strong> 取消了 <strong>{{workspaceName}}</strong> 的方案{{#immediately}}，立即生效{{/immediately}}{{#atPeriodEnd}}，將在已付費期間結束時終止{{/atPeriodEnd}}。</p>
+<p class="muted">如果這不是約定好的，你可以在帳單設定中恢復或重新選擇方案。</p>`,
+		text: `方案已取消
+
+{{actorName}} 取消了 {{workspaceName}} 的方案{{#immediately}}，立即生效{{/immediately}}{{#atPeriodEnd}}，將在已付費期間結束時終止{{/atPeriodEnd}}。
+
+如果這不是約定好的，你可以在帳單設定中恢復或重新選擇方案。`,
+	},
 	[MESSAGE_KEYS.managerPaused]: {
 		subject: '{{memberName}} 在 {{workspaceName}} 的刪除權限已暫停',
 		html: `<h1>刪除已暫停</h1>

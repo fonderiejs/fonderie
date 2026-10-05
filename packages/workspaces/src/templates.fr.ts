@@ -56,6 +56,28 @@ Vous êtes toujours membre de {{workspaceName}}, mais vous ne pouvez plus gérer
 
 Si vous ne vous y attendiez pas, contactez le propriétaire de l’équipe.`,
 	},
+	[MESSAGE_KEYS.webhookCreatedAlert]: {
+		subject: '{{actorName}} a ajouté un webhook à {{workspaceName}}',
+		html: `<h1>Un webhook a été ajouté</h1>
+<p><strong>{{actorName}}</strong> a ajouté un webhook à <strong>{{workspaceName}}</strong>. Il envoie chaque événement de l’espace à <strong>{{host}}</strong>.</p>
+<p class="muted">Si vous ne le reconnaissez pas, supprimez-le dans les intégrations et vérifiez qui gère l’équipe.</p>`,
+		text: `Un webhook a été ajouté
+
+{{actorName}} a ajouté un webhook à {{workspaceName}}. Il envoie chaque événement de l’espace à {{host}}.
+
+Si vous ne le reconnaissez pas, supprimez-le dans les intégrations et vérifiez qui gère l’équipe.`,
+	},
+	[MESSAGE_KEYS.planCancelAlert]: {
+		subject: '{{actorName}} a annulé le forfait de {{workspaceName}}',
+		html: `<h1>Le forfait a été annulé</h1>
+<p><strong>{{actorName}}</strong> a annulé le forfait de <strong>{{workspaceName}}</strong>{{#immediately}}, avec effet immédiat{{/immediately}}{{#atPeriodEnd}} ; il prend fin à la fin de la période payée{{/atPeriodEnd}}.</p>
+<p class="muted">Si ce n’était pas convenu, vous pouvez le reprendre ou choisir un forfait dans la facturation.</p>`,
+		text: `Le forfait a été annulé
+
+{{actorName}} a annulé le forfait de {{workspaceName}}{{#immediately}}, avec effet immédiat{{/immediately}}{{#atPeriodEnd}} ; il prend fin à la fin de la période payée{{/atPeriodEnd}}.
+
+Si ce n’était pas convenu, vous pouvez le reprendre ou choisir un forfait dans la facturation.`,
+	},
 	[MESSAGE_KEYS.managerPaused]: {
 		subject: '{{memberName}} ne peut plus rien supprimer dans {{workspaceName}}',
 		html: `<h1>Suppressions suspendues</h1>

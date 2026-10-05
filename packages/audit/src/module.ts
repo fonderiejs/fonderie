@@ -1,7 +1,7 @@
 import type { IAdminDescription, IFonderieModule, IFonderieApp } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { buildAuditRoutes } from './routes';
+import { buildAuditRoutes, type IAuditConfig } from './routes';
 import { describeAuditAdminRoutes } from './admin';
 
 export class AuditModule implements IFonderieModule {
@@ -11,7 +11,10 @@ export class AuditModule implements IFonderieModule {
 	readonly version = process.env['FONDERIE_PKG_VERSION'] ?? '0.0.0-dev';
 	readonly deps = ['@fonderie/auth', '@fonderie/workspaces'];
 
-	constructor(private readonly store: IStoreAdapter) {}
+	constructor(
+		private readonly store: IStoreAdapter,
+		private readonly config: IAuditConfig = {},
+	) {}
 
 	// The cross-workspace read — only through @fonderie/admin.
 	describeAdmin(): IAdminDescription {
@@ -19,7 +22,7 @@ export class AuditModule implements IFonderieModule {
 	}
 
 	install(app: IFonderieApp): void {
-		for (const [method, path, ...handlers] of buildAuditRoutes(this.store)) {
+		for (const [method, path, ...handlers] of buildAuditRoutes(this.store, this.config)) {
 			app.addRoute(method, path, ...handlers);
 		}
 	}

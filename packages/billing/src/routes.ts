@@ -5,6 +5,7 @@ import { requireAdminToken, requireAuth, validate } from '@fonderie/core/middlew
 
 import { requireBillingManager } from './middlewares/require-manager';
 import { requireStepUp } from './middlewares/require-step-up';
+import { cancelTrail } from './middlewares/cancel-trail';
 
 import {
 	cancelSubscriptionSchema,
@@ -89,6 +90,7 @@ export function buildBillingRoutes(
 			...(config.stepUp === false
 				? []
 				: [requireStepUp((ctx) => (ctx.meta['body'] as { atPeriodEnd?: boolean } | undefined)?.atPeriodEnd === false)]),
+			cancelTrail(bus),
 			subscription.cancel,
 		],
 		['POST', '/billing/subscription/reactivate', requireAuth, manager, subscription.reactivate],

@@ -26,3 +26,7 @@ export type { IWebhooksAccountEraser, IWebhooksErasureResult, IWebhooksErasureSu
 // Exported so consumers can pre-validate a URL before registering it.
 export { assertPublicHttpUrl, isBlockedAddress, resolvePinnedTarget, pinnedTransport, SsrfError } from './ssrf';
 export type { IPinnedTarget, IWebhookResponse, WebhookTransport } from './ssrf';
+
+// Who changed the webhooks (docs/INSIDER-THREAT-DESIGN.md, Phase 6)
+export { WEBHOOK_EVENTS } from './middlewares/trail';
+

@@ -38,7 +38,7 @@ before(async () => {
 	store = new PGAdapter(PG_URL) as typeof store;
 	for (const m of [authMigrations(), wsMigrations(), getMigrationsPath()]) await new InternalMigrationRunner(store, m).run();
 	const bus = { emit: async (type: string, payload: Record<string, any>) => void emitted.push({ type, payload }), on() {}, subscribe() {} };
-	webhooks = new WebhooksModule(store, {});
+	webhooks = new WebhooksModule(store, {}, bus as never);
 	const app = new FonderieApp(defineConfig({ db: { url: PG_URL } }))
 		.register(new AuthModule(store, { jwtSecret: 'k'.repeat(20) + 'm'.repeat(20), providers: ['email'], rateLimit: false } as never, bus as never))
 		.register(new WorkspacesModule(store, { personalWorkspace: false }, bus as never))
@@ -137,5 +137,34 @@ test('a new endpoint — or a new URL for one — needs a fresh proof it is the 
 	});
 	const json = (await res.json().catch(() => ({}))) as { reason?: string };
 	assert.notEqual(json.reason, 'STEP_UP_REQUIRED', 'with the proof the guard lets it through');
+});
+
+// ── Phase 6: who changed the webhooks is in the trail ───────────────────────
+
+test('changes to webhooks are events naming the workspace, the person and the host — never the path or a token', { skip }, async () => {
+	const owner = await person();
+	const ws = (await call(owner.token, 'POST', '/workspaces', { name: `Trail ${n}-${Date.now()}` })).result.workspace.id as string;
+	const ep = await new EndpointModel(store).create({ workspaceId: ws, url: 'https://hooks.acme.example/a', secret: 'whsec_aaaabbbbccccddddeeeeffff00004444', events: [] });
+	const proof = (await call(owner.token, 'POST', '/auth/step-up', { password: 'Aa1!aaaa-bbbb-cccc' })).result.stepUpToken as string;
+	emitted.length = 0;
+	const res = await fetch(`${base}/webhooks/${ep.id}`, {
+		method: 'PATCH',
+		headers: { 'content-type': 'application/json', authorization: `Bearer ${owner.token}`, 'x-workspace-id': ws, 'x-step-up': proof },
+		body: JSON.stringify({ url: 'https://evil.acme.example/in?token=abc123secret' }),
+	});
+	// The URL fails the SSRF DNS check offline (acme.example does not resolve), so
+	// the update is refused here and the trail stays silent; trail.test.ts covers
+	// the successful update deterministically.
+	assert.ok(!emitted.some((e) => e.type === 'fonderie.webhook.endpoint.updated') || res.status === 200, 'no event for a refused update');
+	if (res.status === 200) {
+		const ev = emitted.find((e) => e.type === 'fonderie.webhook.endpoint.updated')!;
+		assert.deepEqual([ev.payload['workspaceId'], ev.payload['userId'], ev.payload['endpointId'], ev.payload['host']], [ws, owner.id, ep.id, 'evil.acme.example']);
+		assert.ok(!JSON.stringify(ev).includes('abc123secret'), 'no token from the query string');
+	}
+	assert.equal((await call(owner.token, 'DELETE', `/webhooks/${ep.id}`, undefined, ws)).status, 204);
+	assert.ok(emitted.some((e) => e.type === 'fonderie.webhook.endpoint.deleted' && e.payload['endpointId'] === ep.id && e.payload['userId'] === owner.id));
+	assert.equal((await call(owner.token, 'POST', `/webhooks/bin/${ep.id}/restore`, undefined, ws)).status, 200);
+	assert.ok(emitted.some((e) => e.type === 'fonderie.webhook.endpoint.restored' && e.payload['endpointId'] === ep.id));
+	assert.ok(!JSON.stringify(emitted).includes('whsec_'), 'never the secret');
 });
 

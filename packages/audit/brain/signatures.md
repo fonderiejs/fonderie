@@ -7,7 +7,7 @@
 Subpath exports: `@fonderie/audit/env.json`
 
 ```ts
-new AuditModule(store: IStoreAdapter): AuditModule
+new AuditModule(store: IStoreAdapter, config?: IAuditConfig): AuditModule
   .name: "@fonderie/audit"
   .version: string
   .deps: string[]
@@ -47,4 +47,8 @@ interface IAuditPageDTO {
 }
 
 function describeAuditAdminRoutes(store: IStoreAdapter): IAdminRoute[]
+
+interface IAuditConfig {
+    permission?: string;
+}
 ```
