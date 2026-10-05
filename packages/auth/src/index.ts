@@ -1,7 +1,7 @@
 // ── Public API ───────────────────────────────────────────────────
 export type { IUser, ISession, IMfaChallenge } from './types';
 export { AuthModule } from './module';
-export type { IAuthConfig, IAuthSecrets, IAuthRuntimeConfig, IDataExportContributor } from './config';
+export type { IAccountEraser, IErasureSubject, IAuthConfig, IAuthSecrets, IAuthRuntimeConfig, IDataExportContributor } from './config';
 export { AUTH_CONFIG_KEYS, MESSAGE_KEYS } from './config';
 export type { AuthMessageKey } from './config';
 // Built-in default templates for auth's notifications. Pass to courier via
@@ -46,6 +46,9 @@ export { normalizeEmail, normalizeEmailSafe } from './services/email';
 export { importUser } from './migrate';
 export { purgeSoftDeletedUsers, startUserRetention } from './services/retention';
 export type { IPurgeOptions, IUserRetentionScheduleOptions } from './services/retention';
+// Account deletion schedule: reminder, then purge with every brick's eraser (Phase 3).
+export { runAccountDeletionSchedule, startAccountDeletionSchedule, authEraser, erasureHash } from './services/deletion-schedule';
+export type { IDeletionScheduleResult } from './services/deletion-schedule';
 export type { IImportUser } from './migrate';
 
 // Production-readiness — validate the auth config (fatal on a weak jwtSecret in

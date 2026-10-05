@@ -116,6 +116,8 @@ export const MESSAGE_KEYS = {
 	accountDeletionCode: 'account-deletion-code',
 	accountDeletionScheduled: 'account-deletion-scheduled',
 	accountRestored: 'account-restored',
+	// A week before deletion, once, if they never tried to sign in since asking.
+	accountDeletionReminder: 'account-deletion-reminder',
 } as const;
 
 export type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -211,6 +213,29 @@ export interface IAccountDeletionConfig {
 	 * owns a team with other members (transfer it first — design D4).
 	 */
 	blockers?: IAccountDeletionBlocker[];
+	/** Days before the deletion date to remind (once, if no sign-in attempt since the request). Default 7. */
+	reminderDaysBefore?: number;
+	/**
+	 * What every brick erases when an account is purged — run IN-PROCESS before
+	 * the account row goes, so a failure keeps the account archived and the
+	 * purge retries (nothing is half-erased). Each brick ships its own (e.g.
+	 * @fonderie/workspaces `accountEraser(store)`); auth's runs first, always.
+	 */
+	erasers?: IAccountEraser[];
+}
+
+/** Who is being erased — only for the erasers, never stored. */
+export interface IErasureSubject {
+	userId: string;
+	email: string | null;
+	phone: string | null;
+}
+
+export interface IAccountEraser {
+	/** The brick, as the erasure receipt names it ('workspaces', 'media', …). */
+	name: string;
+	/** Erase or pseudonymize what this brick holds about the subject; say how many rows. */
+	erase: (subject: IErasureSubject) => Promise<{ erased: number; kept?: string }>;
 }
 
 export type IAccountDeletionBlocker = (userId: string) => Promise<IAccountDeletionRefusal | null>;

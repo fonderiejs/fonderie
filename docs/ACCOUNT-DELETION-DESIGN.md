@@ -81,7 +81,7 @@ keyed by the opaque user id (SOC 2 CC7). Backups age out on their own schedule
 
 ## 4. Phases
 
-**Phase 1 — Correctness now (auth, patch).** No new flow yet; stop the bleeding.
+**Phase 1 — Correctness now (auth, patch).** ✅ #628. No new flow yet; stop the bleeding.
 - Login of a soft-deleted account answers `403 ACCOUNT_PENDING_DELETION` with
   `deleteOn` (only after the password / OTP / OAuth proof succeeds — never an
   account-existence oracle).
@@ -91,7 +91,7 @@ keyed by the opaque user id (SOC 2 CC7). Backups age out on their own schedule
   resets / verifications are cleared at deletion.
 - Members list and seat counts skip soft-deleted users (workspaces).
 
-**Phase 2 — The request flow (auth + client + hooks + screens).**
+**Phase 2 — The request flow (auth + client + hooks + screens).** ✅ #635 (+ app screens in the reference apps).
 - `POST /users/me/deletion { channel }` → code to a VERIFIED channel the person
   picks; `POST /users/me/deletion/confirm { code }` → schedules
   (`deletion_requested_at`, `deletion_scheduled_for = now + gracePeriod`,
@@ -105,7 +105,7 @@ keyed by the opaque user id (SOC 2 CC7). Backups age out on their own schedule
   screen in the auth screens.
 - `DELETE /users` stays as a deprecated alias that requires the code.
 
-**Phase 3 — Reminder + purge job (auth).** `startUserRetention` becomes the
+**Phase 3 — Reminder + purge job (auth).** ✅ `runAccountDeletionSchedule` — no final "deleted" notice: sending one would leave the address in the event and message logs after erasure. `startUserRetention` becomes the
 deletion scheduler: reminder pass (deleteOn − 7 d, no login attempt since
 request, once), purge pass (final notice → `fonderie.user.purging` fan-out →
 row delete → receipt). Fails closed per user: a brick that throws leaves the

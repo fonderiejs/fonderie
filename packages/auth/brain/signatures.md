@@ -56,6 +56,20 @@ new AuthModule(store: IStoreAdapter, config: IAuthConfig, bus?: EventBus | undef
   .checkReadiness(): IReadinessProblem[]
   .install(app: IFonderieApp): void
 
+interface IAccountEraser {
+    name: string;
+    erase: (subject: IErasureSubject) => Promise<{
+        erased: number;
+        kept?: string;
+    }>;
+}
+
+interface IErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
+
 interface IAuthConfig extends IAuthSecrets, IAuthRuntimeConfig {
     location?: LocationResolver;
     secureCookies?: boolean;
@@ -109,11 +123,11 @@ interface IDataExportContributor {
 
 const AUTH_CONFIG_KEYS: Record<Exclude<keyof IAuthRuntimeConfig, 'sessionPolicies'>, string>
 
-const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; readonly accountDeletionCode: "account-deletion-code"; readonly accountDeletionScheduled: "account-deletion-scheduled"; readonly accountRestored: "account-restored"; }
+const MESSAGE_KEYS: { readonly emailRegistration: "email-registration"; readonly emailVerification: "email-verification"; readonly passwordReset: "password-reset"; readonly phoneOtp: "phone-otp"; readonly mfaEnabled: "mfa-enabled"; readonly mfaDisabled: "mfa-disabled"; readonly mfaBackupCodesRegenerated: "mfa-backup-codes-regenerated"; readonly emailChanged: "email-changed"; readonly phoneChanged: "phone-changed"; readonly passwordRevoked: "password-revoked"; readonly oauthRegistration: "oauth-registration"; readonly oauthLinked: "oauth-linked"; readonly oauthUnlinked: "oauth-unlinked"; readonly accountDeletionCode: "account-deletion-code"; readonly accountDeletionScheduled: "account-deletion-scheduled"; readonly accountRestored: "account-restored"; readonly accountDeletionReminder: "account-deletion-reminder"; }
 
 type AuthMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
 
-const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; "account-deletion-code": IDefaultTemplate; "account-deletion-scheduled": IDefaultTemplate; "account-restored": IDefaultTemplate; }
+const DEFAULT_TEMPLATES: { "email-registration": IDefaultTemplate; "email-verification": IDefaultTemplate; "password-reset": IDefaultTemplate; "phone-otp": IDefaultTemplate; "mfa-enabled": IDefaultTemplate; "mfa-disabled": IDefaultTemplate; "mfa-backup-codes-regenerated": IDefaultTemplate; "email-changed": IDefaultTemplate; "phone-changed": IDefaultTemplate; "password-revoked": IDefaultTemplate; "oauth-registration": IDefaultTemplate; "oauth-linked": IDefaultTemplate; "oauth-unlinked": IDefaultTemplate; "account-deletion-code": IDefaultTemplate; "account-deletion-scheduled": IDefaultTemplate; "account-restored": IDefaultTemplate; "account-deletion-reminder": IDefaultTemplate; }
 
 interface IUserDTO {
     id: string;
@@ -234,6 +248,24 @@ interface IPurgeOptions {
 interface IUserRetentionScheduleOptions extends IPurgeOptions {
     intervalMs?: number;
     onPurge?: (deleted: number) => void;
+}
+
+function runAccountDeletionSchedule(store: IStoreAdapter, config: ScheduleConfig, bus?: Bus | undefined, options?: { batchSize?: number; }): Promise<IDeletionScheduleResult>
+
+function startAccountDeletionSchedule(store: IStoreAdapter, config: ScheduleConfig, options?: { bus?: Bus; intervalMs?: number; onRun?: (r: IDeletionScheduleResult) => void; }): { ...; }
+
+function authEraser(store: IStoreAdapter): IAccountEraser
+
+function erasureHash(secret: string, value: string | null): string | null
+
+interface IDeletionScheduleResult {
+    reminded: number;
+    purged: number;
+    failed: Array<{
+        userId: string;
+        eraser: string;
+        error: string;
+    }>;
 }
 
 interface IImportUser {

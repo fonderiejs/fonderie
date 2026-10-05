@@ -199,4 +199,13 @@ Si fuiste tú, todo está en orden. Si no, contacta con soporte de inmediato.`,
 <p class="muted">Si no fuiste tú, cambia tu contraseña de inmediato.</p>`,
 		text: `Se canceló la eliminación de tu cuenta; tu cuenta vuelve a estar activa. ¿No fuiste tú? Cambia tu contraseña ahora.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionReminder]: {
+		subject: `Tu cuenta se eliminará el {{deleteOn}}`,
+		html: `<h1>Tu cuenta se eliminará pronto</h1>
+<p>Como lo pediste, tu cuenta está cerrada y se eliminará de forma permanente el <strong>{{deleteOn}}</strong>. Después de esa fecha no se podrá recuperar.</p>
+<p>¿Cambiaste de opinión? Inicia sesión antes y elige <strong>Conservar mi cuenta</strong>.</p>
+<p class="muted">No tienes que hacer nada si aún quieres eliminarla.</p>`,
+		text: `Recordatorio: tu cuenta se eliminará de forma permanente el {{deleteOn}}. ¿Cambiaste de opinión? Inicia sesión antes y elige Conservar mi cuenta.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;

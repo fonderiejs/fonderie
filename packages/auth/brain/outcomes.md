@@ -20,6 +20,20 @@ expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
+### `fonderie_account_erasures`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id                  UUID NOT NULL UNIQUE
+email_hash               TEXT
+phone_hash               TEXT
+requested_at             TIMESTAMPTZ
+reminded_at              TIMESTAMPTZ
+erased_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+outcomes                 JSONB NOT NULL DEFAULT '[]'::jsonb
+-- INDEX idx_fonderie_account_erasures_erased_at (erased_at)
+```
+
 ### `fonderie_consumed_tokens`
 
 ```sql

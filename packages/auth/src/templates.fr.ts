@@ -201,4 +201,13 @@ Si c'est bien vous, tout est en ordre. Sinon, contactez immédiatement le suppor
 <p class="muted">Si ce n&rsquo;est pas vous, changez votre mot de passe immédiatement.</p>`,
 		text: `La suppression de votre compte a été annulée ; votre compte est de nouveau actif. Ce n'est pas vous ? Changez votre mot de passe maintenant.`,
 	},
+
+	[MESSAGE_KEYS.accountDeletionReminder]: {
+		subject: `Votre compte sera supprimé le {{deleteOn}}`,
+		html: `<h1>Votre compte sera bientôt supprimé</h1>
+<p>Comme vous l&rsquo;avez demandé, votre compte est fermé et sera supprimé définitivement le <strong>{{deleteOn}}</strong>. Après cette date, il ne pourra plus être récupéré.</p>
+<p>Vous avez changé d&rsquo;avis ? Connectez-vous avant cette date et choisissez <strong>Conserver mon compte</strong>.</p>
+<p class="muted">Aucune action n&rsquo;est requise si vous souhaitez toujours sa suppression.</p>`,
+		text: `Rappel : votre compte sera supprimé définitivement le {{deleteOn}}. Vous avez changé d'avis ? Connectez-vous avant et choisissez Conserver mon compte.`,
+	},
 } satisfies Record<AuthMessageKey, IDefaultTemplateCopy>;
