@@ -164,7 +164,7 @@ INSERT INTO fonderie_customer_labels (type, value) SELECT DISTINCT 'address'::fo
 |---|---|---|
 | GET | `/customers` | `requireAuth → wsCtx → customer.list` |
 | POST | `/customers` | `requireAuth → wsCtx → validate(createCustomerSchema) → customer.create` |
-| DELETE | `/customers/:customerId` | `requireAuth → wsCtx → customer.delete` |
+| DELETE | `/customers/:customerId` | `requireAuth → wsCtx → brake('customer.delete') → customer.delete` |
 | GET | `/customers/:customerId` | `requireAuth → wsCtx → customer.get` |
 | PUT | `/customers/:customerId` | `requireAuth → wsCtx → validate(updateCustomerSchema) → customer.update` |
 | GET | `/customers/:customerId/addresses` | `requireAuth → wsCtx → address.list` |

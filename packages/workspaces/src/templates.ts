@@ -69,6 +69,17 @@ You are still a member of {{workspaceName}}, but you can no longer manage the te
 
 If you did not expect this, contact the owner of the team.`,
 	},
+	[MESSAGE_KEYS.managerPaused]: {
+		subject: '{{memberName}} was paused from deleting in {{workspaceName}}',
+		html: `<h1>Deleting was paused</h1>
+<p><strong>{{memberName}}</strong> deleted {{count}} things in {{minutes}} minutes in <strong>{{workspaceName}}</strong>, so they can no longer delete anything there until you review it.</p>
+<p class="muted">Check the activity log and the Recently deleted lists: anything deleted can be restored for 30 days. If it was expected, release them from the Members screen.</p>`,
+		text: `Deleting was paused
+
+{{memberName}} deleted {{count}} things in {{minutes}} minutes in {{workspaceName}}, so they can no longer delete anything there until you review it.
+
+Check the activity log and the Recently deleted lists: anything deleted can be restored for 30 days. If it was expected, release them from the Members screen.`,
+	},
 	[MESSAGE_KEYS.ownershipOffered]: {
 		subject: '{{ownerName}} wants to make you the owner of {{workspaceName}}',
 		html: `<h1>You are offered a team</h1>
@@ -116,6 +127,7 @@ export const SAMPLE_PAYLOADS: Record<WorkspacesMessageKey, Record<string, unknow
 	[MESSAGE_KEYS.memberRemoved]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester' },
 	[MESSAGE_KEYS.memberRemovedAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', memberName: 'Ana Tester' },
 	[MESSAGE_KEYS.managerRemoved]: { workspaceName: 'Acme Crew' },
+	[MESSAGE_KEYS.managerPaused]: { workspaceName: 'Acme Crew', memberName: 'Marco Tester', count: '10', minutes: '10' },
 	[MESSAGE_KEYS.ownershipOffered]: { workspaceName: 'Acme Crew', ownerName: 'Olivia Tester' },
 	[MESSAGE_KEYS.ownershipAccepted]: { workspaceName: 'Acme Crew', newOwnerName: 'Marco Tester' },
 };

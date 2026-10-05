@@ -18,6 +18,7 @@ import {
 } from './schemas';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
+import * as workspaces from '@fonderie/workspaces';
 import { withWorkspace } from '@fonderie/workspaces';
 
 import type { ICustomersConfig } from './config';
@@ -48,6 +49,12 @@ export function buildCustomerRoutes(
 	const tag = customerTagController(store);
 	const relationship = customerRelationshipController(store);
 	const label = customerLabelController(store);
+	// The velocity brake ships in @fonderie/workspaces 7.1; with an older 7.x it
+	// is simply absent (no crash, no brake).
+	const brake = (kind: string): Middleware =>
+		typeof workspaces.velocityBrake === 'function'
+			? workspaces.velocityBrake(store, kind, config.velocityBrake ?? {}, bus)
+			: (_ctx, next) => next();
 	const bin = customerBinController(store);
 
 	const routes: RouteDefinition[] = [
@@ -65,7 +72,8 @@ export function buildCustomerRoutes(
 		['POST', '/customers', requireAuth, wsCtx, validate(createCustomerSchema), customer.create],
 		['GET', '/customers/:customerId', requireAuth, wsCtx, customer.get],
 		['PUT', '/customers/:customerId', requireAuth, wsCtx, validate(updateCustomerSchema), customer.update],
-		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
+		// Deleting too many too fast pauses the person (insider threat, Phase 5).
+		['DELETE', '/customers/:customerId', requireAuth, wsCtx, brake('customer.delete'), customer.delete],
 		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, validate(blacklistSchema), customer.blacklist],
 		['POST', '/customers/:customerId/unblacklist', requireAuth, wsCtx, customer.unblacklist],
 		['POST', '/customers/:customerId/archive', requireAuth, wsCtx, customer.archive],

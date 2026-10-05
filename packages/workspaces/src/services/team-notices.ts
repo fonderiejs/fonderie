@@ -14,6 +14,7 @@ import { getWorkspaceSettings } from './workspaces';
 //   manager.unset         → the person who is no longer a manager
 //   ownership.offered     → the member it is offered to (Phase 4)
 //   ownership.transferred → the PREVIOUS owner (the actor is the new owner)
+//   manager.paused        → the owner: someone deleted too much too fast (Phase 5)
 
 type Bus = { emit(type: string, payload: unknown): Promise<void> };
 
@@ -35,10 +36,12 @@ export const TEAM_NOTICE_EVENTS = [
 	EVENT_KEYS.managerUnset,
 	EVENT_KEYS.ownershipOffered,
 	EVENT_KEYS.ownershipTransferred,
+	EVENT_KEYS.managerPaused,
 ] as const;
 
 export async function sendTeamNotice(store: IStoreAdapter, bus: Bus, type: string, t: ITrail): Promise<void> {
 	if (!t.targetUserId || t.targetUserId === t.userId) return;
+	const extra = t as ITrail & { actions?: number; windowMinutes?: number };
 	const [ws] = await store.query<{ name: string; ownerId: string }>(
 		`SELECT name, owner_id AS "ownerId" FROM fonderie_workspaces WHERE id = $1`,
 		[t.workspaceId],
@@ -91,7 +94,15 @@ export async function sendTeamNotice(store: IStoreAdapter, bus: Bus, type: strin
 		case EVENT_KEYS.ownershipOffered:
 			await send(target, MESSAGE_KEYS.ownershipOffered, { workspaceName: ws.name, ownerName: nameOf(actor) });
 			return;
-		case EVENT_KEYS.ownershipTransferred:
+		case EVENT_KEYS.managerPaused:
+			await send(people.get(ws.ownerId), MESSAGE_KEYS.managerPaused, {
+				workspaceName: ws.name,
+				memberName: nameOf(target) || t.targetUserId,
+				count: String(extra.actions ?? ''),
+				minutes: String(extra.windowMinutes ?? ''),
+			});
+			return;
+				case EVENT_KEYS.ownershipTransferred:
 			await send(target, MESSAGE_KEYS.ownershipAccepted, { workspaceName: ws.name, newOwnerName: nameOf(actor) });
 			return;
 	}
