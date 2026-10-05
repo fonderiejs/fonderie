@@ -1,6 +1,8 @@
 export { MediaModule } from './module';
 export { DEFAULT_ALLOWED_TYPES, DEFAULT_MAX_BYTES } from './config';
 export type { IMediaConfig } from './config';
+export { accountEraser } from './eraser';
+export type { IMediaAccountEraser, IMediaErasureResult, IMediaErasureSubject } from './eraser';
 
 // Storage lives in @fonderie/storage now; re-exported here for convenience so
 // existing consumers can keep importing the zero-infra providers from media.

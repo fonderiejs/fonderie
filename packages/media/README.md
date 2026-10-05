@@ -61,3 +61,29 @@ files — serve those through your own authenticated route.
 **Owner authorization:** uploads default to self-owned user assets only
 (`ownerType: 'user'`, `ownerId` = the caller). To allow workspace logos, customer
 photos, etc., pass `authorizeOwner(ctx, owner)` in the module config.
+
+## Account deletion
+
+When an account is purged, media erases what is the person's and keeps what is
+the business's:
+
+- assets they **own** (`ownerType: 'user'`, `ownerId` = them — an avatar): the
+  row and the bytes are deleted, so `GET /media/:id` returns 404;
+- assets they **uploaded for another owner** (a workspace logo, a customer
+  photo): kept for that owner, with `createdBy` set to `null`.
+
+Get the eraser from the module, so it deletes bytes through the same provider
+the module stores them with:
+
+```ts
+const media = new MediaModule(store, { provider });
+app.register(media);
+const eraser = media.accountEraser(); // { name: 'media', erase(subject) }
+// → hand it to the account purge; erase({ userId, email, phone }) resolves to
+//   { erased, kept? } and is safe to retry.
+```
+
+`accountEraser(store, { provider })` is also exported for a purge that runs
+outside the app process — pass the provider media is configured with. If the
+provider fails to delete some bytes, those assets are restored and `erase`
+throws, so the retry can still find them.
