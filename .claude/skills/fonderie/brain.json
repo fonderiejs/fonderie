@@ -7,16 +7,16 @@
     "admin": "1.7.12",
     "audit": "5.2.17",
     "auth": "7.25.0",
-    "billing": "10.9.0",
+    "billing": "10.10.0",
     "client": "3.15.0",
     "config": "6.6.7",
     "core": "0.31.0",
-    "courier": "7.15.0",
-    "customers": "6.5.2",
-    "events": "5.12.4",
+    "courier": "7.16.0",
+    "customers": "6.6.0",
+    "events": "5.13.0",
     "geo": "0.5.12",
     "logger": "0.3.8",
-    "media": "0.3.4",
+    "media": "0.4.0",
     "permissions": "5.1.3",
     "rate-limit": "4.1.0",
     "react": "0.11.0",
@@ -76,8 +76,8 @@
     "vue-webhooks-screens": "0.4.1",
     "vue-workspaces": "0.10.2",
     "vue-workspaces-screens": "0.5.1",
-    "webhooks": "6.0.8",
-    "workspaces": "6.8.1"
+    "webhooks": "6.1.0",
+    "workspaces": "6.9.0"
   },
   "packages": {
     "adapter-express": {
@@ -611,7 +611,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "10.9.0",
+      "version": "10.10.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1019,7 +1019,7 @@
       "hasOutcomes": true
     },
     "courier": {
-      "version": "7.15.0",
+      "version": "7.16.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1121,7 +1121,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.5.2",
+      "version": "6.6.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1353,7 +1353,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.12.4",
+      "version": "5.13.0",
       "stability": "maturing",
       "requires": [
         "core",
@@ -1432,7 +1432,7 @@
       "hasOutcomes": false
     },
     "media": {
-      "version": "0.3.4",
+      "version": "0.4.0",
       "stability": "experimental",
       "requires": [
         "core",
@@ -2961,7 +2961,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "6.0.8",
+      "version": "6.1.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -3028,7 +3028,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.8.1",
+      "version": "6.9.0",
       "stability": "stable",
       "requires": [
         "core",
