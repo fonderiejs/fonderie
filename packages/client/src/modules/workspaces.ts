@@ -405,6 +405,17 @@ export class WorkspacesClient {
 		});
 	}
 
+	// Owner only: someone the velocity brake paused (deleted too much too fast)
+	// may delete again.
+	releaseBrake(userId: string) {
+		return this.http.request<IApiResponse<undefined>>({
+			method: 'DELETE',
+			path: `/workspaces/members/${encodeURIComponent(userId)}/brake`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
 	// Owner only, after a step-up (auth.stepUp): OFFER the workspace to another
 	// member. It moves when they accept (acceptOwnership); the previous owner
 	// stays as a manager. 403 STEP_UP_REQUIRED without a fresh proof.

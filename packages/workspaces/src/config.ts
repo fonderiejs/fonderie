@@ -9,6 +9,8 @@ export const MESSAGE_KEYS = {
 	// it, and the previous owner hears when they accept.
 	ownershipOffered: 'workspace-ownership-offered',
 	ownershipAccepted: 'workspace-ownership-accepted',
+	// Phase 5: the owner hears that someone was paused for deleting too fast.
+	managerPaused: 'workspace-manager-paused',
 } as const;
 
 export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KEYS];
@@ -36,6 +38,9 @@ export const EVENT_KEYS = {
 	ownershipTransferred: 'fonderie.workspace.ownership.transferred',
 	ownershipDeclined: 'fonderie.workspace.ownership.declined',
 	ownershipWithdrawn: 'fonderie.workspace.ownership.withdrawn',
+	// Phase 5: the velocity brake paused someone (targetUserId) / the owner released them.
+	managerPaused: 'fonderie.workspace.manager.paused',
+	managerReleased: 'fonderie.workspace.manager.released',
 	invitationCreated: 'fonderie.workspace.invitation.created',
 	invitationCancelled: 'fonderie.workspace.invitation.cancelled',
 	invitationResent: 'fonderie.workspace.invitation.resent',
@@ -70,6 +75,11 @@ export interface IWorkspacesConfig {
 	// Handing the team over asks for a fresh proof it's the owner (POST
 	// /auth/step-up, @fonderie/auth 7.27+). Default true; false turns it off.
 	stepUp?: boolean;
+
+	// The velocity brake (Phase 5): someone other than the owner who makes
+	// `limit` destructive changes in `windowMinutes` (default 10 in 10) is paused
+	// from deleting until the owner releases them. false turns it off.
+	velocityBrake?: { limit?: number; windowMinutes?: number } | false;
 
 	// System-role NAMES that count as managers (default ['ADMIN']). Matched
 	// only against is_system roles — GUEST is also a system role and must not
@@ -112,6 +122,7 @@ export type WorkspaceRouteId =
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
 	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
+	| 'releaseBrake'
 	| 'getOwnershipOffer' | 'acceptOwnership' | 'declineOwnership' | 'withdrawOwnershipOffer'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'
 	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin';

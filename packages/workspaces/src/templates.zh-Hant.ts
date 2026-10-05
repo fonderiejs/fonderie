@@ -56,6 +56,17 @@ export const ZH_HANT_TEMPLATES = {
 
 如果這不在你的預期之內，請聯絡團隊擁有者。`,
 	},
+	[MESSAGE_KEYS.managerPaused]: {
+		subject: '{{memberName}} 在 {{workspaceName}} 的刪除權限已暫停',
+		html: `<h1>刪除已暫停</h1>
+<p><strong>{{memberName}}</strong> 在 {{minutes}} 分鐘內刪除了 {{count}} 項 <strong>{{workspaceName}}</strong> 中的內容，因此在你核查之前無法再刪除任何內容。</p>
+<p class="muted">請查看活動記錄和「最近刪除」清單：所有刪除的內容都可在 30 天內還原。如果這是預期操作，請在「成員」頁面解除暫停。</p>`,
+		text: `刪除已暫停
+
+{{memberName}} 在 {{minutes}} 分鐘內刪除了 {{count}} 項 {{workspaceName}} 中的內容，因此在你核查之前無法再刪除任何內容。
+
+請查看活動記錄和「最近刪除」清單：所有刪除的內容都可在 30 天內還原。如果這是預期操作，請在「成員」頁面解除暫停。`,
+	},
 	[MESSAGE_KEYS.ownershipOffered]: {
 		subject: '{{ownerName}} 想讓你成為 {{workspaceName}} 的擁有者',
 		html: `<h1>有人向你轉讓團隊</h1>

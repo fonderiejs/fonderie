@@ -72,7 +72,9 @@ export async function listMembers(
 		   )                                             AS "roles",
 		   (w.owner_id = ruw.user_id)                    AS "isOwner",
 		   (w.owner_id = ruw.user_id
-		     OR bool_or(r.is_system AND r.active AND r.name = ANY($2)))  AS "isManager"
+		     OR bool_or(r.is_system AND r.active AND r.name = ANY($2)))  AS "isManager",
+		   EXISTS (SELECT 1 FROM fonderie_workspace_brakes b
+		            WHERE b.workspace_id = ruw.workspace_id AND b.user_id = ruw.user_id) AS "paused"
 		 FROM fonderie_role_user_workspaces ruw
 		 JOIN fonderie_workspaces w ON w.id = ruw.workspace_id
 		 LEFT JOIN fonderie_roles r ON r.id = ruw.role_id

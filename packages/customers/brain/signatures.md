@@ -10,6 +10,10 @@ Subpath exports: `@fonderie/customers/types`, `@fonderie/customers/migrations`, 
 type CustomersEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 type ICustomersConfig = {
+    velocityBrake?: {
+        limit?: number;
+        windowMinutes?: number;
+    } | false;
     referenceCodePrefix?: string;
     permission?: string;
     isInUse?: (customerId: string, workspaceId: string) => Promise<boolean>;

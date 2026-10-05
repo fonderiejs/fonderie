@@ -18,7 +18,7 @@ import {
 } from './schemas';
 import type { EventBus } from '@fonderie/events';
 import type { IStoreAdapter } from '@fonderie/store';
-import { withWorkspace } from '@fonderie/workspaces';
+import { velocityBrake, withWorkspace } from '@fonderie/workspaces';
 
 import type { ICustomersConfig } from './config';
 import { customerController } from './controllers/customer.controller';
@@ -65,7 +65,8 @@ export function buildCustomerRoutes(
 		['POST', '/customers', requireAuth, wsCtx, validate(createCustomerSchema), customer.create],
 		['GET', '/customers/:customerId', requireAuth, wsCtx, customer.get],
 		['PUT', '/customers/:customerId', requireAuth, wsCtx, validate(updateCustomerSchema), customer.update],
-		['DELETE', '/customers/:customerId', requireAuth, wsCtx, customer.delete],
+		// Deleting too many too fast pauses the person (insider threat, Phase 5).
+		['DELETE', '/customers/:customerId', requireAuth, wsCtx, velocityBrake(store, 'customer.delete', config.velocityBrake ?? {}, bus), customer.delete],
 		['POST', '/customers/:customerId/blacklist', requireAuth, wsCtx, validate(blacklistSchema), customer.blacklist],
 		['POST', '/customers/:customerId/unblacklist', requireAuth, wsCtx, customer.unblacklist],
 		['POST', '/customers/:customerId/archive', requireAuth, wsCtx, customer.archive],

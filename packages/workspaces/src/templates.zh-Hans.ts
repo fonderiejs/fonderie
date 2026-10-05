@@ -56,6 +56,17 @@ export const ZH_HANS_TEMPLATES = {
 
 如果这不在你的预期之内，请联系团队所有者。`,
 	},
+	[MESSAGE_KEYS.managerPaused]: {
+		subject: '{{memberName}} 在 {{workspaceName}} 中的删除权限已暂停',
+		html: `<h1>删除已暂停</h1>
+<p><strong>{{memberName}}</strong> 在 {{minutes}} 分钟内删除了 {{count}} 项 <strong>{{workspaceName}}</strong> 中的内容，因此在你核查之前无法再删除任何内容。</p>
+<p class="muted">请查看活动记录和“最近删除”列表：所有删除的内容都可在 30 天内恢复。如果这是预期操作，请在“成员”页面解除暂停。</p>`,
+		text: `删除已暂停
+
+{{memberName}} 在 {{minutes}} 分钟内删除了 {{count}} 项 {{workspaceName}} 中的内容，因此在你核查之前无法再删除任何内容。
+
+请查看活动记录和“最近删除”列表：所有删除的内容都可在 30 天内恢复。如果这是预期操作，请在“成员”页面解除暂停。`,
+	},
 	[MESSAGE_KEYS.ownershipOffered]: {
 		subject: '{{ownerName}} 想让你成为 {{workspaceName}} 的所有者',
 		html: `<h1>有人向你转让团队</h1>

@@ -56,6 +56,17 @@ Vous êtes toujours membre de {{workspaceName}}, mais vous ne pouvez plus gérer
 
 Si vous ne vous y attendiez pas, contactez le propriétaire de l’équipe.`,
 	},
+	[MESSAGE_KEYS.managerPaused]: {
+		subject: '{{memberName}} ne peut plus rien supprimer dans {{workspaceName}}',
+		html: `<h1>Suppressions suspendues</h1>
+<p><strong>{{memberName}}</strong> a supprimé {{count}} éléments en {{minutes}} minutes dans <strong>{{workspaceName}}</strong> : ses suppressions sont suspendues jusqu’à ce que vous vérifiiez.</p>
+<p class="muted">Consultez le journal d’activité et les éléments récemment supprimés : tout peut être restauré pendant 30 jours. Si c’était prévu, levez la suspension depuis l’écran Membres.</p>`,
+		text: `Suppressions suspendues
+
+{{memberName}} a supprimé {{count}} éléments en {{minutes}} minutes dans {{workspaceName}} : ses suppressions sont suspendues jusqu’à ce que vous vérifiiez.
+
+Consultez le journal d’activité et les éléments récemment supprimés : tout peut être restauré pendant 30 jours. Si c’était prévu, levez la suspension depuis l’écran Membres.`,
+	},
 	[MESSAGE_KEYS.ownershipOffered]: {
 		subject: '{{ownerName}} souhaite vous nommer propriétaire de {{workspaceName}}',
 		html: `<h1>On vous propose une équipe</h1>

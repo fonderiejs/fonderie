@@ -54,3 +54,8 @@ export type { IErasureSubject, IErasureResult } from './account-deletion';
 // The undo bin for roles (docs/INSIDER-THREAT-DESIGN.md, Phase 3)
 export { ROLE_BIN_RETENTION_DAYS, emptyRoleBin, listRoleBin, restoreRole } from './services/roles';
 export type { IBinnedRole, RestoreRoleOutcome } from './services/roles';
+
+// The velocity brake (docs/INSIDER-THREAT-DESIGN.md, Phase 5): other bricks put it on their destructive routes.
+export { VELOCITY_BRAKE_DEFAULTS, releaseBrake, velocityBrake } from './middlewares/velocity-brake';
+export type { IVelocityBrakeOptions } from './middlewares/velocity-brake';
+

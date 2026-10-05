@@ -438,6 +438,8 @@ export interface IMemberDTO {
 	isOwner: boolean;
 	/** The owner, or a holder of a manager role — may manage the team. */
 	isManager: boolean;
+	/** Paused from deleting by the velocity brake, until the owner releases them (releaseBrake). */
+	paused?: boolean;
 }
 
 export interface IMemberRoleDTO {

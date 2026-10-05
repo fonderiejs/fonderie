@@ -1,6 +1,6 @@
 # Insider threat: a rogue manager or owner
 
-Status: Phases 1–4 shipped (2026-10-05); 5 planned.
+Status: all five phases shipped (2026-10-05).
 
 ## 1. The scenario
 
@@ -91,8 +91,16 @@ DELETE no longer needs it: the undo bin covers it — CREATE is the exfiltration
 move). Ownership is OFFERED and moves when the member accepts (7-day expiry,
 claimed + moved in one transaction).
 
-**Phase 5 — Velocity brake**, built on @fonderie/risk (decide ≠ enforce: risk
-decides, workspaces suspends the manager role, the owner restores).
+**Phase 5 — Velocity brake.** ✅ `velocityBrake(store, kind, options, bus)`
+(workspaces, used by customers and webhooks): someone other than the owner who
+makes `limit` destructive changes in `windowMinutes` (default 10 in 10) is
+paused — every braked route answers 429 MANAGER_PAUSED, reading and ordinary
+work go on; `fonderie.workspace.manager.paused` + an email to the owner;
+members carry `paused`; the owner releases with
+`DELETE /workspaces/members/:userId/brake`. A pause, not a role suspension:
+suspending the manager role would have hidden them from the members list the
+owner releases them from. Built in workspaces rather than on @fonderie/risk —
+a count over one table needs no rules engine.
 
 ## 5. Decisions
 

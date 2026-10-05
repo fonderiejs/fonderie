@@ -1223,7 +1223,7 @@
         {
           "method": "DELETE",
           "path": "/customers/:customerId",
-          "mw": "requireAuth → wsCtx → customer.delete"
+          "mw": "requireAuth → wsCtx → velocityBrake(store, 'customer.delete', config.velocityBrake ?? {}, bus) → customer.delete"
         },
         {
           "method": "GET",
@@ -3079,7 +3079,7 @@
         {
           "method": "DELETE",
           "path": "/webhooks/:endpointId",
-          "mw": "requireAuth → ws → manager → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; // Into the undo bin: restorable for 30 days. const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
+          "mw": "requireAuth → ws → manager → velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {}) → async (ctx) => { if (!ctx.workspace) return setApiResponse( HTTP.UNPROCESSABLE, 'MISSING_WORKSPACE', 'Workspace context required', ); const { endpointId } = ctx.meta['params'] as { endpointId: string }; // Into the undo bin: restorable for 30 days. const deleted = await new EndpointModel(store).delete(endpointId, ctx.workspace.id, ctx.user?.id ?? null); if (!deleted) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Webhook endpoint not found'); return new Response(null, { status: HTTP.NO_CONTENT }); }"
         },
         {
           "method": "GET",
@@ -3140,7 +3140,8 @@
         "MESSAGE_KEYS",
         "EVENT_KEYS",
         "DEFAULT_TEMPLATES",
-        "ROLE_BIN_RETENTION_DAYS"
+        "ROLE_BIN_RETENTION_DAYS",
+        "VELOCITY_BRAKE_DEFAULTS"
       ],
       "subpaths": [
         "@fonderie/workspaces/types",
@@ -3152,11 +3153,13 @@
         "fonderie_role_bin",
         "fonderie_role_user_workspaces",
         "fonderie_roles",
+        "fonderie_workspace_brakes",
+        "fonderie_workspace_destructive_actions",
         "fonderie_workspace_invitations",
         "fonderie_workspace_ownership_offers",
         "fonderie_workspaces"
       ],
-      "routeCount": 39,
+      "routeCount": 40,
       "routes": [
         {
           "method": "GET",
@@ -3206,7 +3209,7 @@
         {
           "method": "DELETE",
           "path": "/workspaces/invitations/:inviteId",
-          "mw": "requireAuth → wsCtx → manager → T(K.invitationCancelled, inviteOf) → invitation.cancel"
+          "mw": "requireAuth → wsCtx → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel"
         },
         {
           "method": "POST",
@@ -3231,7 +3234,12 @@
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId",
-          "mw": "requireAuth → wsCtx → manager → T(K.memberRemoved, target) → member.remove"
+          "mw": "requireAuth → wsCtx → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/members/:userId/brake",
+          "mw": "requireAuth → wsCtx → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }"
         },
         {
           "method": "DELETE",
@@ -3281,7 +3289,7 @@
         {
           "method": "DELETE",
           "path": "/workspaces/roles/:roleId",
-          "mw": "requireAuth → wsCtx → manager → T(K.roleDeleted, roleOf) → role.remove"
+          "mw": "requireAuth → wsCtx → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove"
         },
         {
           "method": "GET",
@@ -6666,6 +6674,9 @@
       "workspaces"
     ],
     "role_bin_retention_days": [
+      "workspaces"
+    ],
+    "velocity_brake_defaults": [
       "workspaces"
     ]
   },

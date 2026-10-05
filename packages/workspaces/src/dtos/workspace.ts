@@ -93,6 +93,8 @@ export interface IMemberDTO {
 	isOwner: boolean;
 	/** The owner, or a holder of a manager role — may manage the team. */
 	isManager: boolean;
+	/** Paused from deleting by the velocity brake (Phase 5), until the owner releases them. */
+	paused: boolean;
 }
 
 export interface IMemberRoleDTO {
@@ -192,6 +194,7 @@ export function toMemberDTO(m: IMember): IMemberDTO {
 			: m.roleId ? [{ id: stringOrEmpty(m.roleId), name: stringOrEmpty(m.roleName), isSystem: false }] : [],
 		isOwner: booleanOrFalse(m.isOwner),
 		isManager: booleanOrFalse(m.isManager),
+		paused: booleanOrFalse(m.paused),
 	};
 }
 
