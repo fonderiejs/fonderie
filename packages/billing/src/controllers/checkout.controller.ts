@@ -7,6 +7,7 @@ import type { BillingInterval } from '../types';
 import { BILLING_INTERVAL, BILLING_INTERVALS, isBillingInterval } from '../types';
 import { PlanModel } from '../models/plan.model';
 import { SubscriptionModel } from '../models/subscription.model';
+import { createRecordedCustomer } from '../services/provider-customers';
 import { resolveSubscriber } from '../utils';
 
 // Only a clear UPGRADE is applied to a live subscription in place (immediate,
@@ -246,7 +247,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			const customerId =
 				current?.providerCustomerId ??
 				(
-					await config.provider.createCustomer({
+					await createRecordedCustomer(store, config.provider, {
 						email: ctx.user!.email ?? '',
 						subscriberType: subscriber.type,
 						subscriberId: subscriber.id,

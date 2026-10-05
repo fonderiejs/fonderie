@@ -224,3 +224,13 @@ export type {
 	ISubscriberDeletedOutcome,
 	SubscriberDeletedPolicy,
 } from './services/subscriber-lifecycle';
+
+// Account erasure (deletion design Phase 4): what billing erases when an
+// account is purged — pass to auth's `accountDeletion.erasers`, before the
+// workspaces eraser.
+export { accountEraser } from './services/account-eraser';
+export type {
+	IBillingAccountEraser,
+	IBillingAccountEraserOptions,
+	IBillingErasureSubject,
+} from './services/account-eraser';

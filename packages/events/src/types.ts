@@ -4,6 +4,11 @@ export interface IEventMeta {
 	emittedAt: string;
 	attempts: number;
 	requestId?: string;
+	/**
+	 * Set when an account erasure redacted this event's personal fields (and
+	 * re-signed it): the row was rewritten on purpose, at this time.
+	 */
+	erasedAt?: string;
 }
 
 // Immutable event record — fonderie_events

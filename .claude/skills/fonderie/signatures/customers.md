@@ -255,4 +255,20 @@ interface ICustomerPhone {
 }
 
 namespace schemas — exports: addAddressSchema, addEmailSchema, addPhoneSchema, addRelationshipSchema, addTagSchema, blacklistSchema, createCustomerSchema, noteSchema, updateAddressSchema, updateCustomerSchema, updateEmailSchema, updatePhoneSchema
+
+function accountEraser(store: IStoreAdapter): ICustomersAccountEraser
+
+interface ICustomersAccountEraser {
+    name: 'customers';
+    erase(subject: ICustomersErasureSubject): Promise<{
+        erased: number;
+        kept?: string;
+    }>;
+}
+
+interface ICustomersErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
 ```

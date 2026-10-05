@@ -9,6 +9,7 @@ import {
 	setWalletCustomerCard,
 	upsertWalletCustomer,
 } from '../services/wallet-customers';
+import { createRecordedCustomer, latestRecordedCustomer } from '../services/provider-customers';
 import { toPaymentMethodDTO, toInvoiceDTO } from '../dtos/billing';
 import { decodeInvoiceCursor, pageInvoices } from '../services/invoice-cursor';
 import { resolveSubscriber } from '../utils';
@@ -48,6 +49,12 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 		if (subscription?.providerCustomerId) {
 			return { customerId: subscription.providerCustomerId, paymentMethodId: null };
 		}
+
+		// A customer created before anything pointed at it — card setup with the
+		// wallet off and no subscription yet. Without this, the card was set up
+		// on a customer the save step could not find (422 NO_CUSTOMER).
+		const recorded = await latestRecordedCustomer(store, config.provider.name, subscriber);
+		if (recorded) return { customerId: recorded, paymentMethodId: null };
 		return null;
 	}
 
@@ -78,7 +85,8 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 
 	// Resolve the subscriber's provider customer, creating + recording one when
 	// they have none yet (a pay-as-you-go user adding a card before any purchase).
-	// Recording it via the wallet-customer row means later reads resolve it.
+	// The customer record (fonderie_billing_customers) makes later reads resolve
+	// it with the wallet on or off; the wallet-customer row is kept as before.
 	async function ensureCustomer(
 		ctx: IFonderieContext,
 	): Promise<{ subscriberType: SubscriberType; subscriberId: string; customerId: string } | null> {
@@ -92,7 +100,7 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 				customerId: existing.customerId,
 			};
 		}
-		const { customerId } = await config.provider.createCustomer({
+		const { customerId } = await createRecordedCustomer(store, config.provider, {
 			email: ctx.user?.email ?? '',
 			subscriberType: subscriber.type,
 			subscriberId: subscriber.id,

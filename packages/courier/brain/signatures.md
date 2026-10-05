@@ -41,6 +41,24 @@ interface IMessageStats {
     lastError: string | null;
 }
 
+function accountEraser(store: IStoreAdapter): ICourierAccountEraser
+
+interface ICourierAccountEraser {
+    readonly name: 'courier';
+    erase(subject: ICourierErasureSubject): Promise<ICourierErasureResult>;
+}
+
+interface ICourierErasureResult {
+    erased: number;
+    kept?: string;
+}
+
+interface ICourierErasureSubject {
+    userId: string;
+    email: string | null;
+    phone: string | null;
+}
+
 new SmsChannel(config: ISmsChannelConfig): SmsChannel
   .name: "sms"
   .send(message: ICourierMessage, template: IRenderedTemplate): Promise<void>

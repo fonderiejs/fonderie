@@ -2,6 +2,7 @@ import type { IFonderieApp, IFonderieModule } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IMediaConfig } from './config';
+import { type IMediaAccountEraser, accountEraser } from './eraser';
 import { buildMediaRoutes } from './routes';
 
 /**
@@ -22,6 +23,15 @@ export class MediaModule implements IFonderieModule {
 		private readonly store: IStoreAdapter,
 		private readonly config: IMediaConfig,
 	) {}
+
+	/**
+	 * The account-deletion eraser for this module, bound to the SAME storage
+	 * provider it stores bytes with — so a purge deletes the bytes where they
+	 * actually live. Hand it to the account purge (see `accountEraser`).
+	 */
+	accountEraser(): IMediaAccountEraser {
+		return accountEraser(this.store, { provider: this.config.provider });
+	}
 
 	install(app: IFonderieApp): void {
 		for (const [method, path, ...handlers] of buildMediaRoutes(this.store, this.config)) {

@@ -14,6 +14,7 @@ import { purchasePackWithSavedCard } from '../services/purchase';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { getWalletStatus } from '../helpers';
+import { createRecordedCustomer } from '../services/provider-customers';
 import { normalizeCurrency, resolveSubscriber, subscriberEventFields } from '../utils';
 
 // The wallet routes are only registered when config.wallet is present, so
@@ -234,7 +235,7 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 			const customerId =
 				current?.providerCustomerId ??
 				(
-					await config.provider.createCustomer({
+					await createRecordedCustomer(store, config.provider, {
 						email: ctx.user!.email ?? '',
 						subscriberType: subscriber.type,
 						subscriberId: subscriber.id,

@@ -376,6 +376,20 @@ export interface IBillingProvider {
 	// provider keeps the customer's invoices. Optional.
 	deleteCustomer?(customerId: string): Promise<void>;
 
+	// Take a person's email off a customer that must SURVIVE them — a team's
+	// customer created with one member's email, when that member's account is
+	// erased. Compare-and-set: only when the customer's email is still `email`
+	// (case-insensitive) is it replaced with `replacement`, or removed when
+	// `replacement` is null; an email someone changed since is left alone.
+	// Resolves true when it changed the customer. A customer already gone
+	// resolves false. Optional; without it the account eraser reports the
+	// email as kept.
+	replaceCustomerEmail?(opts: {
+		customerId: string;
+		email: string;
+		replacement: string | null;
+	}): Promise<boolean>;
+
 	// List the customer's invoices, newest first, for an in-app billing history
 	// that links out to the provider-hosted invoice. Optional; when absent, the
 	// invoices route answers 501.

@@ -19,6 +19,10 @@ export { startIntegrityCheck } from './integrity-job';
 export type { IIntegrityCheckOptions, IIntegrityCheckHandle } from './integrity-job';
 export type { IHashableEvent, IIntegrityReport } from './integrity';
 
+// Account deletion — what the purge erases from the event log
+export { accountEraser } from './eraser';
+export type { IEventsAccountEraser, IEventsEraserOptions, IEventsErasureResult, IEventsErasureSubject } from './eraser';
+
 // Retention / disposal
 export { purgeEvents, startEventRetention } from './retention';
 export type { IPurgeEventsOptions, IRetentionScheduleOptions } from './retention';

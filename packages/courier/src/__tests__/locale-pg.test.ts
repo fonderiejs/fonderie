@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 
 import { defineLocales } from '@fonderie/core';
@@ -27,10 +25,11 @@ before(async () => {
 	if (!PG_URL) return;
 	const { PGAdapter } = await import('@fonderie/store');
 	store = new PGAdapter(PG_URL) as typeof store;
-	const dir = getMigrationsPath();
-	for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
-		await store.query(readFileSync(join(dir, f), 'utf8'));
-	}
+	// Through the runner: it takes the migrations advisory lock, so this suite
+	// and the others migrating the same database at once cannot race the
+	// CREATE TABLEs (raw SQL here collided with the eraser suite: 23505).
+	const { InternalMigrationRunner } = await import('@fonderie/store');
+	await new InternalMigrationRunner(store, getMigrationsPath()).run();
 	await store.query('DELETE FROM fonderie_courier_templates WHERE type = $1', [TYPE]);
 	await store.query('DELETE FROM fonderie_courier_template_revisions WHERE type = $1', [TYPE]);
 	await setTemplate({ type: TYPE, locale: null, text: 'app default' }, store);
