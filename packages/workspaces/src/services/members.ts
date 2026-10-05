@@ -258,7 +258,7 @@ export async function addMember(
 	);
 }
 
-export type RemoveMemberOutcome = 'removed' | 'owner' | 'not-member';
+export type RemoveMemberOutcome = 'removed' | 'not-member' | 'owner' | 'manager';
 
 /**
  * Remove a person from the team. The owner check runs under the workspace
@@ -270,6 +270,10 @@ export async function removeMember(
 	userId: string,
 	workspaceId: string,
 	store: IStoreAdapter,
+	// Who is removing them. Given, a manager can be removed only by the owner
+	// (docs/INSIDER-THREAT-DESIGN.md): one manager cannot purge the others.
+	// Omitted (the person leaving, or app code), there is no such check.
+	by?: { actorId: string; managerRoles: string[] },
 ): Promise<RemoveMemberOutcome> {
 	return store.transaction(async (tx) => {
 		const [ws] = await tx.query<{ ownerId: string }>(
@@ -282,6 +286,18 @@ export async function removeMember(
 		// straight away, a role inserted by a concurrent assignment was not in
 		// the update's snapshot and stayed live — a removed person holding a role.
 		await lockMembership(tx, userId, workspaceId);
+		if (by && by.actorId !== ws?.ownerId && by.actorId !== userId) {
+			const [manager] = await tx.query<{ one: number }>(
+				`SELECT 1 AS one
+				 FROM fonderie_role_user_workspaces ruw
+				 JOIN fonderie_roles r ON r.id = ruw.role_id
+				 WHERE ruw.user_id = $1 AND ruw.workspace_id = $2
+				   AND ruw.removed = false AND r.is_system = true AND r.name = ANY($3::text[])
+				 LIMIT 1`,
+				[userId, workspaceId, by.managerRoles],
+			);
+			if (manager) return 'manager';
+		}
 		const rows = await tx.query<{ userId: string }>(
 			`UPDATE fonderie_role_user_workspaces
 			 SET removed = true

@@ -17,10 +17,11 @@ import {
 	setRolePermissionsSchema,
 } from './schemas';
 
-import type { IWorkspacesConfig, WorkspaceRouteId } from './config';
+import { EVENT_KEYS, type IWorkspacesConfig, type WorkspaceRouteId } from './config';
 import { withWorkspace } from './middlewares/workspace-context';
 import { requireManager } from './middlewares/require-manager';
 import { requireOwner } from './middlewares/require-owner';
+import { inviteOf, roleOf, target, trail } from './middlewares/trail';
 
 import { workspaceController } from './controllers/workspace.controller';
 import { memberController } from './controllers/member.controller';
@@ -71,45 +72,51 @@ export function buildWorkspaceRoutes(
 		return [o.method ?? method, o.path ?? path, ...handlers];
 	};
 
+	// The trail: one event after each successful change (ids only).
+	const T = (type: string, facts?: Parameters<typeof trail>[2], workspaceOf?: Parameters<typeof trail>[3]) =>
+		trail(bus, type, facts, workspaceOf);
+	const K = EVENT_KEYS;
+
 	return [
 		// ── Workspace creation + listing (no workspace context required)
-		R('createWorkspace', 'POST', '/workspaces', requireAuth, validate(createWorkspaceSchema), workspace.create),
+		R('createWorkspace', 'POST', '/workspaces', requireAuth, validate(createWorkspaceSchema), T(K.workspaceCreated, () => ({}), (r) => (r?.['workspace'] as { id?: string } | undefined)?.id), workspace.create),
 		R('listWorkspaces', 'GET', '/workspaces', requireAuth, workspace.list),
 
 		// ── Members (workspace resolved from X-Workspace-ID header)
 		R('listMembers', 'GET', '/workspaces/members', requireAuth, wsCtx, member.list),
-		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, manager, member.remove),
+		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, manager, T(K.memberRemoved, target), member.remove),
 		R('getMemberRoles', 'GET', '/workspaces/members/:userId/roles', requireAuth, wsCtx, member.getUserRoles),
-		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, manager, validate(addMemberRoleSchema), member.addRole),
-		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, manager, member.removeRole),
+		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, manager, validate(addMemberRoleSchema), T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })), member.addRole),
+		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, manager, T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })), member.removeRole),
 		// Ownership decisions — the owner alone (requireOwner), not any manager.
-		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, member.setManager),
-		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, member.unsetManager),
-		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, validate(transferOwnershipSchema), member.transferOwnership),
+		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerSet, target), member.setManager),
+		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerUnset, target), member.unsetManager),
+		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, validate(transferOwnershipSchema), T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })), member.transferOwnership),
 		// Any member, for themselves.
-		R('leaveWorkspace', 'POST', '/workspaces/leave', requireAuth, wsCtx, member.leave),
+		R('leaveWorkspace', 'POST', '/workspaces/leave', requireAuth, wsCtx, T(K.memberLeft), member.leave),
 
 		// ── Invitations
 		R('listInvitations', 'GET', '/workspaces/invitations', requireAuth, wsCtx, invitation.list),
-		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, manager, validate(createInvitationsSchema), invitation.invite),
-		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, invitation.cancel),
-		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, manager, invitation.resend),
-		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), invitation.accept),
+		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, manager, validate(createInvitationsSchema), T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })), invitation.invite),
+		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, T(K.invitationCancelled, inviteOf), invitation.cancel),
+		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, manager, T(K.invitationResent, inviteOf), invitation.resend),
+		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined), invitation.accept),
 
 		// ── Roles
-		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, manager, validate(createRoleSchema), role.create),
+		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, manager, validate(createRoleSchema), T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })), role.create),
 		R('listRoles', 'GET', '/workspaces/roles', requireAuth, wsCtx, role.list),
 		R('getRole', 'GET', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.get),
-		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, validate(updateRoleSchema), role.update),
-		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, role.remove),
+		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, validate(updateRoleSchema), T(K.roleUpdated, roleOf), role.update),
+		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, T(K.roleDeleted, roleOf), role.remove),
 		R('getRolePermissions', 'GET', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, role.getPermissions),
-		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, manager, validate(setRolePermissionsSchema), role.setPermissions),
+		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, manager, validate(setRolePermissionsSchema), T(K.rolePermissionsSet, roleOf), role.setPermissions),
 
 		// ── Workspace lifecycle
-		R('archive', 'POST', '/workspaces/archive', requireAuth, wsCtx, manager, workspace.archive),
-		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, manager, workspace.restore),
+		// Owner only: archiving locks every member out (docs/INSIDER-THREAT-DESIGN.md, I2).
+		R('archive', 'POST', '/workspaces/archive', requireAuth, wsCtx, owner, T(K.workspaceArchived), workspace.archive),
+		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, manager, T(K.workspaceRestored), workspace.restore),
 		R('getSettings', 'GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings),
-		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, manager, validate(updateSettingsSchema), workspace.updateSettings),
+		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, manager, validate(updateSettingsSchema), T(K.settingsUpdated), workspace.updateSettings),
 
 		// ── The workspace this request is scoped to (X-Workspace-ID, or the
 		// personal workspace). Before /workspaces/:id so 'current' is not an id.
@@ -125,6 +132,6 @@ export function buildWorkspaceRoutes(
 		// ── Update current workspace — ID from :id path param (wsCtx) or the
 		// X-Workspace-ID header (or personal-workspace fallback when absent). Set
 		// routes.updateWorkspace = '/workspaces/:id' to match a path-id frontend.
-		R('updateWorkspace', 'PUT', '/workspaces', requireAuth, wsCtx, manager, validate(updateWorkspaceSchema), workspace.update),
+		R('updateWorkspace', 'PUT', '/workspaces', requireAuth, wsCtx, manager, validate(updateWorkspaceSchema), T(K.workspaceUpdated), workspace.update),
 	];
 }

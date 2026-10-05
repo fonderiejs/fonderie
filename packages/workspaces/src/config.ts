@@ -6,6 +6,30 @@ export type WorkspacesMessageKey = (typeof MESSAGE_KEYS)[keyof typeof MESSAGE_KE
 
 export const EVENT_KEYS = {
 	personalWorkspaceCreated: 'fonderie.workspace.personal.created',
+	// The trail (docs/INSIDER-THREAT-DESIGN.md, Phase 1): one event after every
+	// successful team, role, invitation and workspace change. Payload:
+	// { workspaceId, userId: <who did it>, targetUserId?, roleId?, inviteId? } —
+	// ids only, so it carries no personal data and survives account erasure.
+	workspaceCreated: 'fonderie.workspace.created',
+	workspaceUpdated: 'fonderie.workspace.updated',
+	workspaceArchived: 'fonderie.workspace.archived',
+	workspaceRestored: 'fonderie.workspace.restored',
+	settingsUpdated: 'fonderie.workspace.settings.updated',
+	memberRemoved: 'fonderie.workspace.member.removed',
+	memberLeft: 'fonderie.workspace.member.left',
+	memberRoleAdded: 'fonderie.workspace.member.role.added',
+	memberRoleRemoved: 'fonderie.workspace.member.role.removed',
+	managerSet: 'fonderie.workspace.manager.set',
+	managerUnset: 'fonderie.workspace.manager.unset',
+	ownershipTransferred: 'fonderie.workspace.ownership.transferred',
+	invitationCreated: 'fonderie.workspace.invitation.created',
+	invitationCancelled: 'fonderie.workspace.invitation.cancelled',
+	invitationResent: 'fonderie.workspace.invitation.resent',
+	invitationAccepted: 'fonderie.workspace.invitation.accepted',
+	roleCreated: 'fonderie.workspace.role.created',
+	roleUpdated: 'fonderie.workspace.role.updated',
+	roleDeleted: 'fonderie.workspace.role.deleted',
+	rolePermissionsSet: 'fonderie.workspace.role.permissions.set',
 } as const;
 
 export type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];

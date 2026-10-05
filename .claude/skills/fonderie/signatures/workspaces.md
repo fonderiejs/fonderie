@@ -29,7 +29,7 @@ type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 const MESSAGE_KEYS: { readonly workspaceInvitation: "workspace-invitation"; }
 
-const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; }
+const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; readonly workspaceCreated: "fonderie.workspace.created"; readonly workspaceUpdated: "fonderie.workspace.updated"; readonly workspaceArchived: "fonderie.workspace.archived"; readonly workspaceRestored: "fonderie.workspace.restored"; readonly settingsUpdated: "fonderie.workspace.settings.updated"; readonly memberRemoved: "fonderie.workspace.member.removed"; readonly memberLeft: "fonderie.workspace.member.left"; readonly memberRoleAdded: "fonderie.workspace.member.role.added"; readonly memberRoleRemoved: "fonderie.workspace.member.role.removed"; readonly managerSet: "fonderie.workspace.manager.set"; readonly managerUnset: "fonderie.workspace.manager.unset"; readonly ownershipTransferred: "fonderie.workspace.ownership.transferred"; readonly invitationCreated: "fonderie.workspace.invitation.created"; readonly invitationCancelled: "fonderie.workspace.invitation.cancelled"; readonly invitationResent: "fonderie.workspace.invitation.resent"; readonly invitationAccepted: "fonderie.workspace.invitation.accepted"; readonly roleCreated: "fonderie.workspace.role.created"; readonly roleUpdated: "fonderie.workspace.role.updated"; readonly roleDeleted: "fonderie.workspace.role.deleted"; readonly rolePermissionsSet: "fonderie.workspace.role.permissions.set"; }
 
 const DEFAULT_TEMPLATES: { "workspace-invitation": IDefaultTemplate; }
 
