@@ -57,7 +57,10 @@ export function buildWorkspaceRoutes(
 	const member = memberController(store, config);
 	const role = roleController(store);
 	const access = accessController(store, config);
-	const invitation = invitationController(store, ttl, bus, config.invitationUrl ? { invitationUrl: config.invitationUrl } : {});
+	const invitation = invitationController(store, ttl, bus, {
+		...(config.invitationUrl ? { invitationUrl: config.invitationUrl } : {}),
+		...(config.invitationAccountMatch ? { invitationAccountMatch: config.invitationAccountMatch } : {}),
+	});
 
 	// Apply an optional per-route method/path override (config.routes) keyed by a
 	// stable id, so an app can match an existing frontend's contract without a shim.
