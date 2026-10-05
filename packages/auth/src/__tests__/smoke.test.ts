@@ -112,6 +112,21 @@ test('importUser: preserves supplied identity fields, omits the rest', async () 
 	assert.doesNotMatch(capturedSql, /first_name|mfa_enabled|locale/);
 });
 
+test("importUser: stores the address the way sign-in looks it up ('+tag' dropped); refuses a non-address", async () => {
+	const { importUser } = await import('../migrate');
+	let params: unknown[] = [];
+	const store: IStoreAdapter = {
+		query: async <T = unknown>(_sql: string, p?: unknown[]): Promise<T[]> => {
+			params = p ?? [];
+			return [{ id: 'gen' }] as unknown as T[];
+		},
+		transaction: async (fn) => fn(store),
+	};
+	await importUser(store, { email: '  Jane+Legacy@Example.com ' });
+	assert.equal(params[0], 'jane@example.com');
+	await assert.rejects(importUser(store, { email: 'not-an-address' }), /not an email address/);
+});
+
 test('importUser: omitting id lets the table generate one', async () => {
 	const { importUser } = await import('../migrate');
 	let capturedSql = '';
@@ -293,6 +308,11 @@ type AuthStoreOpts = {
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// The reset's one statement (password + spend code + end sessions):
+			// changes a LIVE account only.
+			if (sql.includes('WITH changed AS'))
+				return [{ id: 'user-1' }] as unknown as T[];
+
 			// INSERT is matched FIRST and deliberately: upsertByProvider reads the
 			// pre-insert row in a CTE, so its SQL also contains 'WHERE email = $1'
 			// and a lookup branch above would swallow it — returning no row and
@@ -2864,6 +2884,23 @@ test('rate limit: 6th login attempt for one account 429s out of the box', async 
 	assert.ok(last.headers.get('Retry-After'));
 });
 
+test("rate limit: a rotating '+tag' does not buy fresh login attempts on the same account", async () => {
+	const { buildAuthRoutes } = await import('../routes');
+	const { MemoryStore } = await import('@fonderie/rate-limit');
+	const routes = buildAuthRoutes(makeStore(), { ...config, rateLimit: { store: new MemoryStore() } });
+	const login = routes.find(([m, p]) => m === 'POST' && p === '/auth/login');
+	const accountLimit = (login as any[])[4];
+	let last: Response = new Response();
+	for (let i = 0; i < 6; i++) {
+		last = await accountLimit(
+			// target+0@ … target+5@ all sign in to target@ — one account, one bucket.
+			makeCtx({ body: { email: `Target+${i}@Example.com`, password: 'x'.repeat(10) } }),
+			async () => new Response('ok'),
+		);
+	}
+	assert.equal(last.status, 429);
+});
+
 test('rate limit: IP phase (before validation) sheds a flood from one IP', async () => {
 	const { buildAuthRoutes } = await import('../routes');
 	const { MemoryStore } = await import('@fonderie/rate-limit');
@@ -3314,6 +3351,7 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 			executed.push({ sql, params: params ?? [] });
 			if (sql.includes('fonderie_password_resets') && sql.includes('WHERE pin'))
 				return [{ user_id: 'user-1', expires_at: new Date(Date.now() + 60_000) }] as unknown as T[];
+			if (sql.includes('WITH changed AS')) return [{ id: 'user-1' }] as unknown as T[];
 			return [] as unknown as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -3323,9 +3361,11 @@ test('resetPassword: revokes all of the user\'s sessions', async () => {
 		makeCtx({ body: { pin: '123456', password: 'new-password-123' } }),
 	);
 	assert.equal(response.status, 200);
-	const sessionDelete = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
-	assert.ok(sessionDelete, 'all sessions must be revoked on reset');
-	assert.deepEqual(sessionDelete!.params, ['user-1']);
+	// Password, reset code and sessions change in ONE statement (all or nothing).
+	const reset = executed.find((q) => q.sql.includes('DELETE FROM fonderie_sessions'));
+	assert.ok(reset, 'all sessions must be revoked on reset');
+	assert.match(reset!.sql, /UPDATE fonderie_users SET password_hash[\s\S]*DELETE FROM fonderie_password_resets[\s\S]*DELETE FROM fonderie_sessions/);
+	assert.equal(reset!.params[1], 'user-1');
 });
 
 // ── GET /auth/providers ───────────────────────────────────────────

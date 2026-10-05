@@ -52,6 +52,9 @@ const errors: typeof en = {
 		OWNER_CANNOT_LEAVE: 'Transfiere la propiedad a otro miembro antes de salir.',
 		OWNER_REQUIRED: 'Solo el propietario del espacio de trabajo puede hacer esto.',
 		MANAGER_REQUIRED: 'Solo el propietario o un administrador puede hacer esto.',
+		SYSTEM_ROLE: 'Los roles integrados no se pueden quitar aquí. Solo el propietario puede quitar los permisos de administrador.',
+		LAST_ROLE: 'Un miembro conserva al menos un rol. Quita al miembro en su lugar.',
+		ROLE_NOT_HELD: 'Esa persona no tiene este rol.',
 		// Billing
 		PLAN_UNCHANGED: 'Ya tienes el plan {plan}.',
 		SUBSCRIPTION_PAST_DUE: 'Tu plan actual tiene un saldo pendiente. Págalo antes de cambiar de plan.',

@@ -385,6 +385,17 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			// user's other devices stayed signed in until their next request
 			// failed — and were never told why.
 			await sessions.deleteByUser(userId);
+			// …and every one-time code that could still act on the account. The
+			// ACCOUNT is archived (restorable); these are credentials, not data — a
+			// reset link or verification code issued before the deletion must not
+			// work on the archived account. One statement: one round trip, all or
+			// nothing.
+			await store.query(
+				`WITH resets AS (DELETE FROM fonderie_password_resets WHERE user_id = $1),
+				      emails AS (DELETE FROM fonderie_email_verifications WHERE user_id = $1)
+				 DELETE FROM fonderie_phone_verifications WHERE user_id = $1`,
+				[userId],
+			);
 
 			const reqId = ctx.meta['requestId'] as string | undefined;
 			await background(bus
