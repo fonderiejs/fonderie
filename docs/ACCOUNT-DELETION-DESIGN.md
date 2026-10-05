@@ -1,7 +1,7 @@
 # Account deletion that a person can trust — design and build order
 
-Status: **PROPOSED 2026-10-04.** Decisions D1–D8 (§5) are the recommended
-defaults; change one here and say which phase it touches.
+Status: **ACCEPTED 2026-10-04** — D1 (30 days) and D4 (refuse until transferred)
+confirmed by the owner; D2–D8 as recommended. Change one here and say which phase it touches.
 
 ## 1. The problem
 
