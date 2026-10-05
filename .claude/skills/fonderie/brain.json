@@ -77,7 +77,7 @@
     "vue-workspaces": "0.10.2",
     "vue-workspaces-screens": "0.5.1",
     "webhooks": "6.0.8",
-    "workspaces": "6.8.0"
+    "workspaces": "6.8.1"
   },
   "packages": {
     "adapter-express": {
@@ -3026,7 +3026,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "6.8.0",
+      "version": "6.8.1",
       "stability": "stable",
       "requires": [
         "core",
