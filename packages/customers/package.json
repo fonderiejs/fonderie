@@ -47,7 +47,7 @@
 		"@fonderie/core": "^0.32.0",
 		"@fonderie/events": "^5.0.0",
 		"@fonderie/store": "^0.7.0",
-		"@fonderie/workspaces": "^7.1.0"
+		"@fonderie/workspaces": "^7.0.0"
 	},
 	"peerDependenciesMeta": {
 		"@fonderie/events": {

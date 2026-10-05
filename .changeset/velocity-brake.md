@@ -16,4 +16,4 @@ A rogue manager, or a script running with their session, could remove the team, 
 - **Telling the owner:** a pause is recorded as `fonderie.workspace.manager.paused` in the audit trail, and the owner is emailed (`workspace-manager-paused`, in 5 languages).
 - **Seeing and releasing:** members carry `paused`. The owner releases with `DELETE /workspaces/members/:userId/brake` (`client.workspaces.releaseBrake`, `useMembers().releaseBrake`), and the count starts over.
 - **For other modules:** `velocityBrake(store, kind, options, bus)` is exported for their own destructive routes. Configure it with `velocityBrake: { limit, windowMinutes }`, or turn it off with `false`, in workspaces, customers and webhooks.
-- **Migration:** apply workspaces `008_velocity_brake`. Customers and webhooks now need `@fonderie/workspaces` 7.1.
+- **Migration:** apply workspaces `008_velocity_brake`. Customers and webhooks brake their deletes as soon as `@fonderie/workspaces` 7.1 is installed.
