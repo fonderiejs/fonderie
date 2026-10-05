@@ -113,6 +113,8 @@ export const MESSAGE_KEYS = {
 	// verified channel the person chose — route these types to both 'email'
 	// and 'sms' in courier: auth fills in only the chosen address, and the
 	// other channel skips. SMS sends each template's text.
+	// Step-up: the code that proves it's still you before a big move.
+	stepUpCode: 'step-up-code',
 	accountDeletionCode: 'account-deletion-code',
 	accountDeletionScheduled: 'account-deletion-scheduled',
 	accountRestored: 'account-restored',
@@ -275,7 +277,8 @@ export type AuthRouteId =
 	| 'me' | 'updateProfile' | 'updatePreferences' | 'updateEmail' | 'updatePhone' | 'changePassword' | 'deleteMe' | 'exportMe'
 	| 'requestDeletion' | 'confirmDeletion' | 'restoreAccount'
 	| 'loginHistory' | 'listSessions' | 'terminateSession' | 'terminateOtherSessions'
-	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes';
+	| 'mfaSetup' | 'mfaVerify' | 'mfaDisable' | 'mfaBackupCodes'
+	| 'stepUpMethods' | 'stepUpCode' | 'stepUp';
 
 export type AuthRouteOverride = string | { method?: string; path?: string };
 

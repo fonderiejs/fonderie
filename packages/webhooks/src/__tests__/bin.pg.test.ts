@@ -113,3 +113,29 @@ test('a deleted endpoint waits in the bin and comes back with its id, URL, event
 	assert.ok((await emptyEndpointBin(store)) >= 1);
 	assert.equal((await store.query('SELECT 1 FROM fonderie_webhook_endpoint_bin WHERE id = $1', [old.id])).length, 0);
 });
+
+// ── Step-up (insider threat, Phase 4) ───────────────────────────────────────
+
+test('a new endpoint — or a new URL for one — needs a fresh proof it is the person; turning one off does not', { skip }, async () => {
+	const owner = await person();
+	const ws = (await call(owner.token, 'POST', '/workspaces', { name: `Proof ${n}-${Date.now()}` })).result.workspace.id as string;
+	const body = { url: 'https://hooks.acme.example/feed', events: [] };
+	const bare = await call(owner.token, 'POST', '/webhooks', body, ws);
+	assert.deepEqual([bare.status, bare.reason], [403, 'STEP_UP_REQUIRED'], 'a live copy of every event is a big move');
+
+	const ep = await new EndpointModel(store).create({ workspaceId: ws, url: 'https://hooks.acme.example/a', secret: 'whsec_aaaabbbbccccddddeeeeffff00003333', events: [] });
+	const moved = await call(owner.token, 'PATCH', `/webhooks/${ep.id}`, { url: 'https://hooks.acme.example/b' }, ws);
+	assert.deepEqual([moved.status, moved.reason], [403, 'STEP_UP_REQUIRED'], 'pointing it elsewhere is the same move');
+	assert.equal((await call(owner.token, 'PATCH', `/webhooks/${ep.id}`, { enabled: false }, ws)).status, 200, 'turning it off is not');
+
+	const proof = await call(owner.token, 'POST', '/auth/step-up', { password: 'Aa1!aaaa-bbbb-cccc' });
+	assert.equal(proof.status, 200, JSON.stringify(proof));
+	const res = await fetch(`${base}/webhooks/${ep.id}`, {
+		method: 'PATCH',
+		headers: { 'content-type': 'application/json', authorization: `Bearer ${owner.token}`, 'x-workspace-id': ws, 'x-step-up': proof.result.stepUpToken },
+		body: JSON.stringify({ url: 'https://hooks.acme.example/b' }),
+	});
+	const json = (await res.json().catch(() => ({}))) as { reason?: string };
+	assert.notEqual(json.reason, 'STEP_UP_REQUIRED', 'with the proof the guard lets it through');
+});
+

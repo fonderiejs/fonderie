@@ -32,3 +32,5 @@ export type { IUseUnlinkOauthReturn } from './useUnlinkOauth';
 export type { IUseAuthProvidersReturn } from './useAuthProviders';
 export type { IUseRestoreAccountReturn } from './useRestoreAccount';
 export { useRestoreAccount } from './useRestoreAccount';
+export type { IUseStepUpReturn } from './useStepUp';
+export { useStepUp } from './useStepUp';

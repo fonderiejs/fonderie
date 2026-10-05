@@ -58,6 +58,16 @@ expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
+### `fonderie_workspace_ownership_offers`
+
+```sql
+workspace_id             UUID PRIMARY KEY REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+from_user_id             UUID NOT NULL
+to_user_id               UUID NOT NULL
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+expires_at               TIMESTAMPTZ NOT NULL
+```
+
 ### `fonderie_workspaces`
 
 ```sql
@@ -132,4 +142,8 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | POST | `/workspaces/roles/bin/:roleId/restore` | `requireAuth → wsCtx → manager → T(K.roleRestored, roleOf) → role.restore` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
 | PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings` |
-| POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → validate(transferOwnershipSchema) → T(K.ownershipTransferred, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |
+| DELETE | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → T(K.ownershipWithdrawn) → member.withdrawOwnershipOffer` |
+| GET | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → member.getOwnershipOffer` |
+| POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → stepUp → validate(transferOwnershipSchema) → T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |
+| POST | `/workspaces/transfer-ownership/accept` | `requireAuth → wsCtx → T(K.ownershipTransferred, (_c, r) => ({ targetUserId: r?.['previousOwnerId'] as string | undefined })) → member.acceptOwnership` |
+| POST | `/workspaces/transfer-ownership/decline` | `requireAuth → wsCtx → T(K.ownershipDeclined) → member.declineOwnership` |

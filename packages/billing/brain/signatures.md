@@ -92,6 +92,7 @@ interface IBillingConfig {
     cancelUrl: string;
     publicUrl?: string;
     management?: 'owner-or-admin' | 'any-member';
+    stepUp?: boolean;
     trialScope?: 'subscriber' | 'owner';
     managerRoles?: string[];
     adminToken?: string;

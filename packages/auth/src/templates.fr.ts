@@ -176,6 +176,15 @@ pourrait se connecter à votre place.`,
 Si c'est bien vous, tout est en ordre. Sinon, contactez immédiatement le support.`,
 	},
 
+	[MESSAGE_KEYS.stepUpCode]: {
+		subject: `Votre code de confirmation`,
+		html: `<h1>Confirmez qu’il s’agit bien de vous</h1>
+<p>Une modification importante est demandée depuis votre compte (par exemple transférer une équipe ou mettre fin à un forfait immédiatement). Utilisez ce code pour confirmer qu’il s’agit bien de vous :</p>
+<p><span class="pin-code">{{code}}</span></p>
+<p class="muted">Ce code expire dans 10 minutes. Si vous n’êtes pas à l’origine de cette demande, ne le communiquez pas et changez votre mot de passe.</p>`,
+		text: `Votre code pour confirmer qu’il s’agit bien de vous : {{code}}. Il expire dans 10 minutes. Ce n’est pas vous ? Ne le communiquez pas et changez votre mot de passe.`,
+	},
+
 	[MESSAGE_KEYS.accountDeletionCode]: {
 		subject: `Confirmez la suppression de votre compte`,
 		html: `<h1>Confirmer la suppression du compte</h1>

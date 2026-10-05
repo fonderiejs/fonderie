@@ -40,6 +40,7 @@ export type {
 	IUseSessionReturn,
 	IUseSessionsReturn,
 	IUseVerifyEmailReturn,
+	IUseStepUpReturn,
 } from './composables';
 export {
 	useAuthProviders,
@@ -59,6 +60,7 @@ export {
 	useSession,
 	useSessions,
 	useVerifyEmail,
+	useStepUp,
 } from './composables';
 
 // Token persistence primitives — for wiring app-level flows (e.g. the

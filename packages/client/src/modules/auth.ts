@@ -1,6 +1,9 @@
 import type { HttpClient } from '../http';
 import type { TokenStore } from '../token-store';
 import type {
+	IStepUpMethodsResult,
+	IStepUpProof,
+	IStepUpResult,
 	IReadOptions,
 	IApiResponse,
 	ILoginResult,
@@ -412,6 +415,39 @@ export class AuthClient {
 			path: '/users',
 			token: this.tokens.get(),
 		});
+	}
+
+	// ── Step-up: prove it's still you before a big move ─────────────────────
+	// GET /auth/step-up — which proofs this account can give.
+	stepUpMethods() {
+		return this.http.request<IApiResponse<IStepUpMethodsResult>>({
+			method: 'GET',
+			path: '/auth/step-up',
+			token: this.tokens.get(),
+		});
+	}
+
+	// POST /auth/step-up/code — a code to the account's email or phone.
+	requestStepUpCode(channel: 'email' | 'sms') {
+		return this.http.request<IApiResponse<{ channel: 'email' | 'sms'; expiresInSeconds: number }>>({
+			method: 'POST',
+			path: '/auth/step-up/code',
+			body: { channel },
+			token: this.tokens.get(),
+		});
+	}
+
+	// POST /auth/step-up — on success the proof is held and sent with the
+	// requests that follow (five minutes), so retrying the big move works.
+	async stepUp(proof: IStepUpProof) {
+		const res = await this.http.request<IApiResponse<IStepUpResult>>({
+			method: 'POST',
+			path: '/auth/step-up',
+			body: proof,
+			token: this.tokens.get(),
+		});
+		this.http.setStepUp(res.result.stepUpToken, res.result.expiresAt);
+		return res;
 	}
 
 	// POST /users/me/deletion — sends the confirmation code. 409 with the

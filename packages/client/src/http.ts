@@ -62,6 +62,11 @@ export function isSessionRefusal(err: unknown): err is FonderieApiError {
 	return err instanceof FonderieApiError && (err.status === 400 || err.status === 401 || err.status === 403);
 }
 
+/** A big move refused until the person proves it's still them (POST /auth/step-up), then retried. */
+export function isStepUpRequired(err: unknown): err is FonderieApiError {
+	return err instanceof FonderieApiError && err.reason === 'STEP_UP_REQUIRED';
+}
+
 export interface IHttpDeps {
 	cache?: ICache | undefined;
 	defaultTtlMs?: number | undefined;
@@ -92,6 +97,9 @@ export class HttpClient {
 	private refresh: (() => Promise<string | undefined>) | undefined;
 	private onReachability: ((reachable: boolean) => void) | undefined;
 	private onWrite: ((fragments: string[]) => void) | undefined;
+	// A fresh step-up proof (@fonderie/auth): sent as X-Step-Up until it
+	// expires, so the big move the person just confirmed for goes through.
+	private stepUp: { token: string; expiresAt: number } | null = null;
 
 	constructor(
 		private baseUrl: string,
@@ -104,6 +112,20 @@ export class HttpClient {
 		this.refresh = deps.refresh;
 		this.onReachability = deps.onReachability;
 		this.onWrite = deps.onWrite;
+	}
+
+	/** Hold a step-up proof (POST /auth/step-up) for the requests that follow. */
+	setStepUp(token: string, expiresAt: string | number): void {
+		this.stepUp = { token, expiresAt: typeof expiresAt === 'number' ? expiresAt : Date.parse(expiresAt) };
+	}
+
+	clearStepUp(): void {
+		this.stepUp = null;
+	}
+
+	/** Whether a step-up proof is held and still fresh. */
+	hasStepUp(): boolean {
+		return !!this.stepUp && this.stepUp.expiresAt > Date.now();
 	}
 
 	// Absolute URL for a path on this client's origin — for endpoints a browser
@@ -170,6 +192,7 @@ export class HttpClient {
 		if (opts.cookie) headers['Cookie'] = opts.cookie;
 		if (opts.workspaceId) headers['X-Workspace-ID'] = opts.workspaceId;
 		if (this.clientKind) headers['X-Client-Kind'] = this.clientKind;
+		if (this.stepUp && this.stepUp.expiresAt > Date.now()) headers['X-Step-Up'] = this.stepUp.token;
 		// The UI language — a CORS-safelisted header, so no preflight is added.
 		const locale = this.getLocale?.();
 		if (locale) headers['Accept-Language'] = locale;

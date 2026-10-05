@@ -234,7 +234,11 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .removeMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
   .setManager(userId: string): Promise<IApiResponse<void>>
   .unsetManager(userId: string): Promise<IApiResponse<void>>
-  .transferOwnership(userId: string): Promise<IApiResponse<void>>
+  .transferOwnership(userId: string): Promise<IApiResponse<{ offer: IOwnershipOfferDTO; }>>
+  .getOwnershipOffer(opts?: IReadOptions | undefined): Promise<IApiResponse<{ offer: IOwnershipOfferDTO | null; }>>
+  .acceptOwnership(): Promise<IApiResponse<{ previousOwnerId: string; }>>
+  .declineOwnership(): Promise<IApiResponse<undefined>>
+  .withdrawOwnershipOffer(): Promise<IApiResponse<undefined>>
   .leaveWorkspace(): Promise<IApiResponse<void>>
   .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
@@ -298,6 +302,18 @@ interface IUseMembersReturn {
     setManager: (userId: string) => Promise<void>;
     unsetManager: (userId: string) => Promise<void>;
     transferOwnership: (userId: string) => Promise<void>;
+}
+
+interface IUseOwnershipOfferReturn {
+    offer: IOwnershipOfferDTO | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    accept: () => Promise<void>;
+    decline: () => Promise<void>;
+    withdraw: () => Promise<void>;
 }
 
 interface IUsePermissionCatalogReturn {
@@ -403,6 +419,8 @@ function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsR
 function useMemberRoles(userId: string): IUseMemberRolesReturn
 
 function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
+
+function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
 
 function usePermissionCatalog(client?: WorkspacesClient | undefined): IUsePermissionCatalogReturn
 

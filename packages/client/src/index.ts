@@ -2,7 +2,7 @@ export type { IAuthErrorInfo, IClientAuthConfig, IFonderieClientOptions, IReques
 export type { ICache, IMemoryCacheOptions } from './cache';
 export { createMemoryCache } from './cache';
 export { FonderieClient } from './client';
-export { FonderieApiError, isSessionRefusal } from './http';
+export { FonderieApiError, isSessionRefusal, isStepUpRequired } from './http';
 export type { IListAuditEventsInput } from './modules/audit';
 export { AuditClient } from './modules/audit';
 export type {
@@ -163,6 +163,11 @@ export type {
 	IDeletedCustomerDTO,
 	IDeletedRoleDTO,
 	IRestoredRoleResult,
+	StepUpMethod,
+	IOwnershipOfferDTO,
+	IStepUpMethodsResult,
+	IStepUpProof,
+	IStepUpResult,
 	IAdminCatalog,
 	IAdminSubscriptionDTO,
 	IAdminWalletDTO,
@@ -318,3 +323,4 @@ export type { IQueryEntry, IQueryFetchOptions, IQueryPersistOptions, IQueryStora
 export { UI_DICTIONARIES, UI_LANGUAGES, canonicalLocaleTag, createUiT, formatPersonName, localizeApiError, resolveUiLanguage } from './ui-i18n';
 export type { IApiErrorLike, UiLanguage, UiMessageKey, UiMessageParams, UiMessages, UiT } from './ui-i18n';
 export { UiLocale, detectDeviceLocale, uiLocaleFor } from './ui-locale';
+

@@ -5,6 +5,7 @@ import { withBody } from '@fonderie/core/middlewares';
 import { requireManager, withWorkspace } from '@fonderie/workspaces';
 
 import { createEndpointSchema, updateEndpointSchema } from './schemas';
+import { requireStepUp } from './middlewares/require-step-up';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { EndpointModel } from './models/endpoint.model';
@@ -31,6 +32,11 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 		...(config.management ? { management: config.management } : {}),
 		...(config.managerRoles ? { managerRoles: config.managerRoles } : {}),
 	});
+	const stepUp = config.stepUp === false ? ((_c, next) => next()) as Middleware : requireStepUp();
+	// Pointing an endpoint at another URL is the same move as creating one.
+	const stepUpOnUrl = config.stepUp === false
+		? ((_c, next) => next()) as Middleware
+		: requireStepUp((ctx) => (ctx.meta['body'] as { url?: unknown } | undefined)?.url !== undefined);
 	return [
 		[
 			'POST',
@@ -38,6 +44,9 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			requireAuth,
 			ws,
 			manager,
+			// A new endpoint receives EVERY event of the workspace — a live copy of
+			// the business. It asks for a fresh proof it's the person (Phase 4).
+			stepUp,
 			validate(createEndpointSchema),
 			withBody,
 			async (ctx) => {
@@ -183,6 +192,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			ws,
 			manager,
 			validate(updateEndpointSchema),
+			stepUpOnUrl,
 			withBody,
 			async (ctx) => {
 				if (!ctx.workspace)

@@ -13,7 +13,7 @@ export interface IUseMembersReturn {
 	setManager: (userId: string) => Promise<void>;
 	/** Owner only: a manager goes back to their other roles. */
 	unsetManager: (userId: string) => Promise<void>;
-	/** Owner only: hand the workspace to a member; you stay as a manager. */
+	/** Owner only, after a step-up (useStepUp): OFFER the workspace to a member — it moves when they accept (useOwnershipOffer); you stay as a manager. */
 	transferOwnership: (userId: string) => Promise<void>;
 }
 
