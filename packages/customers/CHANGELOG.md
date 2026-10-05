@@ -1,5 +1,13 @@
 # @fonderie/customers
 
+## 6.7.1
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+  - @fonderie/workspaces@7.0.0
+
 ## 6.7.0
 
 ### Minor Changes

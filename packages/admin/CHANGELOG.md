@@ -1,5 +1,12 @@
 # @fonderie/admin
 
+## 1.8.1
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+
 ## 1.8.0
 
 ### Minor Changes

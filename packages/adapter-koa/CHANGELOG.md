@@ -1,5 +1,14 @@
 # @fonderie/adapter-koa
 
+## 5.4.11
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+  - @fonderie/workspaces@7.0.0
+  - @fonderie/billing@11.0.0
+
 ## 5.4.10
 
 ### Patch Changes

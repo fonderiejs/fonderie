@@ -1,5 +1,12 @@
 # @fonderie/logger
 
+## 0.3.9
+
+### Patch Changes
+
+- Updated dependencies [ae2dcc6]
+  - @fonderie/core@0.32.0
+
 ## 0.3.8
 
 ### Patch Changes
