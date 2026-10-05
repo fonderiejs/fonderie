@@ -217,6 +217,7 @@ interface IAdminPendingMigration {
 
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
+    deletion?: IAdminDeletionDTO | null;
 }
 
 interface IAuthAdminClientOptions {
@@ -448,6 +449,12 @@ new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery | undefined): Promise<IApiResponse<ILoginHistoryPageResult>>
   .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .cancelUserDeletion(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .holdUserDeletion(id: string, reason: string): Promise<IApiResponse<IAdminUserDTO>>
+  .liftUserDeletionHold(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .eraseUserNow(id: string): Promise<IApiResponse<IAdminErasureDTO>>
+  .listErasures(query?: IAdminErasuresQuery | undefined): Promise<IApiResponse<IAdminErasurePageResult>>
+  .exportErasures(): Promise<IApiResponse<IAdminErasureExport>>
 
 new BillingAdminClient(opts: IBillingAdminClientOptions): BillingAdminClient
   .catalog(): Promise<IApiResponse<IAdminCatalog>>
@@ -491,9 +498,11 @@ function useAdminMigrations(client: AdminClient): { report: Ref<{ everApplied: b
 
 function useAdminLog(client: AdminClient, query?: Pick<IAdminLogQuery, "limit">): { entries: Ref<{ id: string; at: string; actor: string; method: string; path: string; route: string; ... 4 more ...; clientIp: string | null; }[], IAdminLogEntry[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
 
-function useAdminUser(client: AuthAdminClient, by: { email?: Ref<string, string>; id?: Ref<string, string>; }): { user: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; } | null, IAdminUserDTO | ... 1 more ... | null>; ... 5 more ...; revokeSessions: () => Promise<...>; }
+function useAdminUser(client: AuthAdminClient, by: { email?: Ref<string, string>; id?: Ref<string, string>; }): { user: Ref<{ deletedAt: string | null; deletion?: { requestedAt: string; deleteOn: string; channel: string | null; remindedAt: string | null; hold: { ...; } | null; } | null; ... 18 more ...; updatedAt: string; } | null, IAdminUserDTO | ... 1 more ... | null>; ... 9 more ...; eraseNow(): Promise<...>; }
 
-function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): { users: Ref<{ deletedAt: string | null; id: string; email: string; ... 16 more ...; updatedAt: string; }[], IAdminUserDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
+function useAdminUsers(client: AuthAdminClient, query?: Omit<IAdminUsersQuery, "cursor">): { users: Ref<{ deletedAt: string | null; deletion?: { requestedAt: string; deleteOn: string; channel: string | null; remindedAt: string | null; hold: { ...; } | null; } | null; ... 18 more ...; updatedAt: string; }[], IAdminUserDTO[] | { ...; }[]>; ... 4 more ...; loadMore: () => Promise<...>; }
+
+function useAdminErasures(client: AuthAdminClient, query?: Omit<IAdminErasuresQuery, "cursor">): { erasures: Ref<{ id: string; userId: string; emailHash: string | null; ... 5 more ...; outcomes: { ...; }[]; }[], IAdminErasureDTO[] | { ...; }[]>; ... 5 more ...; exportAll: () => Promise<...>; }
 
 function useAdminUserSessions(client: AuthAdminClient, userId: Ref<string | null, string | null>): { sessions: Ref<{ id: string; current: boolean; ipAddress: string | null; userAgent: string | null; location: { ...; } | null; createdAt: string; expiresAt: string; }[], ISessionDTO[] | { ...; }[]>; isLoading: Ref<...>; error: Ref<...>; refresh: () => Promise<...>; }
 

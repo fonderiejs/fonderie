@@ -16,6 +16,8 @@ export type { IUseAdminUserReturn } from './useAdminUser';
 export type { IUseAdminUsersReturn } from './useAdminUsers';
 export { useAdminUser } from './useAdminUser';
 export { useAdminUsers } from './useAdminUsers';
+export type { IUseAdminErasuresReturn } from './useAdminErasures';
+export { useAdminErasures } from './useAdminErasures';
 export type { IUseAdminUserSessionsReturn } from './useAdminUserSessions';
 export { useAdminUserSessions } from './useAdminUserSessions';
 export type { IUseAdminLoginHistoryReturn } from './useAdminLoginHistory';

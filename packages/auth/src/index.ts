@@ -47,8 +47,8 @@ export { importUser } from './migrate';
 export { purgeSoftDeletedUsers, startUserRetention } from './services/retention';
 export type { IPurgeOptions, IUserRetentionScheduleOptions } from './services/retention';
 // Account deletion schedule: reminder, then purge with every brick's eraser (Phase 3).
-export { runAccountDeletionSchedule, startAccountDeletionSchedule, authEraser, erasureHash } from './services/deletion-schedule';
-export type { IDeletionScheduleResult } from './services/deletion-schedule';
+export { runAccountDeletionSchedule, startAccountDeletionSchedule, authEraser, erasureHash, eraseAccountNow } from './services/deletion-schedule';
+export type { IDeletionScheduleResult, EraseNowResult, ErasureOutcomes } from './services/deletion-schedule';
 export type { IImportUser } from './migrate';
 
 // Production-readiness — validate the auth config (fatal on a weak jwtSecret in

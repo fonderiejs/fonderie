@@ -26,7 +26,7 @@ export class AuthModule implements IFonderieModule {
 
 	// Users, sessions, login history, suspend — only through @fonderie/admin.
 	describeAdmin(): IAdminDescription {
-		return { routes: describeAuthAdminRoutes(this.store, this.bus) };
+		return { routes: describeAuthAdminRoutes(this.store, this.bus, this.config) };
 	}
 
 	// Live sign-out (docs/SESSION-DESIGN.md, Phase 5): a revoked device hears it

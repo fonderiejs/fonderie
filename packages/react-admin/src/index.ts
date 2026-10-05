@@ -78,6 +78,7 @@ export type {
 	IUseAdminAuditReturn,
 	IUseAdminSessionReturn,
 	IUseAdminOperatorsReturn,
+	IUseAdminErasuresReturn,
 } from './hooks';
 export {
 	useAttention,
@@ -90,6 +91,7 @@ export {
 	useAdminLog,
 	useAdminUser,
 	useAdminUsers,
+	useAdminErasures,
 	useAdminUserSessions,
 	useAdminLoginHistory,
 	useAdminCatalog,

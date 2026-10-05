@@ -397,6 +397,13 @@ interface IAdminLoginHistoryQuery {
     cursor?: string;
 }
 
+interface IAdminErasuresQuery {
+    limit?: number;
+    cursor?: string;
+    email?: string;
+    phone?: string;
+}
+
 interface IAdminUsersQuery {
     limit?: number;
     cursor?: string;
@@ -412,6 +419,12 @@ new AuthAdminClient(opts: IAuthAdminClientOptions): AuthAdminClient
   .userLoginHistory(id: string, query?: IAdminLoginHistoryQuery): Promise<IApiResponse<ILoginHistoryPageResult>>
   .suspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
   .unsuspendUser(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .cancelUserDeletion(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .holdUserDeletion(id: string, reason: string): Promise<IApiResponse<IAdminUserDTO>>
+  .liftUserDeletionHold(id: string): Promise<IApiResponse<IAdminUserDTO>>
+  .eraseUserNow(id: string): Promise<IApiResponse<IAdminErasureDTO>>
+  .listErasures(query?: IAdminErasuresQuery): Promise<IApiResponse<IAdminErasurePageResult>>
+  .exportErasures(): Promise<IApiResponse<IAdminErasureExport>>
 
 interface IBillingAdminClientOptions {
     baseUrl: string;
@@ -1140,6 +1153,45 @@ interface IAdminMigrationsReport {
 
 interface IAdminUserDTO extends IUserDTO {
     deletedAt: string | null;
+    deletion?: IAdminDeletionDTO | null;
+}
+
+interface IAdminDeletionDTO {
+    requestedAt: string;
+    deleteOn: string;
+    channel: string | null;
+    remindedAt: string | null;
+    hold: {
+        at: string;
+        reason: string | null;
+    } | null;
+}
+
+interface IAdminErasureDTO {
+    id: string;
+    userId: string;
+    emailHash: string | null;
+    phoneHash: string | null;
+    requestedAt: string | null;
+    remindedAt: string | null;
+    erasedAt: string;
+    initiatedBy: string;
+    outcomes: Array<{
+        brick: string;
+        erased: number;
+        kept?: string;
+    }>;
+}
+
+interface IAdminErasureExport {
+    generatedAt: string;
+    truncated: boolean;
+    erasures: IAdminErasureDTO[];
+}
+
+interface IAdminErasurePageResult {
+    erasures: IAdminErasureDTO[];
+    nextCursor: string | null;
 }
 
 interface IAdminCatalog {

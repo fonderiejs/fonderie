@@ -81,6 +81,13 @@ interface IUsersScreenProps {
     locale?: AdminLocale | undefined;
 }
 
+interface IErasuresPanelProps {
+    client: AuthAdminClient;
+    email?: string | undefined;
+    pageSize?: number;
+    locale?: AdminLocale | undefined;
+}
+
 interface ICatalogScreenProps {
     client: BillingAdminClient;
     locale?: AdminLocale | undefined;
@@ -129,6 +136,8 @@ function OperatorsScreen({ client, me, locale }: IOperatorsScreenProps): Element
 function MigrationsScreen({ client, locale }: IMigrationsScreenProps): Element
 
 function UsersScreen({ client, pageSize, billingClient, openUserId, locale, }: IUsersScreenProps): Element
+
+function ErasuresPanel({ client, email, pageSize, locale }: IErasuresPanelProps): Element
 
 function CatalogScreen({ client, locale }: ICatalogScreenProps): Element
 

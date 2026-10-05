@@ -7,6 +7,7 @@ export { useAdminTokens } from './useAdminTokens';
 export { useAdminLog } from './useAdminLog';
 export { useAdminUser } from './useAdminUser';
 export { useAdminUsers } from './useAdminUsers';
+export { useAdminErasures } from './useAdminErasures';
 export { useAdminUserSessions } from './useAdminUserSessions';
 export { useAdminLoginHistory } from './useAdminLoginHistory';
 export { useAdminCatalog } from './useAdminCatalog';
