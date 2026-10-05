@@ -36,6 +36,52 @@ Your invitation code: {{pin}}
 
 Enter this code on the invitation screen to join the team.`,
 	},
+	[MESSAGE_KEYS.memberRemoved]: {
+		subject: 'You were removed from {{workspaceName}}',
+		html: `<h1>You were removed from a team</h1>
+<p>You are no longer a member of <strong>{{workspaceName}}</strong>{{#actorName}}: {{actorName}} removed you{{/actorName}}.</p>
+<p class="muted">If you did not expect this, contact the owner of the team.</p>`,
+		text: `You were removed from a team
+
+You are no longer a member of {{workspaceName}}{{#actorName}}: {{actorName}} removed you{{/actorName}}.
+
+If you did not expect this, contact the owner of the team.`,
+	},
+	[MESSAGE_KEYS.memberRemovedAlert]: {
+		subject: '{{actorName}} removed {{memberName}} from {{workspaceName}}',
+		html: `<h1>A member was removed</h1>
+<p><strong>{{actorName}}</strong> removed <strong>{{memberName}}</strong> from <strong>{{workspaceName}}</strong>.</p>
+<p class="muted">You are told because you own the team. If this was not expected, you can invite them back and review who manages the team.</p>`,
+		text: `A member was removed
+
+{{actorName}} removed {{memberName}} from {{workspaceName}}.
+
+You are told because you own the team. If this was not expected, you can invite them back and review who manages the team.`,
+	},
+	[MESSAGE_KEYS.managerRemoved]: {
+		subject: 'You are no longer a manager of {{workspaceName}}',
+		html: `<h1>Your manager rights were removed</h1>
+<p>You are still a member of <strong>{{workspaceName}}</strong>, but you can no longer manage the team.</p>
+<p class="muted">If you did not expect this, contact the owner of the team.</p>`,
+		text: `Your manager rights were removed
+
+You are still a member of {{workspaceName}}, but you can no longer manage the team.
+
+If you did not expect this, contact the owner of the team.`,
+	},
+	[MESSAGE_KEYS.ownershipReceived]: {
+		subject: 'You are now the owner of {{workspaceName}}',
+		html: `<h1>You own a team now</h1>
+<p>You are now the owner of <strong>{{workspaceName}}</strong>.</p>
+{{#previousOwnerName}}<p>{{previousOwnerName}} handed it over to you.</p>{{/previousOwnerName}}
+<p class="muted">As the owner you decide who manages the team, and only you can hand it over again.</p>`,
+		text: `You own a team now
+
+You are now the owner of {{workspaceName}}.
+{{#previousOwnerName}}{{previousOwnerName}} handed it over to you.{{/previousOwnerName}}
+
+As the owner you decide who manages the team, and only you can hand it over again.`,
+	},
 } satisfies Record<WorkspacesMessageKey, IDefaultTemplate>;
 
 // The English above, with French, Spanish and Chinese (Simplified and
@@ -58,4 +104,8 @@ export const SAMPLE_PAYLOADS: Record<WorkspacesMessageKey, Record<string, unknow
 		workspaceName: 'Acme Crew',
 		inviterName: 'Olivia Tester',
 	},
+	[MESSAGE_KEYS.memberRemoved]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester' },
+	[MESSAGE_KEYS.memberRemovedAlert]: { workspaceName: 'Acme Crew', actorName: 'Marco Tester', memberName: 'Ana Tester' },
+	[MESSAGE_KEYS.managerRemoved]: { workspaceName: 'Acme Crew' },
+	[MESSAGE_KEYS.ownershipReceived]: { workspaceName: 'Acme Crew', previousOwnerName: 'Olivia Tester' },
 };

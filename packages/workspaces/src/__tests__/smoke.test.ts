@@ -485,8 +485,8 @@ test('WorkspacesModule: provisions personal workspace on user.registered via bus
 
 	let registeredHandler: ((payload: any) => Promise<void>) | undefined;
 	const fakeBus = {
-		on: (_type: string, handler: any) => {
-			registeredHandler = handler;
+		on: (type: string, handler: any) => {
+			if (type === 'fonderie.user.registered') registeredHandler = handler;
 		},
 		emit: async () => {},
 	} as any;
@@ -534,8 +534,8 @@ test('WorkspacesModule: skips provisioning when personalWorkspace config is fals
 
 	let registeredHandler: (() => void) | undefined;
 	const fakeBus = {
-		on: (_t: string, h: any) => {
-			registeredHandler = h;
+		on: (t: string, h: any) => {
+			if (t === 'fonderie.user.registered') registeredHandler = h;
 		},
 	} as any;
 
@@ -555,8 +555,8 @@ test('WorkspacesModule: idempotent — no error when personal workspace already 
 
 	let registeredHandler: ((payload: any) => Promise<void>) | undefined;
 	const fakeBus = {
-		on: (_type: string, handler: any) => {
-			registeredHandler = handler;
+		on: (type: string, handler: any) => {
+			if (type === 'fonderie.user.registered') registeredHandler = handler;
 		},
 		emit: async () => {},
 	} as any;

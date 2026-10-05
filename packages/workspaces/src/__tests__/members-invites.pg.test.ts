@@ -587,3 +587,47 @@ test('every team change leaves a trail event: which workspace, who did it, to wh
 	for (const p of [owner, m, target]) assert.ok(!all.includes(p.email), 'no address in the trail');
 	assert.ok(!all.includes('Crew lead'), 'no names in the trail');
 });
+
+// ── Insider threat, Phase 2: tell people ────────────────────────────────────
+
+test('people are told: the removed member, the owner when a manager removed them, the ex-manager, the new owner', { skip }, async () => {
+	const { sendTeamNotice } = await import('../services/team-notices');
+	const { owner, ws } = await team();
+	const [mgr, victim, heir] = [await join(owner, ws), await join(owner, ws), await join(owner, ws)];
+	await call(owner.token, 'POST', `/workspaces/members/${mgr.id}/manager`, {}, ws);
+	await call(mgr.token, 'DELETE', `/workspaces/members/${victim.id}`, undefined, ws);
+	await call(owner.token, 'DELETE', `/workspaces/members/${mgr.id}/manager`, undefined, ws);
+
+	// Replay the trail through the notice sender, as the bus subscriber does —
+	// step by step: a notice reads who owns the team when it is sent.
+	const notices: Array<{ type: string; to: string; data: Record<string, string> }> = [];
+	const bus = { emit: async (_t: string, p: any) => void notices.push({ type: p.type, to: p.recipient.email, data: p.data }) };
+	const replay = async () => {
+		for (const e of emitted.splice(0).filter((x) => x.payload['workspaceId'] === ws && x.type.startsWith('fonderie.workspace.')))
+			await sendTeamNotice(store, bus, e.type, e.payload as never);
+	};
+	await replay();
+	await call(owner.token, 'POST', '/workspaces/transfer-ownership', { userId: heir.id }, ws);
+	await replay();
+
+	const got = (type: string) => notices.filter((x) => x.type === type);
+	assert.deepEqual(got('workspace-member-removed').map((x) => x.to), [victim.email], 'the removed member is told');
+	assert.equal(got('workspace-member-removed')[0]!.data['actorName'], 'Marco Tester', 'and by whom');
+	assert.deepEqual(got('workspace-member-removed-alert').map((x) => x.to), [owner.email], 'the owner hears a manager removed someone');
+	assert.deepEqual(got('workspace-manager-removed').map((x) => x.to), [mgr.email]);
+	assert.deepEqual(got('workspace-ownership-received').map((x) => x.to), [heir.email]);
+	assert.equal(got('workspace-ownership-received')[0]!.data['previousOwnerName'], 'Olivia Tester');
+	assert.ok(notices.every((x) => x.data['workspaceName']?.startsWith('Crew ')));
+});
+
+test('no owner alert when the owner removed someone; nobody is written to about their own leaving', { skip }, async () => {
+	const { sendTeamNotice } = await import('../services/team-notices');
+	const { owner, ws } = await team();
+	const [a, b] = [await join(owner, ws), await join(owner, ws)];
+	await call(owner.token, 'DELETE', `/workspaces/members/${a.id}`, undefined, ws);
+	await call(b.token, 'POST', '/workspaces/leave', undefined, ws);
+	const notices: string[] = [];
+	const bus = { emit: async (_t: string, p: any) => void notices.push(`${p.type}→${p.recipient.email}`) };
+	for (const e of emitted.filter((x) => x.payload['workspaceId'] === ws)) await sendTeamNotice(store, bus, e.type, e.payload as never);
+	assert.deepEqual(notices, [`workspace-member-removed→${a.email}`]);
+});
