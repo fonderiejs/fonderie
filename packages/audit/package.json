@@ -37,11 +37,13 @@
 	},
 	"peerDependencies": {
 		"@fonderie/core": "^0.32.0",
-		"@fonderie/store": "^0.7.0"
+		"@fonderie/store": "^0.7.0",
+		"@fonderie/workspaces": "^7.2.0"
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
+		"@fonderie/workspaces": "../workspaces",
 		"@types/node": "^26.6.3",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",

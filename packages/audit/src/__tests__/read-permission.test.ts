@@ -15,7 +15,7 @@ const ctx = (can?: boolean) => ({
 
 test('with a permission configured: read needs it, and a missing permissions module refuses', async () => {
 	const route = buildAuditRoutes(store, { permission: 'audit' }).find(([m, p]) => m === 'GET' && p === '/audit')!;
-	const guard = route[3] as (c: unknown, n: () => Promise<Response>) => Promise<Response>;
+	const guard = route[4] as (c: unknown, n: () => Promise<Response>) => Promise<Response>;
 	assert.equal((await guard(ctx(false), next)).status, 403);
 	assert.equal((await guard(ctx(true), next)).status, 200);
 	assert.equal((await guard(ctx(), next)).status, 500, 'fail closed');
