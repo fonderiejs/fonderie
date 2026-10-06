@@ -1,5 +1,22 @@
 # @fonderie/billing
 
+## 11.2.0
+
+### Minor Changes
+
+- 909aa6b: Billing writes that raced each other no longer lose money, double-email, or split a customer in two.
+  
+  Several paths read a row, called the provider, then wrote the row back as if nothing had happened in between. Each fix makes the write conditional on what was read (or takes the read under the same lock as the write) and reports what is true when it loses.
+  
+  - **An upgrade no longer revives a canceled plan.** If an immediate cancel (`DELETE /subscription` with `atPeriodEnd: false`, or account deletion) landed while an upgrade was at the provider, the upgrade's write set the row back to `active`. The provider's deleted webhook is final, so nothing corrected it: paid access for free. The upgrade now writes only while the row still holds that live subscription, and answers `409 SUBSCRIPTION_CANCELED` when it does not.
+  - **A new checkout no longer orphans a live subscription.** Its `incomplete` marker cleared `provider_subscription_id`, so a paid-session webhook that landed meanwhile lost its link to a subscription that keeps billing. The marker now only lands on a row that is not live; otherwise the URL is withheld and the answer is `422 PLAN_UNCHANGED` with the plan the subscriber is on.
+  - **One cancellation or dunning email per transition.** The subscription webhook read the prior status in a separate statement, so two concurrent deliveries of the same event both saw `active` and both sent the email. The prior status now comes from the same locked transaction as the write.
+  - **A won dispute gives the credits back even when it arrives first.** If the clawback for `charge.dispute.created` had failed and was being retried, `charge.dispute.closed` (won) found nothing to restore and was acknowledged; the clawback then landed for good. The close now answers `500 RESTORE_DEFERRED` while a clawback is still due, so the provider redelivers it after the clawback. An inquiry closed without a chargeback (`warning_closed`) now restores its clawback too.
+  - **A dispute that arrives before its purchase credit is retried.** Its `packId` was read from the dispute, whose metadata is empty, so it looked foreign and was dropped. The Stripe provider now reads it from the disputed charge (`enrichDisputeMetadata`); if the charge cannot be read, the reversal carries `metadataUnresolved` and the webhook asks for a retry.
+  - **One provider customer per subscriber.** Two checkouts at once each created a customer holding the person's email. Customer creation is now find-or-create under a per-subscriber lock, and `createCustomer` passes a Stripe idempotency key derived from the subscriber (`IBillingProvider.createCustomer` takes an optional `idempotencyKey`). A pay-as-you-go buyer (no subscription) also reuses their wallet or recorded customer instead of getting a new one on every pack checkout.
+  - **Credits-low and limit notices go out once, not once per instance.** The "already sent" memory was a Set in each process. It is now a row claimed with one conditional statement in the new `fonderie_billing_notices` table (migration `018_billing_notices.sql`, additive — run migrate with this release).
+  - **Restoring an account during its deletion keeps the subscription.** Deletion marked the subscription as ended-by-deletion only after the provider cancel, so a restore in that window found nothing to resume. The mark is now set first, the restore clears it atomically, and a deletion that finds its mark gone undoes its own cancel.
+
 ## 11.1.0
 
 ### Minor Changes
