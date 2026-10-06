@@ -13,7 +13,7 @@
     "core": "0.32.0",
     "courier": "7.16.1",
     "customers": "6.8.0",
-    "events": "5.13.1",
+    "events": "5.13.2",
     "geo": "0.5.13",
     "logger": "0.3.9",
     "media": "0.4.1",
@@ -76,7 +76,7 @@
     "vue-webhooks-screens": "0.4.2",
     "vue-workspaces": "0.13.0",
     "vue-workspaces-screens": "0.5.4",
-    "webhooks": "7.2.0",
+    "webhooks": "7.2.1",
     "workspaces": "7.2.0"
   },
   "packages": {
@@ -1420,7 +1420,7 @@
       "hasOutcomes": true
     },
     "events": {
-      "version": "5.13.1",
+      "version": "5.13.2",
       "stability": "maturing",
       "requires": [
         "core",
@@ -3042,7 +3042,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "7.2.0",
+      "version": "7.2.1",
       "stability": "stable",
       "requires": [
         "core",
