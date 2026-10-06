@@ -101,22 +101,30 @@ export function authController(
 				if (await users.findArchivedByEmail(normalizedEmail)) return archivedAddressResponse();
 
 				const passwordHash = await hashPassword(password);
-				const row = await users.create(
-					normalizedEmail,
-					passwordHash,
-					firstName as string | null,
-					lastName as string | null,
-					locale,
-				);
+				const pin = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+				// The account and its verification code are one fact: written
+				// together or not at all. A crash between them used to leave an
+				// account with no code — it could not be verified, and its address
+				// could not be registered again. Messages and events go out only
+				// after the commit (below), so nothing announces an account that
+				// was rolled back.
+				const row = await store.transaction(async (tx) => {
+					const created = await new UserModel(tx).create(
+						normalizedEmail,
+						passwordHash,
+						firstName as string | null,
+						lastName as string | null,
+						locale,
+					);
+					if (created) await new EmailVerificationModel(tx).create(created.id, pin, expiresAt, normalizedEmail);
+					return created;
+				});
 
 				if (!row) {
 					// Lost a race for the address to a concurrent sign-up.
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
 				}
-
-				const pin = randomInt(100000, 1000000).toString();
-				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-				await emailVerif.create(row.id, pin, expiresAt, normalizedEmail);
 
 				const user = await users.findById(row.id);
 				if (!user) {
@@ -195,20 +203,23 @@ export function authController(
 				// archived account's name and then fail.
 				if (await users.findArchivedByPhone(normalizePhone(phone))) return archivedAddressResponse();
 
-				const { id, created } = await users.findOrCreateByPhone(
-					normalizePhone(phone),
-					(firstName as string | null) ?? null,
-					(lastName as string | null) ?? null,
-					locale,
-				);
+				const otp = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+				// As for email: the account and its code commit together.
+				const { id, created } = await store.transaction(async (tx) => {
+					const r = await new UserModel(tx).findOrCreateByPhone(
+						normalizePhone(phone),
+						(firstName as string | null) ?? null,
+						(lastName as string | null) ?? null,
+						locale,
+					);
+					if (r.created) await new PhoneVerificationModel(tx).upsert(r.id, normalizePhone(phone), otp, expiresAt);
+					return r;
+				});
 				// Lost a race for the number to a concurrent sign-up.
 				if (!created) {
 					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Phone already registered');
 				}
-
-				const otp = randomInt(100000, 1000000).toString();
-				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(id, normalizePhone(phone), otp, expiresAt);
 
 				const user = await users.findById(id);
 				if (!user) {
