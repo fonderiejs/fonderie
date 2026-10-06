@@ -40,7 +40,24 @@ export class WebhookDispatcher {
 		if (endpoints.length === 0) return;
 
 		const deliveries = new DeliveryModel(this.store);
-		await Promise.allSettled(endpoints.map((ep) => this.deliver(ep, payload, meta, deliveries)));
+		// Every endpoint gets its chance even when another's fails — but a
+		// failure must still reach the bus. This used to be swallowed whole, so a
+		// delivery row that was never written (a dropped connection, a full disk)
+		// still marked the event processed, and that webhook was gone for good
+		// with nothing left to retry it. Throwing hands the event back to the
+		// outbox; the re-dispatch is safe because create() skips the endpoints
+		// that already have their row.
+		const results = await Promise.allSettled(
+			endpoints.map((ep) => this.deliver(ep, payload, meta, deliveries)),
+		);
+		const failures = results.flatMap((r) => (r.status === 'rejected' ? [r.reason] : []));
+		if (failures.length > 0) {
+			throw new AggregateError(
+				failures,
+				`[webhooks] could not record ${failures.length} of ${endpoints.length} deliveries ` +
+					`for ${meta.type} ${meta.id}`,
+			);
+		}
 	}
 
 	// Retries failed deliveries whose next_attempt_at has passed.
@@ -60,13 +77,25 @@ export class WebhookDispatcher {
 		meta: IEventMeta,
 		deliveries: DeliveryModel,
 	): Promise<void> {
+		// A failure here propagates: without its row this delivery does not
+		// exist anywhere, so only re-running the dispatch can bring it back.
 		const delivery = await deliveries.create({
 			endpointId: endpoint.id,
 			eventId: meta.id,
 			eventType: meta.type,
 			payload,
 		});
-		await this.attemptDelivery(endpoint.url, endpoint.secret, delivery, deliveries);
+		// Already recorded by an earlier dispatch of this event. That row is
+		// delivered, scheduled for retry, or — if its dispatch died before the
+		// first attempt — picked up by the retry loop once its lease lapses.
+		// Sending it again here is exactly the duplicate the row prevents.
+		if (!delivery) return;
+		// From here the row exists, so a failure to record the attempt is the
+		// retry loop's to recover (the row stays due), not a reason to re-run the
+		// whole dispatch.
+		await this.attemptDelivery(endpoint.url, endpoint.secret, delivery, deliveries).catch(
+			(err) => console.error(`[webhooks] delivery ${delivery.id} attempt not recorded:`, err),
+		);
 	}
 
 	async attemptDelivery(
