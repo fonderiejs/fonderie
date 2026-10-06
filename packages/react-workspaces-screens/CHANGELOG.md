@@ -1,5 +1,14 @@
 # @fonderie/react-workspaces-screens
 
+## 0.5.5
+
+### Patch Changes
+
+- Updated dependencies [3760ddb]
+- Updated dependencies [3760ddb]
+  - @fonderie/client@3.20.0
+  - @fonderie/react-workspaces@0.13.0
+
 ## 0.5.4
 
 ### Patch Changes
