@@ -9,7 +9,7 @@ import {
 	setWalletCustomerCard,
 	upsertWalletCustomer,
 } from '../services/wallet-customers';
-import { createRecordedCustomer, latestRecordedCustomer } from '../services/provider-customers';
+import { findOrCreateRecordedCustomer, latestRecordedCustomer } from '../services/provider-customers';
 import { toPaymentMethodDTO, toInvoiceDTO } from '../dtos/billing';
 import { decodeInvoiceCursor, pageInvoices } from '../services/invoice-cursor';
 import { resolveSubscriber } from '../utils';
@@ -100,7 +100,9 @@ export function accountController(store: IStoreAdapter, config: IBillingConfig) 
 				customerId: existing.customerId,
 			};
 		}
-		const { customerId } = await createRecordedCustomer(store, config.provider, {
+		// Found-or-created under a per-subscriber lock: two card setups racing
+		// here would otherwise each create a customer.
+		const { customerId } = await findOrCreateRecordedCustomer(store, config.provider, {
 			email: ctx.user?.email ?? '',
 			subscriberType: subscriber.type,
 			subscriberId: subscriber.id,

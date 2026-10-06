@@ -14,7 +14,8 @@ import { purchasePackWithSavedCard } from '../services/purchase';
 import { DuplicateTransactionError } from '../errors';
 import { toWalletDTO, toWalletTransactionDTO } from '../dtos/billing';
 import { getWalletStatus } from '../helpers';
-import { createRecordedCustomer } from '../services/provider-customers';
+import { findOrCreateRecordedCustomer } from '../services/provider-customers';
+import { getWalletCustomer } from '../services/wallet-customers';
 import { normalizeCurrency, resolveSubscriber, subscriberEventFields } from '../utils';
 
 // The wallet routes are only registered when config.wallet is present, so
@@ -232,10 +233,24 @@ export function walletController(store: IStoreAdapter, config: IBillingConfig, b
 				);
 			}
 
+			// A pay-as-you-go buyer has no subscription, so its customer lives on
+			// the wallet-customer row (the card their first pack saved) or the
+			// customer record. Looking only at the subscription made every pack
+			// checkout create a NEW provider customer for them.
 			const customerId =
 				current?.providerCustomerId ??
 				(
-					await createRecordedCustomer(store, config.provider, {
+					await getWalletCustomer(
+						{
+							subscriberType: subscriber.type,
+							subscriberId: subscriber.id,
+							provider: config.provider.name,
+						},
+						store,
+					)
+				)?.providerCustomerId ??
+				(
+					await findOrCreateRecordedCustomer(store, config.provider, {
 						email: ctx.user!.email ?? '',
 						subscriberType: subscriber.type,
 						subscriberId: subscriber.id,

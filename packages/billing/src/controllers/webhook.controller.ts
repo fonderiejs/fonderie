@@ -225,20 +225,14 @@ export function webhookController(
 						? event.subscription.plan
 						: (resolvePlanNameByPrice(event.subscription, config.plans) ?? event.subscription.plan);
 
-				// Prior status BEFORE the upsert overwrites it — the customer-facing
-				// notification below fires only on the transition INTO canceled /
-				// past_due. Providers re-deliver the same event (and keep a
-				// subscription past_due across retries); the durable domain event
-				// fires every time, but a human should not be re-emailed each retry.
-				const priorStatus =
-					(
-						await subscriptions.get(
-							event.subscription.subscriberType,
-							event.subscription.subscriberId,
-						)
-					)?.status ?? null;
-
-				const applied = await subscriptions.upsert({
+				// The status this write REPLACED, from the same locked transaction as
+				// the write — the customer-facing notification below fires only on
+				// the transition INTO canceled / past_due. Providers re-deliver the
+				// same event, sometimes concurrently (and keep a subscription past_due
+				// across retries); the durable domain event fires every time, but a
+				// human must get exactly one email. Read separately, two concurrent
+				// deliveries both saw the old status and both sent it.
+				const { applied, priorStatus } = await subscriptions.upsertWithPrior({
 					subscriberType: event.subscription.subscriberType,
 					subscriberId: event.subscription.subscriberId,
 					plan,
