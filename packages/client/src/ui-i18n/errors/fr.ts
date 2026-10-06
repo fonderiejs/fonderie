@@ -79,6 +79,7 @@ const errors: typeof en = {
 		DUPLICATE_PHONE: 'Ce numéro de téléphone est déjà associé à ce client.',
 		DUPLICATE_ADDRESS: 'Cette adresse est déjà associée à ce client.',
 		DUPLICATE_REFERENCE_CODE: 'Un autre client utilise déjà ce code de référence.',
+		DUPLICATE_REFERRAL_CODE: 'Un autre client utilise déjà ce code de parrainage.',
 		CUSTOMER_IN_USE: 'Ce client figure sur un travail, une soumission ou une facture. Archivez-le plutôt.',
 		EMAIL_NOT_FOUND: "Ce courriel n'est pas associé à ce client.",
 		PHONE_NOT_FOUND: "Ce numéro de téléphone n'est pas associé à ce client.",

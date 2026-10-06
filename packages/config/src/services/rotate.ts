@@ -1,6 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { ISecretEncryptor } from '../crypto';
+import { lockForRotation, sealKeyCheck } from './key-check';
 
 export interface IRotationReport {
 	/** Rows re-encrypted in `fonderie_secrets`. */
@@ -41,6 +42,14 @@ export interface IRotationReport {
  * BEFORE anything is written. A wrong `from` key therefore fails having changed
  * nothing, rather than part-way through.
  *
+ * ## Writes during a rotation
+ *
+ * setSecret() and rollbackSecret() share one advisory lock with this call: they
+ * wait for a rotation to commit, and a rotation waits for writes in flight. The
+ * rotation also records a key check (migration 004), so a write from an
+ * instance still holding the OLD key afterwards is refused rather than stored
+ * unreadable. Restart instances with the new key once this returns.
+ *
  * Not idempotent, deliberately. Running it twice with the same pair throws on
  * the second run, because the values no longer decrypt under `from`. That is the
  * safe direction: it refuses rather than double-encrypting.
@@ -59,9 +68,15 @@ export async function rotateSecretKey(
 	to: ISecretEncryptor,
 ): Promise<IRotationReport> {
 	return store.transaction(async (tx) => {
-		// Lock the rows for the duration: a concurrent setSecret() would write
-		// under the OLD key after we had read it and before we commit, leaving one
-		// value nobody can read. FOR UPDATE makes that write wait for the commit.
+		// Exclusive against every secret write. Row locks alone were not enough:
+		// FOR UPDATE only made a concurrent setSecret() wait, and it then wrote
+		// the ciphertext it had already made with the OLD key; a key or revision
+		// inserted meanwhile was never locked at all. Both ended up unreadable.
+		await lockForRotation(tx);
+		const [check] = await tx.query<{ checkValue: string }>(
+			`SELECT check_value AS "checkValue" FROM fonderie_secret_key_check`,
+		);
+		if (check) reencrypt(from, to, check.checkValue, 'the stored key check');
 		const secrets = await tx.query<{ id: string; value: string }>(
 			`SELECT id, value FROM fonderie_secrets FOR UPDATE`,
 		);
@@ -102,6 +117,12 @@ export async function rotateSecretKey(
 				[row.value, row.key, row.environment, row.version],
 			);
 		}
+
+		await tx.query(
+			`INSERT INTO fonderie_secret_key_check (id, check_value) VALUES (true, $1)
+			 ON CONFLICT (id) DO UPDATE SET check_value = EXCLUDED.check_value, rotated_at = now()`,
+			[sealKeyCheck(to)],
+		);
 
 		return { secrets: nextSecrets.length, revisions: nextRevisions.length };
 	});

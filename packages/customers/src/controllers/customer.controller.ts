@@ -7,8 +7,21 @@ import { getWorkspaceSettings } from '@fonderie/workspaces';
 import { DEFAULT_REFERENCE_CODE_PREFIX, EVENT_KEYS, type ICustomersConfig } from '../config';
 import { toCustomerDetailD2DTO, toCustomerDetailDTO, toCustomerDTO } from '../dtos/customer';
 import type { ICustomerDetailD2 } from '../types';
-import { CustomerInUseError, CustomerModel } from '../models/customer.model';
+import { CustomerInUseError, CustomerModel, duplicateCode } from '../models/customer.model';
 import { isUuid } from '../utils';
+
+// A code the caller chose that another customer in the workspace holds: theirs
+// to change, so a 409 that says which code — not a 500 from the unique index.
+function duplicateCodeResponse(err: unknown): Response | null {
+	switch (duplicateCode(err)) {
+		case 'reference':
+			return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_REFERENCE_CODE', 'A customer with this reference code already exists');
+		case 'referral':
+			return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_REFERRAL_CODE', 'A customer with this referral code already exists');
+		default:
+			return null;
+	}
+}
 
 export function customerController(store: IStoreAdapter, config: ICustomersConfig = {}, bus?: EventBus) {
 	const customers = new CustomerModel(store);
@@ -172,9 +185,8 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					createdBy: ctx.user?.id ?? null,
 				});
 			} catch (err: unknown) {
-				if (err instanceof Error && err.message.includes('idx_fc_reference_code')) {
-					return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_REFERENCE_CODE', 'A customer with this reference code already exists');
-				}
+				const duplicate = duplicateCodeResponse(err);
+				if (duplicate) return duplicate;
 				throw err;
 			}
 
@@ -256,7 +268,14 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				opts.referenceCode = body['referenceCode'].toUpperCase();
 			}
 
-			const customer = await customers.update(id, workspaceId, opts, prefix);
+			let customer: Awaited<ReturnType<typeof customers.update>>;
+			try {
+				customer = await customers.update(id, workspaceId, opts, prefix);
+			} catch (err: unknown) {
+				const duplicate = duplicateCodeResponse(err);
+				if (duplicate) return duplicate;
+				throw err;
+			}
 			if (!customer) {
 				return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Customer not found');
 			}

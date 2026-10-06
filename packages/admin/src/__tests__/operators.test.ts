@@ -13,13 +13,16 @@ import {
 	hashPassword,
 	hotp,
 	newBackupCodes,
+	normalizeBackupCode,
 	passwordProblem,
 	secretBox,
+	sha256,
 	totpCounter,
 	verifyPassword,
 	verifyTotp,
 } from '../operators/crypto';
 import { needsStepUp, resetAttemptLimits } from '../operators/http';
+import { confirmEnrollment, createLink, findOperator } from '../operators/service';
 
 // ── primitives (no database) ─────────────────────────────────────────────
 
@@ -571,4 +574,79 @@ test('sign out clears the cookie and ends the session', { skip }, async () => {
 		(await call({ path: '/_admin/session', cookie: pw.cookie })).result['state'],
 		'signed-out',
 	);
+});
+
+// ── races on one operator, called the way two tabs would ─────────────────
+// Each test makes its own operator and reads only its rows.
+
+const RACE_BOX = secretBox('cd'.repeat(32));
+
+async function pendingOperator(tag: string) {
+	const email = `race-${tag}-${Date.now()}@acme.example`;
+	const secret = base32Encode(Buffer.from(`race-${tag}-secret-bytes`.slice(0, 20)));
+	await store.query(
+		`INSERT INTO fonderie_admin_operators (email, password_hash, scopes, created_by, totp_secret)
+		 VALUES ($1, 'x', '{read}', 'test', $2)`,
+		[email, RACE_BOX.seal(secret)],
+	);
+	// The row as the session loaded it: from here on it is stale.
+	const op = (await findOperator(store, { email }))!;
+	return { op, secret };
+}
+
+test('two confirmations of one enrollment: one signs in, and its backup codes are the ones kept', {
+	skip,
+}, async () => {
+	const { op, secret } = await pendingOperator('confirm');
+	const code = codeFor(secret);
+	const results = await Promise.all(
+		Array.from({ length: 4 }, () => confirmEnrollment(store, RACE_BOX, op, code)),
+	);
+	const winners = results.filter((r) => r !== null);
+	assert.equal(winners.length, 1, `${winners.length} requests were promoted from one pending enrollment`);
+	const [row] = await store.query<{ backup_codes: string[] }>(
+		'SELECT backup_codes FROM fonderie_admin_operators WHERE id = $1',
+		[op.id],
+	);
+	assert.deepEqual(
+		row!.backup_codes,
+		winners[0]!.map((c) => sha256(normalizeBackupCode(c))),
+		'the codes shown are the codes stored',
+	);
+});
+
+test('a burst of wrong enrollment codes is checked one at a time: at most 5 are tried', {
+	skip,
+}, async () => {
+	const { op } = await pendingOperator('lockout');
+	await Promise.all(
+		Array.from({ length: 12 }, () => confirmEnrollment(store, RACE_BOX, op, '000000')),
+	);
+	const [row] = await store.query<{ n: number }>(
+		'SELECT failed_attempts AS n FROM fonderie_admin_operators WHERE id = $1',
+		[op.id],
+	);
+	assert.ok(Number(row!.n) <= 5, `${row!.n} guesses were verified; the lockout allows 5`);
+});
+
+test('recovery links issued at once: exactly one stays live', { skip }, async () => {
+	const { op } = await pendingOperator('recovery');
+	for (let round = 0; round < 5; round++) {
+		await Promise.all(
+			Array.from({ length: 3 }, () =>
+				createLink(store, {
+					kind: 'recovery',
+					email: op.email,
+					operatorId: op.id,
+					createdBy: 'test',
+					hours: 1,
+				}),
+			),
+		);
+		const [live] = await store.query<{ n: string }>(
+			`SELECT count(*)::text AS n FROM fonderie_admin_invites WHERE operator_id = $1 AND used_at IS NULL`,
+			[op.id],
+		);
+		assert.equal(Number(live!.n), 1, `round ${round}: ${live!.n} live recovery links`);
+	}
 });

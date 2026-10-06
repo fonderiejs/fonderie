@@ -3,6 +3,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { ISecretEntry, ISecretRevision } from '../types';
 import type { ISecretEncryptor } from '../crypto';
 import { noopEncryptor } from '../crypto';
+import { assertCurrentKey, lockForSecretWrite } from './key-check';
 import type { IVersionedResource } from './versioned';
 import { versionedWrite, versionedRollback } from './versioned';
 
@@ -72,7 +73,10 @@ export async function revealSecret(
 }
 
 // Write a secret — same versioned primitive as config, but the value is
-// encrypted at rest and returned masked (metadata only).
+// encrypted at rest and returned masked (metadata only). Encrypted INSIDE the
+// transaction, after the key lock and the key check: encrypted before it, a
+// write racing rotateSecretKey() waited for the rotation and then stored the
+// old key's ciphertext over the re-encrypted value.
 export async function setSecret(
 	opts: {
 		key: string;
@@ -86,17 +90,21 @@ export async function setSecret(
 	store: IStoreAdapter,
 	encryptor: ISecretEncryptor = noopEncryptor,
 ): Promise<ISecretEntry> {
-	const data: Record<string, unknown> = {
-		value: encryptor.encrypt(opts.value),
-		active: opts.active ?? true,
-	};
-	if (opts.description !== undefined) data['description'] = opts.description;
-	return versionedWrite<ISecretEntry>(SECRET_TABLE, store, {
-		key: opts.key,
-		scope: opts.environment ?? 'all',
-		data,
-		...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
-		actor: opts.actor ?? null,
+	return store.transaction(async (tx) => {
+		await lockForSecretWrite(tx);
+		await assertCurrentKey(tx, encryptor);
+		const data: Record<string, unknown> = {
+			value: encryptor.encrypt(opts.value),
+			active: opts.active ?? true,
+		};
+		if (opts.description !== undefined) data['description'] = opts.description;
+		return versionedWrite<ISecretEntry>(SECRET_TABLE, tx, {
+			key: opts.key,
+			scope: opts.environment ?? 'all',
+			data,
+			...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
+			actor: opts.actor ?? null,
+		});
 	});
 }
 
@@ -104,11 +112,16 @@ export async function rollbackSecret(
 	opts: { key: string; environment?: string; toVersion: number; actor?: string },
 	store: IStoreAdapter,
 ): Promise<ISecretEntry> {
-	return versionedRollback<ISecretEntry>(SECRET_TABLE, store, {
-		key: opts.key,
-		scope: opts.environment ?? 'all',
-		toVersion: opts.toVersion,
-		actor: opts.actor ?? null,
+	// Copies a revision's ciphertext; under the key lock so it cannot copy one
+	// read before a rotation re-encrypted it.
+	return store.transaction(async (tx) => {
+		await lockForSecretWrite(tx);
+		return versionedRollback<ISecretEntry>(SECRET_TABLE, tx, {
+			key: opts.key,
+			scope: opts.environment ?? 'all',
+			toVersion: opts.toVersion,
+			actor: opts.actor ?? null,
+		});
 	});
 }
 

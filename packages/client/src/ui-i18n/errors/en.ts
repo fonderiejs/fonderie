@@ -83,6 +83,7 @@ const errors = {
 		DUPLICATE_PHONE: 'This phone number is already on this customer.',
 		DUPLICATE_ADDRESS: 'This address is already on this customer.',
 		DUPLICATE_REFERENCE_CODE: 'Another customer already uses this reference code.',
+		DUPLICATE_REFERRAL_CODE: 'Another customer already uses this referral code.',
 		CUSTOMER_IN_USE: 'This customer is on a job, quote or invoice. Archive them instead.',
 		EMAIL_NOT_FOUND: 'That email is not on this customer.',
 		PHONE_NOT_FOUND: 'That phone number is not on this customer.',
