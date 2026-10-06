@@ -42,6 +42,18 @@ export function mfaController(
 	return {
 		// ── 1. Setup ───────────────────────────────────────────────
 		setup: async (ctx: IFonderieContext): Promise<Response> => {
+			// Not while MFA is on: setup then confirm with ANY authenticator used
+			// to replace the working secret (and the backup codes) with no proof
+			// of the current one — a stolen session could take the second factor
+			// over. Disable first (it asks for a current code).
+			const current = await users.findById(ctx.user!.id);
+			if (current?.mfaEnabled) {
+				return setApiResponse(
+					HTTP.CONFLICT,
+					'MFA_ALREADY_ENABLED',
+					'Two-factor authentication is already on. Turn it off first to set up a new authenticator.',
+				);
+			}
 			const secret = generateTotpSecret();
 			const uri = generateTotpUri(ctx.user!.email ?? ctx.user!.id, secret, issuer);
 			const plainCodes = generateBackupCodes();
@@ -49,10 +61,11 @@ export function mfaController(
 
 			const qr = await QRCode.toDataURL(uri);
 
-			await Promise.all([
-				users.saveMfaPendingSecret(ctx.user!.id, mfaCipher.encrypt(secret)),
-				backupCodes.replace(ctx.user!.id, codeHashes),
-			]);
+			// Both or neither (atomicity audit B5).
+			await store.transaction(async (tx) => {
+				await new UserModel(tx).saveMfaPendingSecret(ctx.user!.id, mfaCipher.encrypt(secret));
+				await new BackupCodeModel(tx).replace(ctx.user!.id, codeHashes);
+			});
 
 			return setApiResponse(
 				HTTP.OK,
@@ -99,7 +112,15 @@ export function mfaController(
 				if (!verifyTotpToken(token, pendingSecret)) {
 					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid MFA token');
 				}
-				await users.confirmMfaSecret(ctx.user!.id);
+				// Only the secret this code proves: a setup that replaced it since
+				// answers here instead of enabling a secret nobody scanned.
+				if (!(await users.confirmMfaSecret(ctx.user!.id, pendingCipher!))) {
+					return setApiResponse(
+						HTTP.CONFLICT,
+						'MFA_SETUP_CHANGED',
+						'The setup changed while you were confirming it. Scan the new QR code and try again.',
+					);
+				}
 
 				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
@@ -261,7 +282,12 @@ export function mfaController(
 				return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CODE', 'Invalid TOTP code');
 			}
 
-			await Promise.all([users.disableMfa(ctx.user!.id), backupCodes.deleteByUser(ctx.user!.id)]);
+			// Both or neither (atomicity audit B5): MFA left on with no backup
+			// codes, or off with codes lingering, were both possible.
+			await store.transaction(async (tx) => {
+				await new UserModel(tx).disableMfa(ctx.user!.id);
+				await new BackupCodeModel(tx).deleteByUser(ctx.user!.id);
+			});
 
 			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
