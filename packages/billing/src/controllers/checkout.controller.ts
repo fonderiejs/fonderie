@@ -7,7 +7,8 @@ import type { BillingInterval } from '../types';
 import { BILLING_INTERVAL, BILLING_INTERVALS, isBillingInterval } from '../types';
 import { PlanModel } from '../models/plan.model';
 import { SubscriptionModel } from '../models/subscription.model';
-import { createRecordedCustomer } from '../services/provider-customers';
+import { findOrCreateRecordedCustomer } from '../services/provider-customers';
+import { LIVE_SUBSCRIPTION_STATUSES } from '../services/subscriptions';
 import { resolveSubscriber } from '../utils';
 
 // Only a clear UPGRADE is applied to a live subscription in place (immediate,
@@ -145,8 +146,10 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			// resubscribe branch below — that assigns provider_subscription_id = null
 			// and orphans the real provider subscription.
 			const current = await subscriptions.get(subscriber.type, subscriber.id);
-			const LIVE = ['active', 'trialing', 'past_due', 'unpaid', 'paused'];
-			if (current?.providerSubscriptionId && LIVE.includes(current.status)) {
+			if (
+				current?.providerSubscriptionId &&
+				LIVE_SUBSCRIPTION_STATUSES.includes(current.status)
+			) {
 				if (current.plan === planName && current.interval === interval) {
 					return setApiResponse(
 						HTTP.UNPROCESSABLE,
@@ -224,13 +227,30 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 					providerSubscriptionId: current.providerSubscriptionId,
 					cancelAtPeriodEnd: false,
 					trialEndsAt: current.trialEndsAt,
+					// The row was read before the provider call. An immediate cancel
+					// (DELETE /subscription, account deletion) whose terminal webhook
+					// committed in between must not be overwritten with 'active' —
+					// deleted is terminal, nothing would ever correct it, and the
+					// subscriber would keep paid access for free.
+					guardNotWebhookCanceled: true,
+					guardLiveSubscriptionId: current.providerSubscriptionId,
 				};
 				if (current.providerCustomerId) upsert.providerCustomerId = current.providerCustomerId;
 				const cps = res.currentPeriodStart ?? current.currentPeriodStart;
 				if (cps) upsert.currentPeriodStart = cps;
 				const cpe = res.currentPeriodEnd ?? current.currentPeriodEnd;
 				if (cpe) upsert.currentPeriodEnd = cpe;
-				await subscriptions.upsert(upsert);
+				const applied = await subscriptions.upsert(upsert);
+				if (!applied) {
+					// Report what is true now: the subscription ended while the
+					// upgrade was in flight, so there is nothing upgraded to use.
+					return setApiResponse(
+						HTTP.CONFLICT,
+						'SUBSCRIPTION_CANCELED',
+						'Your subscription ended while the upgrade was in progress; start a new checkout.',
+						{ reason: 'canceled_during_upgrade', currentPlan: current.plan },
+					);
+				}
 				return setApiResponse(
 					HTTP.OK,
 					'SUBSCRIPTION_UPGRADED',
@@ -247,7 +267,7 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 			const customerId =
 				current?.providerCustomerId ??
 				(
-					await createRecordedCustomer(store, config.provider, {
+					await findOrCreateRecordedCustomer(store, config.provider, {
 						email: ctx.user!.email ?? '',
 						subscriberType: subscriber.type,
 						subscriberId: subscriber.id,
@@ -296,14 +316,30 @@ export function checkoutController(store: IStoreAdapter, config: IBillingConfig)
 
 			const { url } = await config.provider.createCheckoutSession(sessionOpts);
 
-			await subscriptions.upsert({
+			// The "no live subscription" decision above was made on a read. If a
+			// paid-session webhook made the row live since, this marker would null
+			// its provider subscription id and orphan a subscription that bills —
+			// so it only lands on a row that is still not live.
+			const marked = await subscriptions.upsert({
 				subscriberType: subscriber.type,
 				subscriberId: subscriber.id,
 				plan: planName,
 				interval,
 				status: 'incomplete',
 				providerCustomerId: customerId,
+				guardNotLive: true,
 			});
+			if (!marked) {
+				// The subscriber is already subscribed (another tab or session won).
+				// Withhold the URL: paying it would open a second subscription.
+				const live = await subscriptions.get(subscriber.type, subscriber.id);
+				return setApiResponse(
+					HTTP.UNPROCESSABLE,
+					'PLAN_UNCHANGED',
+					`Already subscribed to ${live?.plan ?? planName}; nothing to change.`,
+					{ plan: live?.plan ?? planName, interval: live?.interval ?? interval },
+				);
+			}
 
 			return setApiResponse(HTTP.OK, 'CHECKOUT_URL', 'Checkout session created.', { url });
 		},

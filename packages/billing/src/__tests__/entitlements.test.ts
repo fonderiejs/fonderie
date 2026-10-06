@@ -42,8 +42,11 @@ function config(extra: Partial<IBillingConfig> = {}): IBillingConfig {
 
 function storeWith(subscription: Record<string, unknown> | null): IStoreAdapter {
 	const store: IStoreAdapter = {
-		query: async <T = unknown>(sql: string): Promise<T[]> =>
-			(sql.includes('fonderie_subscriptions') && subscription ? [subscription] : []) as T[],
+		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// Every durable notice claim is the first (fonderie_billing_notices).
+			if (sql.includes('INSERT INTO fonderie_billing_notices')) return [{ claimed: 1 }] as T[];
+			return (sql.includes('fonderie_subscriptions') && subscription ? [subscription] : []) as T[];
+		},
 		transaction: async (fn) => fn(store),
 	};
 	return store;

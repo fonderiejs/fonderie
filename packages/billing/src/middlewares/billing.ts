@@ -27,10 +27,15 @@ import {
 } from '../utils';
 import { notifyBilling } from '../services/notify';
 import { maybeAutoRecharge } from '../services/auto-recharge';
+import { claimNotice, releaseNotice } from '../services/notices';
+import type { INoticeKey } from '../services/notices';
 
-// In-process de-dup: tracks which threshold notifications have fired this session.
-// Acceptable to lose on restart (may send one duplicate after a redeploy).
-const notified = new Set<string>();
+// Which threshold notices THIS process already knows are claimed, and for which
+// period — a cache in front of the durable claim (fonderie_billing_notices), so
+// a subscriber sitting over a limit does not cost a write on every request. It
+// is never the authority: an in-process Set alone let every instance (and every
+// serverless cold start) send its own copy of the same email.
+const notified = new Map<string, string>();
 
 export function withBilling(
 	store: IStoreAdapter,
@@ -38,6 +43,19 @@ export function withBilling(
 	backend: ICounterBackend,
 	bus?: EventBus,
 ): Middleware {
+	// True when this request should send the notice: the first claim of
+	// `period` across all instances. If the durable claim cannot be reached the
+	// notice still goes out, once per process — the behavior before the table.
+	async function claimOnce(local: string, key: INoticeKey, period: string): Promise<boolean> {
+		if (notified.get(local) === period) return false;
+		notified.set(local, period);
+		try {
+			return await claimNotice(key, period, store);
+		} catch {
+			return true;
+		}
+	}
+
 	return async (ctx, next) => {
 		const subscriber = resolveSubscriber(ctx);
 
@@ -183,10 +201,18 @@ export function withBilling(
 				// customer-facing billing.credits-low notice; both fire-and-forget.
 				if (planWallet.lowBalanceAt !== null) {
 					const lowKey = `${subscriber.type}:${subscriber.id}:low-balance`;
+					const lowNotice = {
+						subscriberType: subscriber.type,
+						subscriberId: subscriber.id,
+						notice: 'credits-low',
+					};
 					if (balance > planWallet.lowBalanceAt) {
+						// Re-arm everywhere, not only here: the instance that sent the
+						// notice may not be the one that sees the balance recover.
+						// A failed re-arm must not cost the auto-recharge below.
 						notified.delete(lowKey);
-					} else if (!notified.has(lowKey)) {
-						notified.add(lowKey);
+						await releaseNotice(lowNotice, store).catch(() => {});
+					} else if (await claimOnce(lowKey, lowNotice, 'low')) {
 						const fields = {
 							...subscriberEventFields(subscriber.type, subscriber.id),
 							currency: planWallet.currency,
@@ -279,11 +305,17 @@ export function withBilling(
 				if (status.type !== 'counter' || status.limit === null) continue;
 
 				const base = `${subscriber.type}:${subscriber.id}:${key}`;
+				// Once per counter window (and limit — a plan change moves the line).
+				const period = `${status.resetsAt ?? 'lifetime'}|${status.limit}`;
+				const noticeKey = (kind: string) => ({
+					subscriberType: subscriber.type,
+					subscriberId: subscriber.id,
+					notice: `limit-${kind}:${key}`,
+				});
 
 				if (config.notifications.softHit && status.status === 'over_limit') {
 					const nk = `${base}:reached`;
-					if (!notified.has(nk)) {
-						notified.add(nk);
+					if (await claimOnce(nk, noticeKey('reached'), period)) {
 						toNotify.push({
 							type: MESSAGE_KEYS.limitReached,
 							recipient,
@@ -297,8 +329,7 @@ export function withBilling(
 					}
 				} else if (config.notifications.warnAt && status.status === 'warning') {
 					const nk = `${base}:warning`;
-					if (!notified.has(nk)) {
-						notified.add(nk);
+					if (await claimOnce(nk, noticeKey('warning'), period)) {
 						toNotify.push({
 							type: MESSAGE_KEYS.limitWarning,
 							recipient,
@@ -311,10 +342,10 @@ export function withBilling(
 						});
 					}
 				} else {
-					// Hysteresis (mirrors the low-balance dedup): once a counter is back
-					// below its warning threshold — typically when its window resets —
-					// drop the per-key dedup markers so a later re-crossing notifies
-					// again, and the module-level Set cannot grow unbounded.
+					// Back below the warning threshold — typically when its window
+					// resets. The durable claim re-arms by itself (the next crossing is
+					// a new period); drop the local cache so the module-level Map
+					// cannot grow unbounded.
 					notified.delete(`${base}:reached`);
 					notified.delete(`${base}:warning`);
 				}

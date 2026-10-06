@@ -52,6 +52,17 @@ test('restricts payment methods explicitly on EVERY page it opens, rather than n
 	);
 });
 
+test("customers.create carries the caller's idempotency key", () => {
+	// Without it, a create whose response was lost and is retried makes a second
+	// customer holding the same person's email (find-or-create's own lock only
+	// covers callers that reach the database).
+	assert.match(
+		SRC,
+		/customers\.create\([\s\S]{0,400}?idempotencyKey: opts\.idempotencyKey/,
+		'providers/stripe.ts createCustomer must pass opts.idempotencyKey as the request option',
+	);
+});
+
 test('the pinned API version is the one these parameters belong to', () => {
 	// allowed_payment_method_types does not exist before Dahlia. Pin and
 	// parameter have to move together; either alone is broken.

@@ -30,7 +30,9 @@ function config(metric: string, extra: Partial<IBillingConfig> = {}): IBillingCo
 }
 
 const store: IStoreAdapter = {
-	query: async <T = unknown>(): Promise<T[]> => [] as T[],
+	// Every durable notice claim is the first (fonderie_billing_notices).
+	query: async <T = unknown>(sql: string): Promise<T[]> =>
+		(sql.includes('INSERT INTO fonderie_billing_notices') ? [{ claimed: 1 }] : []) as T[],
 	transaction: async (fn) => fn(store),
 };
 

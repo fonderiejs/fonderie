@@ -23,6 +23,18 @@ erased_at                TIMESTAMPTZ
 -- PRIMARY KEY (provider, provider_customer_id)
 ```
 
+### `fonderie_billing_notices`
+
+```sql
+subscriber_type          TEXT NOT NULL
+subscriber_id            UUID NOT NULL
+notice                   TEXT NOT NULL
+period                   TEXT NOT NULL
+sent_at                  TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CONSTRAINT fonderie_billing_notices_subscriber_type_check CHECK (subscriber_type IN ('user', 'workspace'))
+-- PRIMARY KEY (subscriber_type, subscriber_id, notice)
+```
+
 ### `fonderie_billing_notifications`
 
 ```sql

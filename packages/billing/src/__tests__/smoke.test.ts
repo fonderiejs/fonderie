@@ -124,6 +124,10 @@ function makeStore(
 			if (sql.includes('fonderie_subscriptions') && sql.includes('SELECT')) {
 				return (opts.subscription ? [opts.subscription] : []) as unknown as T[];
 			}
+			// The subscription upsert's RETURNING: the write applied.
+			if (sql.includes('INSERT INTO fonderie_subscriptions')) {
+				return [{ applied: 1 }] as unknown as T[];
+			}
 			if (sql.includes('fonderie_plans') && sql.includes('SELECT') && opts.plan !== undefined) {
 				return (opts.plan ? [opts.plan] : []) as unknown as T[];
 			}

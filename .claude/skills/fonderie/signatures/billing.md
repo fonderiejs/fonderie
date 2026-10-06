@@ -19,7 +19,7 @@ new StripeProvider(secretKey: string, options?: IStripeProviderOptions | undefin
 new StripeProvider(secretKey: string, webhookSecret: string | undefined, options?: IStripeProviderOptions | undefined): StripeProvider
   .name: "stripe"
   .apiVersion: "2026-08-26.dahlia"
-  .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; }): Promise<{ customerId: string; }>
+  .createCustomer(opts: { email: string; subscriberType: SubscriberType; subscriberId: string; userId: string; idempotencyKey?: string; }): Promise<{ customerId: string; }>
   .createCheckoutSession(opts: { customerId: string; priceId: string; subscriberType: SubscriberType; subscriberId: string; trialDays?: number; successUrl: string; cancelUrl: string; idempotencyKey?: string; }): Promise<...>
   .createPaymentCheckoutSession(opts: { customerId: string; amount: bigint; currency: string; name: string; quantity?: number; priceId?: string; savePaymentMethod?: boolean; metadata: Record<string, string>; successUrl: string; cancelUrl: string; }): Promise<...>
   .chargeOffSession(opts: { customerId: string; paymentMethodId?: string | null; amount: bigint; currency: string; idempotencyKey: string; metadata: Record<string, string>; }): Promise<{ providerTxId: string | null; status: "succeeded" | ... 2 more ... | "unknown"; }>
@@ -245,6 +245,7 @@ interface IBillingProvider {
         subscriberType: SubscriberType;
         subscriberId: string;
         userId: string;
+        idempotencyKey?: string;
     }): Promise<{
         customerId: string;
     }>;
@@ -395,6 +396,7 @@ interface INormalizedReversal {
     reason: string | null;
     status: string | null;
     metadata: Record<string, string>;
+    metadataUnresolved?: boolean;
 }
 
 interface INormalizedInvoice {
