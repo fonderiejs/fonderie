@@ -17,6 +17,12 @@ function makeStore(
 ): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// withWorkspace's one read: the workspace + membership + system roles.
+			if (sql.includes('AS "isMember"')) {
+				if (!opts.workspace) return [] as T[];
+				return [{ ...opts.workspace, isMember: !!opts.member, systemRoles: [] }] as T[];
+			}
+
 			if (sql.includes('fonderie_workspaces') && sql.includes('GROUP BY w.id')) {
 				return (opts.workspaces ?? []) as T[];
 			}

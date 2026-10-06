@@ -3,6 +3,7 @@ import type { Middleware } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IWorkspacesConfig } from '../config';
+import { accessFor } from './access-snapshot';
 
 // RBAC gate for PRIVILEGED workspace routes (role CRUD, member/invitation
 // management, settings, archive). withWorkspace verifies *membership*; this
@@ -61,7 +62,17 @@ export function requireManager(store: IStoreAdapter, config: IWorkspacesConfig):
 		}
 		if (!ctx.workspace) return next();
 
-		if (!(await isWorkspaceManager(store, config, ctx.user.id, ctx.workspace as { id: string; ownerId?: string }))) {
+		const workspace = ctx.workspace as { id: string; ownerId?: string };
+		// withWorkspace already read this member's system roles for this very
+		// request — the same predicate isWorkspaceManager queries. Use them
+		// instead of a second round-trip; anything else (another workspace,
+		// a context set some other way) asks the database.
+		const seen = accessFor(ctx, ctx.user.id, workspace.id);
+		const manager = seen
+			? (!!workspace.ownerId && workspace.ownerId === ctx.user.id) ||
+				seen.systemRoles.some((r) => (config.managerRoles ?? ['ADMIN']).includes(r))
+			: await isWorkspaceManager(store, config, ctx.user.id, workspace);
+		if (!manager) {
 			return setApiResponse(
 				HTTP.FORBIDDEN,
 				'MANAGER_REQUIRED',

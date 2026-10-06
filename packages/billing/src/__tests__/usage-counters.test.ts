@@ -125,6 +125,40 @@ test('PostgreSQL: metrics and windows are counted apart (a 1h and a 1d window st
 	}
 });
 
+test('PostgreSQL: incrementMany is one statement and answers what increment() would, in order', SKIP, async () => {
+	const store = await connect();
+	try {
+		let statements = 0;
+		const counting = {
+			query: <T>(sql: string, params?: unknown[]) => {
+				statements++;
+				return store.query<T>(sql, params);
+			},
+			transaction: store.transaction.bind(store),
+		};
+		const backend = new DBCounterBackend(counting as never, { opportunisticPurge: false });
+		await backend.increment(`user:${SUBSCRIBER}:exports`, DAY, 5);
+		statements = 0;
+		const totals = await backend.incrementMany([
+			{ key: `user:${SUBSCRIBER}:imports`, windowMs: 3_600_000 },
+			{ key: `user:${SUBSCRIBER}:exports`, windowMs: DAY, quantity: 2 },
+			{ key: `user:${SUBSCRIBER}:lifetime`, windowMs: null, quantity: 3 },
+		]);
+		assert.equal(statements, 1, 'three counters, one round-trip');
+		assert.deepEqual(totals, [1, 7, 3]);
+		assert.equal(await backend.get(`user:${SUBSCRIBER}:exports`, DAY), 7);
+		assert.equal(await backend.get(`user:${SUBSCRIBER}:lifetime`, null), 3);
+		// A repeated key cannot be one upsert; it still counts, one call each.
+		const twice = await backend.incrementMany([
+			{ key: `user:${SUBSCRIBER}:imports`, windowMs: 3_600_000 },
+			{ key: `user:${SUBSCRIBER}:imports`, windowMs: 3_600_000 },
+		]);
+		assert.deepEqual(twice, [2, 3]);
+	} finally {
+		await (store as unknown as { end(): Promise<void> }).end();
+	}
+});
+
 test('PostgreSQL: purgeUsageCounters drops ended windows only, never lifetime counters', SKIP, async () => {
 	const store = await connect();
 	try {

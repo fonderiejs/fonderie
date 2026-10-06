@@ -3,8 +3,8 @@ import type { Middleware } from '@fonderie/core';
 import type { IFonderieContext } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { getMember } from '../services/members';
-import { findWorkspaceById, findPersonalWorkspace } from '../services/workspaces';
+import { findWorkspaceAccess, findPersonalWorkspace } from '../services/workspaces';
+import { rememberAccess } from './access-snapshot';
 
 // Resolves ctx.workspace from:
 //   1. Route param :workspaceId or :id (path-based admin routes)
@@ -31,16 +31,19 @@ function makeHandler(store: IStoreAdapter): Middleware {
 			return next();
 		}
 
-		const workspace = await findWorkspaceById(workspaceId, store);
-		if (!workspace) {
+		// One round-trip: the workspace, the caller's membership, and the system
+		// roles requireManager would otherwise read again.
+		const found = await findWorkspaceAccess(workspaceId, ctx.user?.id ?? null, store);
+		if (!found) {
 			return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 		}
+		const { workspace } = found;
 
 		if (ctx.user) {
-			const member = await getMember(ctx.user.id, workspaceId, store);
-			if (!member) {
+			if (!found.isMember) {
 				return setApiResponse(HTTP.FORBIDDEN, 'FORBIDDEN', 'Not a member of this workspace');
 			}
+			rememberAccess(ctx, { userId: ctx.user.id, workspaceId: workspace.id, systemRoles: found.systemRoles });
 		}
 
 		Object.assign(ctx, { workspace });

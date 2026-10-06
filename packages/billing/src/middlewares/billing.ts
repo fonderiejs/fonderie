@@ -121,13 +121,26 @@ export function withBilling(
 
 		// Increment windowed (rate-limit) counters and read their current totals
 		const counters: Record<string, number> = {};
+		const windowed: Array<{ name: string; key: string; windowMs: number | null }> = [];
 
 		for (const [key, entry] of Object.entries(entitledPlan.policy ?? {})) {
 			if ('enabled' in entry || !entry.window) continue;
 
-			const windowMs = parseWindowMs(entry.window);
-			const counterKey = `${subscriber.type}:${subscriber.id}:${key}`;
-			counters[key] = await backend.increment(counterKey, windowMs);
+			windowed.push({
+				name: key,
+				key: `${subscriber.type}:${subscriber.id}:${key}`,
+				windowMs: parseWindowMs(entry.window),
+			});
+		}
+		// One round-trip for all of them when the backend can (the 'db' backend
+		// does); otherwise one call per counter, as before.
+		if (windowed.length > 1 && typeof backend.incrementMany === 'function') {
+			const totals = await backend.incrementMany(windowed);
+			windowed.forEach((w, i) => {
+				counters[w.name] = totals[i] ?? 1;
+			});
+		} else {
+			for (const w of windowed) counters[w.name] = await backend.increment(w.key, w.windowMs);
 		}
 
 		// Build and cache billing context on ctx

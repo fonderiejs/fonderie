@@ -214,6 +214,7 @@ new MemoryCounterBackend(): MemoryCounterBackend
 
 new DBCounterBackend(store: IStoreAdapter, opts?: { opportunisticPurge?: boolean; }): DBCounterBackend
   .increment(key: string, windowMs: number | null, quantity?: number): Promise<number>
+  .incrementMany(entries: readonly { key: string; windowMs: number | null; quantity?: number; }[]): Promise<number[]>
   .get(key: string, windowMs: number | null): Promise<number>
 
 function purgeUsageCounters(store: IStoreAdapter, opts?: { now?: Date; }): Promise<number>
@@ -222,6 +223,11 @@ function counterWindow(windowMs: number | null, now?: number): { start: Date; ex
 
 interface ICounterBackend {
     increment(key: string, windowMs: number | null, quantity?: number): Promise<number>;
+    incrementMany?(entries: ReadonlyArray<{
+        key: string;
+        windowMs: number | null;
+        quantity?: number;
+    }>): Promise<number[]>;
     get(key: string, windowMs: number | null): Promise<number>;
 }
 

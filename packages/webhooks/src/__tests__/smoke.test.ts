@@ -681,6 +681,14 @@ function routeStore({ members = [OWNER], managers = [] as string[] } = {}) {
 	const endpointQueries: unknown[][] = [];
 	const store = {
 		query: async <T>(sql: string, params: unknown[] = []): Promise<T[]> => {
+			// withWorkspace (workspaces 7.2.1+) reads the workspace, membership
+			// and system roles in one query.
+			if (/AS "isMember"/.test(sql)) {
+				const u = params[1] as string;
+				return (params[0] === 'ws-1'
+					? [{ id: 'ws-1', ownerId: OWNER, name: 'Acme', isMember: members.includes(u), systemRoles: managers.includes(u) ? ['ADMIN'] : [] }]
+					: []) as T[];
+			}
 			if (/FROM fonderie_workspaces WHERE id = \$1/.test(sql)) {
 				return (params[0] === 'ws-1' ? [{ id: 'ws-1', ownerId: OWNER, name: 'Acme' }] : []) as T[];
 			}

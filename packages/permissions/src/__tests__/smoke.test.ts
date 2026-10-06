@@ -17,6 +17,16 @@ type StubOpts = {
 function makeStore(opts: StubOpts): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string): Promise<T[]> => {
+			// can()'s one read: membership, super-role, system roles, stored grant.
+			if (sql.includes('AS is_super')) {
+				return [{
+					member: !!opts.membership,
+					is_super: opts.superRoleExists ?? false,
+					system_roles: [],
+					granted: opts.hasPermission ?? null,
+				}] as T[];
+			}
+
 			// membership existence check (fonderie_role_user_workspaces LIMIT 1)
 			if (sql.includes('fonderie_role_user_workspaces') && sql.includes('LIMIT 1')) {
 				if (!opts.membership) return [] as T[];
@@ -277,6 +287,9 @@ function isolatedStore(memberWs: string): IStoreAdapter {
 	const stub: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
 			const inWs = (params?.[1] ?? '') === memberWs;
+			if (sql.includes('AS is_super')) {
+				return [{ member: inWs, is_super: inWs, system_roles: [], granted: inWs ? true : null }] as T[];
+			}
 			if (sql.includes('fonderie_role_user_workspaces') && sql.includes('LIMIT 1')) {
 				return (inWs ? [{ user_id: USER, workspace_id: memberWs, role_id: 'r1', role_name: 'owner' }] : []) as T[];
 			}
