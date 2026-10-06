@@ -21,7 +21,7 @@ import {
 	verifyPassword,
 	verifyTotp,
 } from '../operators/crypto';
-import { needsStepUp, resetAttemptLimits } from '../operators/http';
+import { needsStepUp, operatorAdminRoutes, resetAttemptLimits } from '../operators/http';
 import { confirmEnrollment, createLink, findOperator } from '../operators/service';
 
 // ── primitives (no database) ─────────────────────────────────────────────
@@ -649,4 +649,124 @@ test('recovery links issued at once: exactly one stays live', { skip }, async ()
 		);
 		assert.equal(Number(live!.n), 1, `round ${round}: ${live!.n} live recovery links`);
 	}
+});
+
+// ── a change of rights and the sign-out it implies commit together ───────
+// The store fails one statement, the way a dropped connection would between
+// two. Whatever survives must be consistent: rights changed AND signed out,
+// or nothing changed — never "demoted but still signed in".
+
+function failingOn(inner: IStoreAdapter, match: RegExp): IStoreAdapter {
+	const wrap = (s: IStoreAdapter): IStoreAdapter => ({
+		async query<T>(sql: string, params?: unknown[]) {
+			if (match.test(sql)) throw new Error('connection lost');
+			return s.query<T>(sql, params);
+		},
+		transaction: (fn) => s.transaction((tx) => fn(wrap(tx))),
+	});
+	return wrap(inner);
+}
+
+function adminRoute(s: IStoreAdapter, method: string, path: string) {
+	const route = operatorAdminRoutes({
+		store: s,
+		box: RACE_BOX,
+		rootToken: ROOT,
+		uiPath: () => '/_admin/ui',
+	}).find((r) => r[0] === method && r[1] === path)!;
+	const handlers = route[2];
+	const handler = handlers[handlers.length - 1]!;
+	return (id: string, b: Record<string, unknown> = {}) =>
+		handler({
+			meta: { params: { id }, body: b },
+			request: new Request(`http://localhost${path}`, { method }),
+		} as never, (async () => new Response()) as never) as Promise<Response>;
+}
+
+async function signedInOperator(tag: string) {
+	const { op } = await pendingOperator(tag);
+	await store.query(
+		`UPDATE fonderie_admin_operators SET scopes = '{read,write,secrets}' WHERE id = $1`,
+		[op.id],
+	);
+	await store.query(
+		`INSERT INTO fonderie_admin_sessions (id_hash, operator_id, stage, expires_at)
+		 VALUES ($1, $2, 'active', now() + interval '1 hour')`,
+		[sha256(`${tag}-${Date.now()}-${Math.random()}`), op.id],
+	);
+	return op;
+}
+
+const facts = async (id: string) => {
+	const [r] = await store.query<{ scopes: string[]; disabled: boolean; sessions: number }>(
+		`SELECT scopes, disabled_at IS NOT NULL AS disabled,
+		        (SELECT count(*)::int FROM fonderie_admin_sessions WHERE operator_id = $1) AS sessions
+		 FROM fonderie_admin_operators WHERE id = $1`,
+		[id],
+	);
+	return r!;
+};
+
+test('demotion whose sign-out fails: the rights are NOT changed while the sessions live on', {
+	skip,
+}, async () => {
+	const op = await signedInOperator('demote');
+	const put = adminRoute(
+		failingOn(store, /DELETE FROM fonderie_admin_sessions/),
+		'PUT',
+		'/_admin/access/operators/:id',
+	);
+	await put(op.id, { scopes: ['read'] }).catch(() => undefined);
+	const after = await facts(op.id);
+	assert.ok(
+		after.sessions === 0 || after.scopes.includes('secrets'),
+		`demoted to ${after.scopes.join(',')} with ${after.sessions} live session(s)`,
+	);
+	// And the healthy path does both.
+	const ok = await adminRoute(store, 'PUT', '/_admin/access/operators/:id')(op.id, {
+		scopes: ['read'],
+	});
+	assert.equal(ok.status, 200);
+	assert.deepEqual(await facts(op.id), { scopes: ['read'], disabled: false, sessions: 0 });
+});
+
+test('disabling whose sign-out fails: never a disabled operator with a live session', {
+	skip,
+}, async () => {
+	const op = await signedInOperator('disable');
+	const put = adminRoute(
+		failingOn(store, /DELETE FROM fonderie_admin_sessions/),
+		'PUT',
+		'/_admin/access/operators/:id',
+	);
+	await put(op.id, { disabled: true }).catch(() => undefined);
+	const after = await facts(op.id);
+	assert.ok(
+		after.sessions === 0 || !after.disabled,
+		`disabled with ${after.sessions} live session(s)`,
+	);
+});
+
+test('recovery whose link cannot be written: the operator is not signed out with no way back', {
+	skip,
+}, async () => {
+	const op = await signedInOperator('recover');
+	const recover = adminRoute(
+		failingOn(store, /INSERT INTO fonderie_admin_invites/),
+		'POST',
+		'/_admin/access/operators/:id/recovery',
+	);
+	await recover(op.id).catch(() => undefined);
+	const [links] = await store.query<{ n: number }>(
+		`SELECT count(*)::int AS n FROM fonderie_admin_invites WHERE operator_id = $1 AND used_at IS NULL`,
+		[op.id],
+	);
+	const after = await facts(op.id);
+	assert.ok(
+		after.sessions > 0 || links!.n > 0,
+		'signed out everywhere, and no recovery link was issued',
+	);
+	const ok = await adminRoute(store, 'POST', '/_admin/access/operators/:id/recovery')(op.id);
+	assert.equal(ok.status, 201);
+	assert.equal((await facts(op.id)).sessions, 0, 'the healthy path still signs them out');
 });

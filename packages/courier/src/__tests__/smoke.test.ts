@@ -1004,18 +1004,20 @@ test('dispatcher: persists the providerMessageId a channel returns', async () =>
 		data: {},
 	});
 
-	const providerUpdate = executed.find(
+	const providerUpdates = executed.filter(
 		(q) => q.sql.includes('provider_message_id') && q.sql.includes('UPDATE'),
 	);
-	assert.ok(providerUpdate, 'provider_message_id UPDATE must run');
-	assert.deepEqual(providerUpdate!.params, ['log-42', 'prov-msg-9']);
+	assert.equal(providerUpdates.length, 1, 'provider_message_id UPDATE must run, once');
+	assert.deepEqual(providerUpdates[0]!.params, ['log-42', 'prov-msg-9']);
+	// The same statement marks it sent: never 'pending' with a provider id.
+	assert.match(providerUpdates[0]!.sql, /status = 'sent'/);
 });
 
 test('dispatcher: a channel returning void still marks the message sent', async () => {
-	const executed: string[] = [];
+	const executed: { sql: string; params: unknown[] }[] = [];
 	const store: IStoreAdapter = {
-		query: async <T = unknown>(sql: string): Promise<T[]> => {
-			executed.push(sql);
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			executed.push({ sql, params: params ?? [] });
 			if (sql.includes('INSERT INTO fonderie_message_log')) return [{ id: 'log-1' }] as T[];
 			return [] as T[];
 		},
@@ -1033,11 +1035,11 @@ test('dispatcher: a channel returning void still marks the message sent', async 
 		recipient: { email: 'a@b.com', phone: null, deviceToken: null },
 		data: {},
 	});
-	assert.ok(executed.some((s) => s.includes("status = 'sent'")), 'markMessageSent ran');
-	assert.ok(
-		!executed.some((s) => s.includes('provider_message_id') && s.includes('UPDATE')),
-		'no provider-id UPDATE when the channel returned none',
-	);
+	const sent = executed.filter((q) => q.sql.includes("status = 'sent'"));
+	assert.equal(sent.length, 1, 'markMessageSent ran');
+	// No id from the channel: the column is left as it was, never overwritten.
+	assert.deepEqual(sent[0]!.params, ['log-1', null]);
+	assert.match(sent[0]!.sql, /provider_message_id = COALESCE\(\$2, provider_message_id\)/);
 });
 
 // ── Security: HTML injection in email templates (audit №2 H4) ────────

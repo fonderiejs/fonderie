@@ -591,13 +591,19 @@ export function operatorAdminRoutes(
 				async (ctx) => {
 					const op = await findOperator(store, { id: idOf(ctx) });
 					if (!op) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such operator');
-					await deleteOperatorSessions(store, op.id);
-					const l = await createLink(store, {
-						kind: 'recovery',
-						email: op.email,
-						operatorId: op.id,
-						createdBy: actorOf(ctx),
-						hours: RECOVERY_HOURS,
+					// One transaction (createLink joins it): signed out everywhere AND
+					// handed a link, or neither. Separately, a failed insert left them
+					// signed out with no way back in, and a failed sign-out left the
+					// lost device's sessions alive beside a fresh recovery link.
+					const l = await store.transaction(async (tx) => {
+						await deleteOperatorSessions(tx, op.id);
+						return createLink(tx, {
+							kind: 'recovery',
+							email: op.email,
+							operatorId: op.id,
+							createdBy: actorOf(ctx),
+							hours: RECOVERY_HOURS,
+						});
 					});
 					return setApiResponse(HTTP.CREATED, 'RECOVERY_CREATED', 'Recovery link — shown once', {
 						id: l.id,
@@ -645,15 +651,24 @@ export function operatorAdminRoutes(
 							'You cannot disable yourself. Ask another operator.',
 						);
 					}
+					// Any change of rights ends their sessions: new rights apply at next
+					// sign-in. ONE statement, so the change and the sign-out commit
+					// together — run as two, a failure between them left a demoted or
+					// disabled operator signed in with the rights they just lost.
 					const [row] = await store.query<IOperatorRow>(
-						`UPDATE fonderie_admin_operators
-						    SET scopes = $2, name = coalesce($3, name),
-						        disabled_at = CASE WHEN $4::boolean IS NULL THEN disabled_at WHEN $4 THEN coalesce(disabled_at, now()) ELSE NULL END
-						  WHERE id = $1
-						  RETURNING id, email, name, password_hash AS "passwordHash", scopes, totp_secret AS "totpSecret",
-						    totp_confirmed_at AS "totpConfirmedAt", totp_last_step AS "totpLastStep", backup_codes AS "backupCodes",
-						    failed_attempts AS "failedAttempts", locked_until AS "lockedUntil", created_by AS "createdBy",
-						    created_at AS "createdAt", last_login_at AS "lastLoginAt", disabled_at AS "disabledAt"`,
+						`WITH u AS (
+						   UPDATE fonderie_admin_operators
+						      SET scopes = $2, name = coalesce($3, name),
+						          disabled_at = CASE WHEN $4::boolean IS NULL THEN disabled_at WHEN $4 THEN coalesce(disabled_at, now()) ELSE NULL END
+						    WHERE id = $1
+						    RETURNING id, email, name, password_hash AS "passwordHash", scopes, totp_secret AS "totpSecret",
+						      totp_confirmed_at AS "totpConfirmedAt", totp_last_step AS "totpLastStep", backup_codes AS "backupCodes",
+						      failed_attempts AS "failedAttempts", locked_until AS "lockedUntil", created_by AS "createdBy",
+						      created_at AS "createdAt", last_login_at AS "lastLoginAt", disabled_at AS "disabledAt"
+						 ), ended AS (
+						   DELETE FROM fonderie_admin_sessions WHERE operator_id IN (SELECT id FROM u)
+						 )
+						 SELECT * FROM u`,
 						[
 							op.id,
 							scopes,
@@ -662,8 +677,6 @@ export function operatorAdminRoutes(
 						],
 					);
 					if (!row) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'No such operator');
-					// Any change of rights ends their sessions: new rights apply at next sign-in.
-					await deleteOperatorSessions(store, op.id);
 					return setApiResponse(
 						HTTP.OK,
 						'OPERATOR_UPDATED',

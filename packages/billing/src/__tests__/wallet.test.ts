@@ -275,14 +275,26 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 			return [];
 		}
 		if (sql.includes('make_interval')) {
-			// claim: [st, sid, provider, cooldownSeconds, idempotencyKeyTtlSeconds]
-			const [st, sid, prov, cooldown, ttl] = params as [string, string, string, number, number];
+			// claim: [st, sid, provider, cooldownSeconds, idempotencyKeyTtlSeconds, mintKeyPrefix]
+			const [st, sid, prov, cooldown, ttl, mint] = params as [
+				string,
+				string,
+				string,
+				number,
+				number,
+				string | null,
+			];
 			const row = state.customers.get(ckey(st, sid, prov));
 			if (!row || row.disabled) return [];
 			const now = Date.now();
 			if (row.lastRechargeAt !== null && now - row.lastRechargeAt < Number(cooldown) * 1000)
 				return [];
 			row.lastRechargeAt = now;
+			// The claim's own statement mints + persists a fresh key when none is pending.
+			if (mint != null && row.pendingKey === null) {
+				row.pendingKey = `${mint}${new Date(now).toISOString()}`;
+				row.pendingKeyAt = now;
+			}
 			const ttlSecs = Number(ttl ?? 0);
 			const pendingKeyStale =
 				ttlSecs > 0 &&
@@ -299,40 +311,30 @@ function runWalletSql(state: IWalletState, sql: string, params: unknown[] = []):
 				},
 			];
 		}
-		if (sql.includes('pending_recharge_key = NULL')) {
-			// clearPendingRechargeKey: [st, sid, provider]
-			const [st, sid, prov] = params as [string, string, string];
-			const row = state.customers.get(ckey(st, sid, prov));
-			if (row) {
-				row.pendingKey = null;
-				row.pendingKeyAt = null;
-			}
-			return [];
-		}
-		if (sql.includes('pending_recharge_key = $4')) {
-			// setPendingRechargeKey: [st, sid, provider, key]
-			const [st, sid, prov, k] = params as [string, string, string, string];
-			const row = state.customers.get(ckey(st, sid, prov));
-			if (row) {
-				row.pendingKey = k;
-				row.pendingKeyAt = Date.now();
-			}
-			return [];
-		}
 		if (sql.includes('consecutive_failures + 1')) {
-			// recordFailure: [st, sid, provider, maxFailures]
-			const [st, sid, prov, maxF] = params as [string, string, string, number];
+			// recordFailure: [st, sid, provider, maxFailures, clearPendingKey] — one statement
+			const [st, sid, prov, maxF, clear] = params as [string, string, string, number, boolean];
 			const row = state.customers.get(ckey(st, sid, prov));
 			if (!row) return [];
 			row.failures += 1;
 			row.disabled = row.failures >= Number(maxF);
+			if (clear) {
+				row.pendingKey = null;
+				row.pendingKeyAt = null;
+			}
 			return [{ autoRechargeDisabled: row.disabled }];
 		}
 		if (sql.includes('consecutive_failures = 0')) {
-			// recordSuccess: [st, sid, provider]
-			const [st, sid, prov] = params as [string, string, string];
+			// recordSuccess: [st, sid, provider, clearPendingKey] — one statement
+			const [st, sid, prov, clear] = params as [string, string, string, boolean];
 			const row = state.customers.get(ckey(st, sid, prov));
-			if (row) row.failures = 0;
+			if (row) {
+				row.failures = 0;
+				if (clear) {
+					row.pendingKey = null;
+					row.pendingKeyAt = null;
+				}
+			}
 			return [];
 		}
 		return [];
