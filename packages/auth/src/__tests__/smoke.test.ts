@@ -3215,15 +3215,26 @@ test('purgeSoftDeletedUsers: deletes aged soft-deletes and returns count', async
 	assert.deepEqual(captured!.params, [30]);
 });
 
-test('purgeSoftDeletedUsers: given a bus, announces each purged account AFTER the delete', async () => {
+test('purgeSoftDeletedUsers: given a bus, each account is deleted then announced inside its own transaction', async () => {
 	const { purgeSoftDeletedUsers } = await import('../services/retention');
 	const order: string[] = [];
+	const due = ['u1', 'u2'];
 	const store = {
-		query: async <T = unknown>(): Promise<T[]> => {
-			order.push('delete');
-			return [{ id: 'u1' }, { id: 'u2' }] as unknown as T[];
+		query: async <T = unknown>(sql: string, params?: unknown[]): Promise<T[]> => {
+			assert.match(sql, /DELETE FROM fonderie_users/);
+			assert.match(sql, /LIMIT 1/, 'one account per statement');
+			assert.match(sql, /FOR UPDATE SKIP LOCKED/);
+			assert.deepEqual(params, [30]);
+			const id = due.shift();
+			order.push(id ? `delete ${id}` : 'delete none');
+			return (id ? [{ id }] : []) as unknown as T[];
 		},
-		transaction: async (fn: any) => fn(store),
+		transaction: async (fn: any) => {
+			order.push('begin');
+			const out = await fn(store);
+			order.push('commit');
+			return out;
+		},
 	} as any;
 	const emitted: Array<[string, unknown]> = [];
 	const bus = {
@@ -3238,7 +3249,38 @@ test('purgeSoftDeletedUsers: given a bus, announces each purged account AFTER th
 		['fonderie.user.purged', { userId: 'u1' }],
 		['fonderie.user.purged', { userId: 'u2' }],
 	]);
-	assert.equal(order[0], 'delete', 'nothing is announced before the rows are gone');
+	assert.deepEqual(order, [
+		'begin', 'delete u1', 'emit', 'commit',
+		'begin', 'delete u2', 'emit', 'commit',
+		'begin', 'delete none', 'commit',
+	], 'announced after its delete, before its commit — a failed emit rolls the delete back');
+});
+
+test('purgeSoftDeletedUsers: a failing emit stops the run and surfaces the error', async () => {
+	const { purgeSoftDeletedUsers } = await import('../services/retention');
+	const due = ['u1', 'u2', 'u3'];
+	const committed: string[] = [];
+	const store = {
+		query: async <T = unknown>(): Promise<T[]> => {
+			const id = due[0];
+			return (id ? [{ id }] : []) as unknown as T[];
+		},
+		// A transaction commits only when its body resolves.
+		transaction: async (fn: any) => {
+			const out = await fn(store);
+			if (out) committed.push(due.shift()!);
+			return out;
+		},
+	} as any;
+	let calls = 0;
+	const bus = {
+		emit: async () => {
+			if (++calls === 2) throw new Error('bus down');
+		},
+	};
+	await assert.rejects(() => purgeSoftDeletedUsers(store, { olderThanDays: 30, bus }), /bus down/);
+	assert.deepEqual(committed, ['u1'], 'only the announced account was removed');
+	assert.deepEqual(due, ['u2', 'u3'], 'the rest stay for the next run');
 });
 
 test('purgeSoftDeletedUsers: rejects a negative window', async () => {

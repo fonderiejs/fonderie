@@ -72,6 +72,19 @@ export class MediaAssetModel {
 		return rows[0] ? toAsset(rows[0]) : null;
 	}
 
+	/**
+	 * Delete an asset only if `userId` uploaded it, in one statement. Returns
+	 * the deleted asset (its storageRef, so the caller can remove the bytes
+	 * AFTER the row is gone), or null when there is no such asset of theirs.
+	 */
+	async deleteOwned(id: string, userId: string): Promise<IMediaAsset | null> {
+		const rows = await this.store.query<AssetRow>(
+			'DELETE FROM fonderie_media_assets WHERE id = $1 AND created_by::text = $2::text RETURNING *',
+			[id, userId],
+		);
+		return rows[0] ? toAsset(rows[0]) : null;
+	}
+
 	async delete(id: string): Promise<void> {
 		await this.store.query('DELETE FROM fonderie_media_assets WHERE id = $1', [id]);
 	}

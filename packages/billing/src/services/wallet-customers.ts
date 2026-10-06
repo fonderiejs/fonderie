@@ -101,7 +101,9 @@ export interface IAutoRechargeClaim {
 	 * The idempotency key of a still-unresolved prior charge, if any. When set
 	 * AND not stale, the caller MUST reuse it (not mint a fresh one from
 	 * claimedAt) so the provider dedupes to the original PaymentIntent instead of
-	 * double-charging.
+	 * double-charging. With `mintKeyPrefix`, a claim that found no pending key
+	 * records `<prefix><claimedAt>` as the pending key IN THE SAME STATEMENT and
+	 * returns it here — so this is always the key to charge with.
 	 */
 	pendingKey: string | null;
 	/**
@@ -115,7 +117,17 @@ export interface IAutoRechargeClaim {
 }
 
 export async function claimAutoRecharge(
-	key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number },
+	key: IWalletCustomerKey & {
+		cooldownSeconds: number;
+		idempotencyKeyTtlSeconds?: number;
+		/**
+		 * Mint the fresh charge's idempotency key (`<prefix><claimedAt>`) and
+		 * persist it as the pending key in the claim's own statement, when no
+		 * prior key is pending. Done as a second write, a failure between the two
+		 * consumed the window with no key recorded.
+		 */
+		mintKeyPrefix?: string;
+	},
 	store: IStoreAdapter,
 ): Promise<IAutoRechargeClaim | null> {
 	const [row] = await store.query<{
@@ -126,7 +138,11 @@ export async function claimAutoRecharge(
 		pendingKeyStale: boolean;
 	}>(
 		`UPDATE fonderie_wallet_customers
-		SET last_recharge_at = now(), updated_at = now()
+		SET last_recharge_at = now(), updated_at = now(),
+			pending_recharge_key = CASE WHEN $6::text IS NOT NULL AND pending_recharge_key IS NULL
+				THEN $6::text || now()::text ELSE pending_recharge_key END,
+			pending_recharge_key_at = CASE WHEN $6::text IS NOT NULL AND pending_recharge_key IS NULL
+				THEN now() ELSE pending_recharge_key_at END
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3
 			AND auto_recharge_disabled = false
 			AND (last_recharge_at IS NULL OR last_recharge_at < now() - make_interval(secs => $4))
@@ -144,6 +160,7 @@ export async function claimAutoRecharge(
 			key.provider,
 			key.cooldownSeconds,
 			key.idempotencyKeyTtlSeconds ?? 0,
+			key.mintKeyPrefix ?? null,
 		],
 	);
 	return row
@@ -157,59 +174,51 @@ export async function claimAutoRecharge(
 		: null;
 }
 
-// Record the idempotency key of a charge about to be attempted, so an
-// indeterminate outcome can be safely retried with the same key next window.
-export async function setPendingRechargeKey(
-	key: IWalletCustomerKey,
-	idempotencyKey: string,
-	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
-		`UPDATE fonderie_wallet_customers SET pending_recharge_key = $4, pending_recharge_key_at = now(), updated_at = now()
-		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
-		[key.subscriberType, key.subscriberId, key.provider, idempotencyKey],
-	);
-}
-
-// Clear the pending key (and its mint timestamp) once a charge resolves
-// definitively, or once it has aged past the provider's idempotency retention.
-export async function clearPendingRechargeKey(
-	key: IWalletCustomerKey,
-	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
-		`UPDATE fonderie_wallet_customers SET pending_recharge_key = NULL, pending_recharge_key_at = NULL, updated_at = now()
-		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
-		[key.subscriberType, key.subscriberId, key.provider],
-	);
-}
-
+// `clearPendingKey` releases the pending charge's key in the same statement
+// (the charge has resolved). As a separate write, a failure after the success
+// left the key pending: every later window re-sent it, the provider returned the
+// same captured charge, nothing was credited, and after 23h the aged key
+// disabled auto-recharge as an unreconciled charge.
 export async function recordRechargeSuccess(
-	key: IWalletCustomerKey,
+	key: IWalletCustomerKey & { clearPendingKey?: boolean },
 	store: IStoreAdapter,
 ): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_wallet_customers
-		SET consecutive_failures = 0, updated_at = now()
+		SET consecutive_failures = 0,
+			pending_recharge_key    = CASE WHEN $4::boolean THEN NULL ELSE pending_recharge_key END,
+			pending_recharge_key_at = CASE WHEN $4::boolean THEN NULL ELSE pending_recharge_key_at END,
+			updated_at = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3`,
-		[key.subscriberType, key.subscriberId, key.provider],
+		[key.subscriberType, key.subscriberId, key.provider, key.clearPendingKey ?? false],
 	);
 }
 
 // Count a failed attempt; disable auto-recharge once failures reach the limit
 // (the next successful purchase re-arms it). Returns whether it is now disabled.
+// `clearPendingKey` releases the pending charge's key in the same statement: as
+// two writes, a failure between them released the key without counting the
+// decline, so a dead card was retried forever and never disabled.
 export async function recordRechargeFailure(
-	key: IWalletCustomerKey & { maxConsecutiveFailures: number },
+	key: IWalletCustomerKey & { maxConsecutiveFailures: number; clearPendingKey?: boolean },
 	store: IStoreAdapter,
 ): Promise<{ disabled: boolean }> {
 	const [row] = await store.query<{ autoRechargeDisabled: boolean }>(
 		`UPDATE fonderie_wallet_customers
 		SET consecutive_failures   = consecutive_failures + 1,
 			auto_recharge_disabled = (consecutive_failures + 1 >= $4),
+			pending_recharge_key    = CASE WHEN $5::boolean THEN NULL ELSE pending_recharge_key END,
+			pending_recharge_key_at = CASE WHEN $5::boolean THEN NULL ELSE pending_recharge_key_at END,
 			updated_at             = now()
 		WHERE subscriber_type = $1 AND subscriber_id = $2 AND provider = $3
 		RETURNING auto_recharge_disabled AS "autoRechargeDisabled"`,
-		[key.subscriberType, key.subscriberId, key.provider, key.maxConsecutiveFailures],
+		[
+			key.subscriberType,
+			key.subscriberId,
+			key.provider,
+			key.maxConsecutiveFailures,
+			key.clearPendingKey ?? false,
+		],
 	);
 	return { disabled: row?.autoRechargeDisabled ?? false };
 }

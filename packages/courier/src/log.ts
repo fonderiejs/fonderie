@@ -53,22 +53,6 @@ export async function insertMessageLog(
 	return row?.id ?? '';
 }
 
-// Persist the provider's message id AFTER the send (the id is only known once
-// the provider responds). Delivery webhooks match on this column — without it
-// every delivered/opened/bounced update targets zero rows.
-export async function setMessageProviderId(
-	id: string,
-	providerMessageId: string,
-	store: IStoreAdapter,
-): Promise<void> {
-	await store.query(
-		`UPDATE fonderie_message_log
-		 SET provider_message_id = $2
-		 WHERE id = $1`,
-		[id, providerMessageId],
-	);
-}
-
 // Separate from the insert on purpose: an app deployed before its migration ran
 // has no resolved_locale column, and folding it into the INSERT would lose the
 // whole log row — the only record the send happened — over a missing detail.
@@ -85,12 +69,23 @@ export async function setMessageResolvedLocale(
 	);
 }
 
-export async function markMessageSent(id: string, store: IStoreAdapter): Promise<void> {
+// The send's outcome, in ONE statement: the provider's message id (only known
+// once the provider responds — delivery webhooks match on it, so without it
+// every delivered/opened/bounced update targets zero rows) together with the
+// 'sent' status. As two writes, a failure between them left a row 'pending'
+// that already carried a provider id — a message that went out, recorded as
+// one that never did.
+export async function markMessageSent(
+	id: string,
+	store: IStoreAdapter,
+	providerMessageId?: string | null,
+): Promise<void> {
 	await store.query(
 		`UPDATE fonderie_message_log
-		 SET status = 'sent', sent_at = now(), attempts = attempts + 1
+		 SET status = 'sent', sent_at = now(), attempts = attempts + 1,
+		     provider_message_id = COALESCE($2, provider_message_id)
 		 WHERE id = $1`,
-		[id],
+		[id, providerMessageId ?? null],
 	);
 }
 

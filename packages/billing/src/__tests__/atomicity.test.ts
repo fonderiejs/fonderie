@@ -35,7 +35,8 @@ const CUSTOMER = 'a7c1e000-0000-4000-8000-000000000004';
 const PAYG = 'a7c1e000-0000-4000-8000-000000000005';
 const NOTICE = 'a7c1e000-0000-4000-8000-000000000006';
 const LIFECYCLE = 'a7c1e000-0000-4000-8000-000000000007';
-const ALL = [UPGRADE, NEWCHECKOUT, WEBHOOK, CUSTOMER, PAYG, NOTICE, LIFECYCLE];
+const TRIAL = 'a7c1e000-0000-4000-8000-000000000008';
+const ALL = [UPGRADE, NEWCHECKOUT, WEBHOOK, CUSTOMER, PAYG, NOTICE, LIFECYCLE, TRIAL];
 
 async function connect() {
 	const { PGAdapter, InternalMigrationRunner } = await import('@fonderie/store');
@@ -46,6 +47,7 @@ async function connect() {
 		'fonderie_billing_customers',
 		'fonderie_wallet_customers',
 		'fonderie_billing_notices',
+		'fonderie_subscription_trials',
 	]) {
 		await store.query(`DELETE FROM ${table} WHERE subscriber_id = ANY($1::uuid[])`, [ALL]);
 	}
@@ -391,6 +393,78 @@ test('account restored while its deletion is canceling at the provider: the subs
 			[LIFECYCLE],
 		);
 		assert.equal(r?.marked, false, 'no stale deletion mark left on a kept account');
+	} finally {
+		await close(store);
+	}
+});
+
+test('a trialing subscription whose trial record fails: nothing half-written, and the retry records both', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		const event = {
+			type: 'customer.subscription.created',
+			eventAt: new Date(),
+			subscription: {
+				subscriberType: 'user',
+				subscriberId: TRIAL,
+				plan: 'pro',
+				priceLookupKey: null,
+				priceId: null,
+				status: 'trialing',
+				providerCustomerId: 'cus_trial',
+				providerSubscriptionId: 'sub_trial',
+				currentPeriodStart: new Date(),
+				currentPeriodEnd: new Date(Date.now() + 14 * 86_400_000),
+				cancelAtPeriodEnd: false,
+				trialEndsAt: new Date(Date.now() + 14 * 86_400_000),
+				interval: 'month',
+			},
+		};
+		const config = {
+			provider: { name: 'fake', constructEvent: async () => structuredClone(event) },
+			webhookSecret: 'whsec_x',
+			plans,
+		} as never;
+		const ctx = () =>
+			({
+				meta: {},
+				request: new Request('http://localhost/billing/webhook', {
+					method: 'POST',
+					headers: { 'stripe-signature': 't=1,v1=stub' },
+					body: '{}',
+				}),
+			}) as never;
+		// The trial ledger write fails, the way a dropped connection would.
+		const wrap = (s: IStoreAdapter): IStoreAdapter => ({
+			async query<T>(sql: string, params?: unknown[]) {
+				if (/INSERT INTO fonderie_subscription_trials/.test(sql)) throw new Error('connection lost');
+				return s.query<T>(sql, params);
+			},
+			transaction: (fn) => s.transaction((tx) => fn(wrap(tx))),
+		});
+		const failed = await webhookController(wrap(store), config).handle(ctx()).catch(() => null);
+		assert.notEqual(failed?.status, 200, 'the provider is told to retry');
+
+		const trialRecorded = async () =>
+			(
+				await store.query(
+					`SELECT 1 FROM fonderie_subscription_trials WHERE subscriber_type = 'user' AND subscriber_id = $1`,
+					[TRIAL],
+				)
+			).length > 0;
+		const sub = await row(store, TRIAL);
+		assert.ok(
+			!sub || (await trialRecorded()),
+			`a ${sub?.status} subscription was written with no consumed trial on record`,
+		);
+
+		// The provider's retry, with the database back, lands both.
+		const retry = await webhookController(store, config).handle(ctx());
+		assert.equal(retry.status, 200);
+		assert.equal((await row(store, TRIAL))?.status, 'trialing');
+		assert.equal(await trialRecorded(), true);
 	} finally {
 		await close(store);
 	}

@@ -865,11 +865,11 @@ type ConsumedWebhookEvent = SubscriptionWebhookEvent | PaymentWebhookEvent;
 
 function upsertWalletCustomer(key: IWalletCustomerKey & { providerCustomerId: string; rearm: boolean; paymentMethodId?: string | null; }, store: IStoreAdapter): Promise<void>
 
-function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number; }, store: IStoreAdapter): Promise<IAutoRechargeClaim | null>
+function claimAutoRecharge(key: IWalletCustomerKey & { cooldownSeconds: number; idempotencyKeyTtlSeconds?: number; mintKeyPrefix?: string; }, store: IStoreAdapter): Promise<...>
 
-function recordRechargeSuccess(key: IWalletCustomerKey, store: IStoreAdapter): Promise<void>
+function recordRechargeSuccess(key: IWalletCustomerKey & { clearPendingKey?: boolean; }, store: IStoreAdapter): Promise<void>
 
-function recordRechargeFailure(key: IWalletCustomerKey & { maxConsecutiveFailures: number; }, store: IStoreAdapter): Promise<{ disabled: boolean; }>
+function recordRechargeFailure(key: IWalletCustomerKey & { maxConsecutiveFailures: number; clearPendingKey?: boolean; }, store: IStoreAdapter): Promise<{ disabled: boolean; }>
 
 interface IWalletCustomerKey {
     subscriberType: SubscriberType;

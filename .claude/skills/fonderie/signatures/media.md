@@ -84,6 +84,7 @@ new MediaAssetModel(store: IStoreAdapter): MediaAssetModel
   .create(input: ICreateAssetInput): Promise<IMediaAsset>
   .get(id: string): Promise<IMediaAsset | null>
   .latestFor(ownerType: string, ownerId: string, purpose: string): Promise<IMediaAsset | null>
+  .deleteOwned(id: string, userId: string): Promise<IMediaAsset | null>
   .delete(id: string): Promise<void>
 
 function toMediaAssetDTO(asset: IMediaAsset, basePath?: string): IMediaAssetDTO

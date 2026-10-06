@@ -236,9 +236,16 @@ export async function upsertSubscription(
 // status and both sent the email. A per-subscriber transaction lock (taken
 // before the row exists, so a first-ever insert is covered too) makes the
 // second delivery see the first one's result.
+//
+// `markTrialConsumed`: when the write applies, record the consumed trial in the
+// same transaction. Committed separately, a failure after the upsert left a
+// trialing subscription with no trial on record — and once a newer event had
+// landed, the provider's retry was rejected as stale and never recorded it, so
+// a cancel → resubscribe farmed a second trial.
 export async function upsertSubscriptionWithPrior(
 	data: Parameters<typeof upsertSubscription>[0],
 	store: IStoreAdapter,
+	options: { markTrialConsumed?: boolean } = {},
 ): Promise<{ applied: boolean; priorStatus: string | null }> {
 	return store.transaction(async (tx) => {
 		await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
@@ -251,6 +258,9 @@ export async function upsertSubscriptionWithPrior(
 			[data.subscriberType, data.subscriberId],
 		);
 		const applied = await upsertSubscription(data, tx);
+		if (applied && options.markTrialConsumed) {
+			await markTrialConsumed(data.subscriberType, data.subscriberId, tx);
+		}
 		return { applied, priorStatus: prior?.status ?? null };
 	});
 }

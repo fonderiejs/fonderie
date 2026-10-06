@@ -10,10 +10,8 @@ import { buildReceiptData } from './receipt';
 import { findCreditPack } from './credit-packs';
 import {
 	claimAutoRecharge,
-	clearPendingRechargeKey,
 	recordRechargeFailure,
 	recordRechargeSuccess,
-	setPendingRechargeKey,
 } from './wallet-customers';
 import { notifyBilling } from './notify';
 import { normalizeCurrency, subscriberEventFields, formatWalletAmount } from '../utils';
@@ -65,8 +63,16 @@ export async function maybeAutoRecharge(args: {
 	// claim's mutual exclusion relies on the window exceeding the burst's time
 	// skew, so a 0/sub-second cooldown would let concurrent requests all win.
 	const cooldownSeconds = Math.max(1, auto.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS);
+	// The claim also mints and persists a fresh charge's idempotency key when
+	// none is pending — in the same statement, so a claimed window always has
+	// the key it will charge with recorded BEFORE the charge.
 	const claim = await claimAutoRecharge(
-		{ ...key, cooldownSeconds, idempotencyKeyTtlSeconds: PROVIDER_IDEMPOTENCY_TTL_SECONDS },
+		{
+			...key,
+			cooldownSeconds,
+			idempotencyKeyTtlSeconds: PROVIDER_IDEMPOTENCY_TTL_SECONDS,
+			mintKeyPrefix: `${provider}:autorecharge:${subscriberType}:${subscriberId}:`,
+		},
 		store,
 	);
 	if (!claim) return;
@@ -77,8 +83,10 @@ export async function maybeAutoRecharge(args: {
 	// charge — clear the dead key, DISABLE auto-recharge (a new purchase re-arms
 	// it), and surface the stuck charge for reconciliation via the failed notice.
 	if (claim.pendingKeyStale) {
-		await clearPendingRechargeKey(key, store);
-		const { disabled } = await recordRechargeFailure({ ...key, maxConsecutiveFailures: 1 }, store);
+		const { disabled } = await recordRechargeFailure(
+			{ ...key, maxConsecutiveFailures: 1, clearPendingKey: true },
+			store,
+		);
 		await background(
 			bus?.emit(EVENT_KEYS.autoRechargeFailed, {
 				...subscriberEventFields(subscriberType, subscriberId),
@@ -97,13 +105,12 @@ export async function maybeAutoRecharge(args: {
 		return;
 	}
 
-	// Reuse the key of an unresolved prior charge (so the provider dedupes to
-	// the same PaymentIntent — no double charge); otherwise mint a fresh one and
-	// persist it BEFORE charging, so an indeterminate outcome is recoverable.
+	// The key of an unresolved prior charge (so the provider dedupes to the
+	// same PaymentIntent — no double charge), or the fresh one the claim just
+	// persisted, so an indeterminate outcome is recoverable.
 	const idempotencyKey =
 		claim.pendingKey ??
 		`${provider}:autorecharge:${subscriberType}:${subscriberId}:${claim.claimedAt}`;
-	if (!claim.pendingKey) await setPendingRechargeKey(key, idempotencyKey, store);
 
 	const creditCurrency = planWallet.currency;
 	const chargeCurrency = normalizeCurrency(pack.currency ?? creditCurrency);
@@ -130,11 +137,15 @@ export async function maybeAutoRecharge(args: {
 	if (charge.status === 'unknown') return;
 
 	if (charge.status !== 'succeeded' || !charge.providerTxId) {
-		// Definitive non-capture (decline / SCA / no card) — the key can be
-		// released; a fresh attempt later is correct.
-		await clearPendingRechargeKey(key, store);
+		// Definitive non-capture (decline / SCA / no card) — the key is
+		// released with the decline counted, in one statement; a fresh attempt
+		// later is correct.
 		const { disabled } = await recordRechargeFailure(
-			{ ...key, maxConsecutiveFailures: auto.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES },
+			{
+				...key,
+				maxConsecutiveFailures: auto.maxConsecutiveFailures ?? DEFAULT_MAX_FAILURES,
+				clearPendingKey: true,
+			},
 			store,
 		);
 		await background(
@@ -184,8 +195,7 @@ export async function maybeAutoRecharge(args: {
 	// creditWallet threw (transient DB error) the key stays set, so the next
 	// window reuses it, the provider dedupes to the same captured PaymentIntent,
 	// and the idempotent credit finally lands — one charge, one credit.
-	await recordRechargeSuccess(key, store);
-	await clearPendingRechargeKey(key, store);
+	await recordRechargeSuccess({ ...key, clearPendingKey: true }, store);
 
 	if (!result.duplicate) {
 		const fields = {

@@ -23,8 +23,9 @@ export class SubscriptionModel {
 
 	upsertWithPrior(
 		data: Parameters<typeof upsertSubscription>[0],
+		options: { markTrialConsumed?: boolean } = {},
 	): Promise<{ applied: boolean; priorStatus: string | null }> {
-		return upsertSubscriptionWithPrior(data, this.store);
+		return upsertSubscriptionWithPrior(data, this.store, options);
 	}
 
 	hasConsumedTrial(subscriberType: SubscriberType, subscriberId: string): Promise<boolean> {
