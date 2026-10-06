@@ -13,6 +13,7 @@ const SELECT_WS = `
 	motto,
 	phone,
 	business_type AS "businessType",
+	industry,
 	address,
 	legal_name AS "legalName",
 	email,
@@ -38,6 +39,7 @@ const SELECT_WS_W = `
 	w.motto,
 	w.phone,
 	w.business_type AS "businessType",
+	w.industry,
 	w.address,
 	w.legal_name AS "legalName",
 	w.email,
@@ -197,6 +199,7 @@ export async function updateWorkspace(
 		motto?: string | null;
 		phone?: string | null;
 		businessType?: string | null;
+		industry?: string | null;
 		address?: IWorkspaceAddress | null;
 		legalName?: string | null;
 		email?: string | null;
@@ -233,6 +236,10 @@ export async function updateWorkspace(
 	if (opts.businessType !== undefined) {
 		params.push(opts.businessType);
 		sets.push(`business_type = $${params.length}`);
+	}
+	if (opts.industry !== undefined) {
+		params.push(opts.industry);
+		sets.push(`industry = $${params.length}`);
 	}
 	if (opts.address !== undefined) {
 		params.push(JSON.stringify(opts.address ?? {}));
@@ -291,7 +298,14 @@ const SETTINGS_DEFAULTS: IWorkspaceSettings = {
 	currency: 'USD',
 	dateFormat: 'MM/DD/YYYY',
 	timeFormat: 'hh:mm A',
+	documentPrefixes: {},
 };
+
+// Only string → string pairs survive a read: the map is shown and printed.
+function prefixesOf(v: unknown): Record<string, string> {
+	if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+	return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === 'string' && e[1].length > 0));
+}
 
 export async function getWorkspaceSettings(
 	id: string,
@@ -312,12 +326,13 @@ export async function getWorkspaceSettings(
 			typeof s['dateFormat'] === 'string' ? s['dateFormat'] : SETTINGS_DEFAULTS.dateFormat,
 		timeFormat:
 			typeof s['timeFormat'] === 'string' ? s['timeFormat'] : SETTINGS_DEFAULTS.timeFormat,
+		documentPrefixes: prefixesOf(s['documentPrefixes']),
 	};
 }
 
 export async function updateWorkspaceSettings(
 	id: string,
-	settings: Partial<IWorkspaceSettings>,
+	settings: Partial<Omit<IWorkspaceSettings, 'documentPrefixes'>> & { documentPrefixes?: Record<string, string> | null },
 	store: IStoreAdapter,
 ): Promise<IWorkspaceSettings> {
 	await store.query(

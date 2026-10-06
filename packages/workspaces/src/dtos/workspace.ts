@@ -1,6 +1,17 @@
 import { booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie/core/parser';
 
-import type { IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings } from '../types';
+import type {
+	IWorkspace,
+	IRole,
+	IMember,
+	IInvitation,
+	IWorkspaceSettings,
+	IWorkspaceAddress,
+	IWorkspaceContacts,
+	IWorkspaceEmail,
+	IWorkspaceLocation,
+	IWorkspacePhone,
+} from '../types';
 
 export interface IWorkspaceAddressDTO {
 	line1: string;
@@ -9,6 +20,8 @@ export interface IWorkspaceAddressDTO {
 	state: string;
 	zip: string;
 	country: string;
+	/** Door / buzzer / gate code; '' when not set. The unit is line2. */
+	accessCode: string;
 }
 
 export interface ITaxRegistrationDTO {
@@ -16,10 +29,13 @@ export interface ITaxRegistrationDTO {
 	country: string;
 	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'EIN'. */
 	type: string;
+	/** '' when only the rate is known. */
 	number: string;
 	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
 	region: string;
 	label: string;
+	/** The percent charged for this tax (5, 9.975, 13); null when not set. */
+	rate: number | null;
 }
 
 export interface IWorkspaceDTO {
@@ -31,6 +47,8 @@ export interface IWorkspaceDTO {
 	motto: string;
 	phone: string;
 	businessType: string;
+	/** The sector / trade, as the app's own key ('plumbing'); '' when not set. */
+	industry: string;
 	address: IWorkspaceAddressDTO;
 	/** Registered name, when it differs from the display name. */
 	legalName: string;
@@ -122,6 +140,133 @@ export interface IWorkspaceSettingsDTO {
 	currency: string;
 	dateFormat: string;
 	timeFormat: string;
+	/** What goes before a document's number, per kind: { invoice: 'ACME', job: 'ACME-JOB' }; {} when none. */
+	documentPrefixes: Record<string, string>;
+}
+
+export interface IWorkspaceEmailDTO {
+	id: string;
+	/** Lower-cased. */
+	email: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhoneDTO {
+	id: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits; '' when none. */
+	extension: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocationDTO {
+	id: string;
+	name: string;
+	address: IWorkspaceAddressDTO;
+	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
+	taxRegion: string;
+	latitude: number | null;
+	longitude: number | null;
+	/** E.164; '' when none. */
+	phone: string;
+	email: string;
+	isHeadOffice: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceContactsDTO {
+	/** The primary first. */
+	emails: IWorkspaceEmailDTO[];
+	/** The primary first. */
+	phones: IWorkspacePhoneDTO[];
+	/** The head office first; archived ones last (restorable). */
+	locations: IWorkspaceLocationDTO[];
+}
+
+function toAddressDTO(a: IWorkspaceAddress | null | undefined): IWorkspaceAddressDTO {
+	const addr = a ?? {};
+	return {
+		line1: stringOrEmpty(addr.line1),
+		line2: stringOrEmpty(addr.line2),
+		city: stringOrEmpty(addr.city),
+		state: stringOrEmpty(addr.state),
+		zip: stringOrEmpty(addr.zip),
+		country: stringOrEmpty(addr.country),
+		accessCode: stringOrEmpty(addr.accessCode),
+	};
+}
+
+const numberOrNull = (v: unknown): number | null => {
+	if (v === null || v === undefined || v === '') return null;
+	const n = Number(v);
+	return Number.isFinite(n) ? n : null;
+};
+
+export function toWorkspaceEmailDTO(e: IWorkspaceEmail): IWorkspaceEmailDTO {
+	return {
+		id: stringOrEmpty(e.id),
+		email: stringOrEmpty(e.email),
+		label: stringOrEmpty(e.label),
+		isPrimary: booleanOrFalse(e.isPrimary),
+		position: Number(e.position ?? 0),
+		createdAt: dateOrEmpty(e.createdAt),
+		updatedAt: dateOrEmpty(e.updatedAt),
+	};
+}
+
+export function toWorkspacePhoneDTO(p: IWorkspacePhone): IWorkspacePhoneDTO {
+	return {
+		id: stringOrEmpty(p.id),
+		phone: stringOrEmpty(p.phone),
+		extension: stringOrEmpty(p.extension),
+		label: stringOrEmpty(p.label),
+		isPrimary: booleanOrFalse(p.isPrimary),
+		position: Number(p.position ?? 0),
+		createdAt: dateOrEmpty(p.createdAt),
+		updatedAt: dateOrEmpty(p.updatedAt),
+	};
+}
+
+export function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocationDTO {
+	return {
+		id: stringOrEmpty(l.id),
+		name: stringOrEmpty(l.name),
+		address: toAddressDTO(l.address),
+		taxRegion: stringOrEmpty(l.taxRegion),
+		latitude: numberOrNull(l.latitude),
+		longitude: numberOrNull(l.longitude),
+		phone: stringOrEmpty(l.phone),
+		email: stringOrEmpty(l.email),
+		isHeadOffice: booleanOrFalse(l.isHeadOffice),
+		position: Number(l.position ?? 0),
+		isArchived: l.archivedAt !== null && l.archivedAt !== undefined,
+		archivedAt: dateOrEmpty(l.archivedAt),
+		archivedBy: stringOrEmpty(l.archivedBy),
+		createdAt: dateOrEmpty(l.createdAt),
+		updatedAt: dateOrEmpty(l.updatedAt),
+	};
+}
+
+export function toWorkspaceContactsDTO(c: IWorkspaceContacts): IWorkspaceContactsDTO {
+	return {
+		emails: c.emails.map(toWorkspaceEmailDTO),
+		phones: c.phones.map(toWorkspacePhoneDTO),
+		locations: c.locations.map(toWorkspaceLocationDTO),
+	};
 }
 
 export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
@@ -135,6 +280,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 		motto: stringOrEmpty(ws.motto),
 		phone: stringOrEmpty(ws.phone),
 		businessType: stringOrEmpty(ws.businessType),
+		industry: stringOrEmpty(ws.industry),
 		address: {
 			line1: stringOrEmpty(addr.line1),
 			line2: stringOrEmpty(addr.line2),
@@ -142,6 +288,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			state: stringOrEmpty(addr.state),
 			zip: stringOrEmpty(addr.zip),
 			country: stringOrEmpty(addr.country),
+			accessCode: stringOrEmpty(addr.accessCode),
 		},
 		legalName: stringOrEmpty(ws.legalName),
 		email: stringOrEmpty(ws.email),
@@ -153,6 +300,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			number: stringOrEmpty(r.number),
 			region: stringOrEmpty(r.region),
 			label: stringOrEmpty(r.label),
+			rate: typeof r.rate === 'number' && Number.isFinite(r.rate) ? r.rate : null,
 		})),
 		languages: Array.isArray(ws.languages) ? ws.languages.map(String) : [],
 		plan: stringOrEmpty(ws.plan),
@@ -223,5 +371,6 @@ export function toSettingsDTO(s: IWorkspaceSettings): IWorkspaceSettingsDTO {
 		currency: stringOrEmpty(s.currency),
 		dateFormat: stringOrEmpty(s.dateFormat),
 		timeFormat: stringOrEmpty(s.timeFormat),
+		documentPrefixes: { ...(s.documentPrefixes ?? {}) },
 	};
 }

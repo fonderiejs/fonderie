@@ -2379,7 +2379,9 @@
         "useWorkspace",
         "useWorkspaces",
         "useDeletedRoles",
-        "useOwnershipOffer"
+        "useOwnershipOffer",
+        "useWorkspaceContacts",
+        "useWorkspaceLocations"
       ],
       "subpaths": [],
       "tables": [],
@@ -3011,7 +3013,9 @@
         "useWorkspace",
         "useWorkspaces",
         "useDeletedRoles",
-        "useOwnershipOffer"
+        "useOwnershipOffer",
+        "useWorkspaceContacts",
+        "useWorkspaceLocations"
       ],
       "subpaths": [],
       "tables": [],
@@ -3144,6 +3148,7 @@
         "MESSAGE_KEYS",
         "EVENT_KEYS",
         "DEFAULT_TEMPLATES",
+        "CONTACT_LIMITS",
         "ROLE_BIN_RETENTION_DAYS",
         "VELOCITY_BRAKE_DEFAULTS",
         "OWNER_ALERT_EVENTS"
@@ -3160,11 +3165,14 @@
         "fonderie_roles",
         "fonderie_workspace_brakes",
         "fonderie_workspace_destructive_actions",
+        "fonderie_workspace_emails",
         "fonderie_workspace_invitations",
+        "fonderie_workspace_locations",
         "fonderie_workspace_ownership_offers",
+        "fonderie_workspace_phones",
         "fonderie_workspaces"
       ],
-      "routeCount": 40,
+      "routeCount": 51,
       "routes": [
         {
           "method": "GET",
@@ -3193,6 +3201,11 @@
         },
         {
           "method": "GET",
+          "path": "/workspaces/contacts",
+          "mw": "requireAuth → wsCtx → contacts.list"
+        },
+        {
+          "method": "GET",
           "path": "/workspaces/current",
           "mw": "requireAuth → wsCtx → workspace.get"
         },
@@ -3200,6 +3213,21 @@
           "method": "GET",
           "path": "/workspaces/current/permissions",
           "mw": "requireAuth → wsCtx → access.mine"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/emails",
+          "mw": "requireAuth → wsCtx → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/emails/:emailId",
+          "mw": "requireAuth → wsCtx → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail"
+        },
+        {
+          "method": "PATCH",
+          "path": "/workspaces/emails/:emailId",
+          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail"
         },
         {
           "method": "GET",
@@ -3230,6 +3258,26 @@
           "method": "POST",
           "path": "/workspaces/leave",
           "mw": "requireAuth → wsCtx → T(K.memberLeft) → member.leave"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/locations",
+          "mw": "requireAuth → wsCtx → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation"
+        },
+        {
+          "method": "PATCH",
+          "path": "/workspaces/locations/:locationId",
+          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/locations/:locationId/archive",
+          "mw": "requireAuth → wsCtx → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/locations/:locationId/restore",
+          "mw": "requireAuth → wsCtx → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation"
         },
         {
           "method": "GET",
@@ -3275,6 +3323,21 @@
           "method": "GET",
           "path": "/workspaces/permissions/catalog",
           "mw": "requireAuth → wsCtx → access.catalog"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/phones",
+          "mw": "requireAuth → wsCtx → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspaces/phones/:phoneId",
+          "mw": "requireAuth → wsCtx → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone"
+        },
+        {
+          "method": "PATCH",
+          "path": "/workspaces/phones/:phoneId",
+          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone"
         },
         {
           "method": "POST",
@@ -6638,6 +6701,14 @@
       "react-workspaces",
       "vue-workspaces"
     ],
+    "useworkspacecontacts": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useworkspacelocations": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
     "riskengine": [
       "risk"
     ],
@@ -6684,6 +6755,9 @@
       "webhooks"
     ],
     "workspacesmodule": [
+      "workspaces"
+    ],
+    "contact_limits": [
       "workspaces"
     ],
     "role_bin_retention_days": [

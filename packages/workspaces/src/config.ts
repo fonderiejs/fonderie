@@ -54,6 +54,17 @@ export const EVENT_KEYS = {
 	roleRestored: 'fonderie.workspace.role.restored',
 	roleBinPurged: 'fonderie.workspace.role.bin.purged',
 	rolePermissionsSet: 'fonderie.workspace.role.permissions.set',
+	// Contacts & locations (migration 010). Payload adds emailId / phoneId / locationId.
+	emailAdded: 'fonderie.workspace.email.added',
+	emailUpdated: 'fonderie.workspace.email.updated',
+	emailRemoved: 'fonderie.workspace.email.removed',
+	phoneAdded: 'fonderie.workspace.phone.added',
+	phoneUpdated: 'fonderie.workspace.phone.updated',
+	phoneRemoved: 'fonderie.workspace.phone.removed',
+	locationCreated: 'fonderie.workspace.location.created',
+	locationUpdated: 'fonderie.workspace.location.updated',
+	locationArchived: 'fonderie.workspace.location.archived',
+	locationRestored: 'fonderie.workspace.location.restored',
 } as const;
 
 // Events of OTHER bricks the owner is alerted to (Phase 6) — mirrored here so
@@ -136,6 +147,8 @@ export type WorkspaceRouteId =
 	| 'releaseBrake'
 	| 'getOwnershipOffer' | 'acceptOwnership' | 'declineOwnership' | 'withdrawOwnershipOffer'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'
-	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin';
+	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin'
+	| 'getContacts' | 'addEmail' | 'updateEmail' | 'removeEmail' | 'addPhone' | 'updatePhone' | 'removePhone'
+	| 'createLocation' | 'updateLocation' | 'archiveLocation' | 'restoreLocation';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };

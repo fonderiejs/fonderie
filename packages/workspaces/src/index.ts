@@ -12,6 +12,10 @@ export type {
 	IMember,
 	IInvitation,
 	IWorkspaceSettings,
+	IWorkspaceEmail,
+	IWorkspacePhone,
+	IWorkspaceLocation,
+	IWorkspaceContacts,
 } from './types';
 export type {
 	IWorkspaceDTO,
@@ -19,6 +23,10 @@ export type {
 	IMemberDTO,
 	IInvitationDTO,
 	IWorkspaceSettingsDTO,
+	IWorkspaceEmailDTO,
+	IWorkspacePhoneDTO,
+	IWorkspaceLocationDTO,
+	IWorkspaceContactsDTO,
 } from './dtos/workspace';
 export {
 	toWorkspaceDTO,
@@ -26,7 +34,14 @@ export {
 	toMemberDTO,
 	toInvitationDTO,
 	toSettingsDTO,
+	toWorkspaceEmailDTO,
+	toWorkspacePhoneDTO,
+	toWorkspaceLocationDTO,
+	toWorkspaceContactsDTO,
 } from './dtos/workspace';
+// The workspace's emails, phones and locations — the primary email / phone and
+// the head office's address are mirrored onto the workspace's own columns.
+export { CONTACT_LIMITS, listContacts, taxRegionOf } from './services/contacts';
 // The workspace's settings (locale, timezone, currency…) with defaults applied —
 // what another brick reads to default a customer's language or a document's currency.
 export { getWorkspaceSettings } from './services/workspaces';

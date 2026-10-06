@@ -13,6 +13,12 @@ import {
 	updateSettingsSchema,
 	createWorkspaceSchema,
 	updateWorkspaceSchema,
+	addWorkspaceEmailSchema,
+	updateWorkspaceEmailSchema,
+	addWorkspacePhoneSchema,
+	updateWorkspacePhoneSchema,
+	createWorkspaceLocationSchema,
+	updateWorkspaceLocationSchema,
 	acceptInvitationSchema,
 	createInvitationsSchema,
 	setRolePermissionsSchema,
@@ -22,7 +28,7 @@ import { EVENT_KEYS, type IWorkspacesConfig, type WorkspaceRouteId } from './con
 import { withWorkspace } from './middlewares/workspace-context';
 import { requireManager } from './middlewares/require-manager';
 import { requireOwner } from './middlewares/require-owner';
-import { inviteOf, roleOf, target, trail } from './middlewares/trail';
+import { contactOf, inviteOf, roleOf, target, trail } from './middlewares/trail';
 import { requireStepUp } from './middlewares/require-step-up';
 import { releaseBrake, velocityBrake } from './middlewares/velocity-brake';
 
@@ -31,6 +37,7 @@ import { memberController } from './controllers/member.controller';
 import { roleController } from './controllers/role.controller';
 import { invitationController } from './controllers/invitation.controller';
 import { accessController } from './controllers/access.controller';
+import { contactsController } from './controllers/contacts.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
@@ -63,6 +70,7 @@ export function buildWorkspaceRoutes(
 	const member = memberController(store, config);
 	const role = roleController(store);
 	const access = accessController(store, config);
+	const contacts = contactsController(store);
 	const invitation = invitationController(store, ttl, bus, {
 		...(config.invitationUrl ? { invitationUrl: config.invitationUrl } : {}),
 		...(config.invitationAccountMatch ? { invitationAccountMatch: config.invitationAccountMatch } : {}),
@@ -141,6 +149,21 @@ export function buildWorkspaceRoutes(
 		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, manager, T(K.workspaceRestored), workspace.restore),
 		R('getSettings', 'GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings),
 		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, manager, validate(updateSettingsSchema), T(K.settingsUpdated), workspace.updateSettings),
+
+		// ── Contacts & locations (X-Workspace-ID). Members read; managers write.
+		// Params are :emailId / :phoneId / :locationId — never :id, which
+		// withWorkspace would read as the workspace. Before /workspaces/:id.
+		R('getContacts', 'GET', '/workspaces/contacts', requireAuth, wsCtx, contacts.list),
+		R('addEmail', 'POST', '/workspaces/emails', requireAuth, wsCtx, manager, validate(addWorkspaceEmailSchema), T(K.emailAdded, contactOf('email')), contacts.addEmail),
+		R('updateEmail', 'PATCH', '/workspaces/emails/:emailId', requireAuth, wsCtx, manager, validate(updateWorkspaceEmailSchema), T(K.emailUpdated, contactOf('email')), contacts.updateEmail),
+		R('removeEmail', 'DELETE', '/workspaces/emails/:emailId', requireAuth, wsCtx, manager, T(K.emailRemoved, contactOf('email')), contacts.removeEmail),
+		R('addPhone', 'POST', '/workspaces/phones', requireAuth, wsCtx, manager, validate(addWorkspacePhoneSchema), T(K.phoneAdded, contactOf('phone')), contacts.addPhone),
+		R('updatePhone', 'PATCH', '/workspaces/phones/:phoneId', requireAuth, wsCtx, manager, validate(updateWorkspacePhoneSchema), T(K.phoneUpdated, contactOf('phone')), contacts.updatePhone),
+		R('removePhone', 'DELETE', '/workspaces/phones/:phoneId', requireAuth, wsCtx, manager, T(K.phoneRemoved, contactOf('phone')), contacts.removePhone),
+		R('createLocation', 'POST', '/workspaces/locations', requireAuth, wsCtx, manager, validate(createWorkspaceLocationSchema), T(K.locationCreated, contactOf('location')), contacts.createLocation),
+		R('updateLocation', 'PATCH', '/workspaces/locations/:locationId', requireAuth, wsCtx, manager, validate(updateWorkspaceLocationSchema), T(K.locationUpdated, contactOf('location')), contacts.updateLocation),
+		R('archiveLocation', 'POST', '/workspaces/locations/:locationId/archive', requireAuth, wsCtx, manager, T(K.locationArchived, contactOf('location')), contacts.archiveLocation),
+		R('restoreLocation', 'POST', '/workspaces/locations/:locationId/restore', requireAuth, wsCtx, manager, T(K.locationRestored, contactOf('location')), contacts.restoreLocation),
 
 		// ── The workspace this request is scoped to (X-Workspace-ID, or the
 		// personal workspace). Before /workspaces/:id so 'current' is not an id.

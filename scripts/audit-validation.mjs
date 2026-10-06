@@ -39,6 +39,8 @@ const EXEMPT = new Map([
 	['POST /auth/mfa/setup', 'no body read — generates TOTP secret'],
 	['POST /auth/apple/callback', 'Apple form_post (urlencoded, not JSON); CSRF state verified + code/id_token validated in handler'],
 	['POST /workspaces/archive', 'no body read — workspace from ctx'],
+	['POST /workspaces/locations/:locationId/archive', 'no body — the location is the path param; sets archived_at'],
+	['POST /workspaces/locations/:locationId/restore', 'no body — the location is the path param; clears archived_at'],
 	['POST /workspaces/restore', 'no body read'],
 	['POST /customers/:customerId/unblacklist', 'no body read'],
 	['POST /customers/:customerId/archive', 'no body read'],
