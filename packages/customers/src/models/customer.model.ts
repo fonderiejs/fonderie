@@ -26,6 +26,22 @@ function groupByCustomer<T extends { customerId: string }>(rows: T[]): Map<strin
 	}, new Map<string, T[]>());
 }
 
+// How many hand-set codes in a row the counter will step over before giving up.
+const MAX_CODE_SKIPS = 100;
+// How many times a create or update retries a code it generated itself after
+// losing it to a concurrent writer (the unique index is the final guard).
+const MAX_CODE_RETRIES = 3;
+
+/** Which workspace-unique code a unique violation was about, if either. */
+export function duplicateCode(err: unknown): 'reference' | 'referral' | null {
+	const e = err as { code?: string; constraint?: string; message?: string };
+	if (e?.code !== '23505') return null;
+	const name = e.constraint ?? e.message ?? '';
+	if (name.includes('idx_fc_reference_code')) return 'reference';
+	if (name.includes('idx_fc_referral_code')) return 'referral';
+	return null;
+}
+
 const SELECT_CUSTOMER = `
 	id,
 	workspace_id   AS "workspaceId",
@@ -116,16 +132,35 @@ export interface UpdateCustomerOpts {
 export class CustomerModel {
 	constructor(private readonly store: IStoreAdapter) {}
 
+	/**
+	 * The next counter code no customer holds yet. Codes can also be set by hand,
+	 * so the counter may reach one that is taken: it skips past it rather than
+	 * handing it out — a create then failed with a "duplicate reference code" the
+	 * caller never sent, and an update with a 500. Each bump is atomic, so
+	 * concurrent callers never get the same value; a code set by hand between the
+	 * check and the write is the insert's retry to absorb.
+	 */
 	private async allocateCode(workspaceId: string, prefix: string): Promise<string> {
-		const [row] = await this.store.query<{ nextVal: number }>(
-			`INSERT INTO fonderie_customer_sequences (workspace_id, prefix, next_val)
-			 VALUES ($1, $2, 1)
-			 ON CONFLICT (workspace_id, prefix) DO UPDATE
-			   SET next_val = fonderie_customer_sequences.next_val + 1
-			 RETURNING next_val AS "nextVal"`,
-			[workspaceId, prefix],
-		);
-		return `${prefix}-${String(row!.nextVal).padStart(4, '0')}`;
+		for (let skipped = 0; skipped < MAX_CODE_SKIPS; skipped++) {
+			// Formatted as padStart(4, '0') would: lpad alone cuts 12345 to 1234.
+			const [row] = await this.store.query<{ code: string; taken: boolean }>(
+				`WITH bumped AS (
+				   INSERT INTO fonderie_customer_sequences (workspace_id, prefix, next_val)
+				   VALUES ($1, $2, 1)
+				   ON CONFLICT (workspace_id, prefix) DO UPDATE
+				     SET next_val = fonderie_customer_sequences.next_val + 1
+				   RETURNING $2::text || '-' || CASE WHEN next_val >= 1000 THEN next_val::text
+				                                     ELSE lpad(next_val::text, 4, '0') END AS code
+				 )
+				 SELECT code, EXISTS (
+				   SELECT 1 FROM fonderie_customers c WHERE c.workspace_id = $1 AND c.reference_code = bumped.code
+				 ) AS taken
+				 FROM bumped`,
+				[workspaceId, prefix],
+			);
+			if (!row!.taken) return row!.code;
+		}
+		throw new Error('could not allocate a free reference code');
 	}
 
 	/** A random referral code (crypto-random over the unambiguous alphabet). */
@@ -140,8 +175,8 @@ export class CustomerModel {
 	/**
 	 * A referral code unique within the workspace. Random codes collide only
 	 * astronomically rarely; we still pre-check and retry a few times, and the
-	 * unique index is the final guard. Throws only if the space is somehow
-	 * exhausted (not reachable in practice).
+	 * unique index is the final guard — create() retries on it. Throws only if
+	 * the space is somehow exhausted (not reachable in practice).
 	 */
 	private async allocateReferralCode(workspaceId: string): Promise<string> {
 		for (let attempt = 0; attempt < 5; attempt++) {
@@ -544,11 +579,11 @@ export class CustomerModel {
 	}
 
 	async create(opts: CreateCustomerOpts): Promise<ICustomer> {
-		const referenceCode = opts.referenceCode
-			?? await this.allocateCode(opts.workspaceId, opts.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX);
+		const prefix = opts.referenceCodePrefix ?? DEFAULT_REFERENCE_CODE_PREFIX;
+		let referenceCode = opts.referenceCode ?? await this.allocateCode(opts.workspaceId, prefix);
 
 		// Every customer gets a shareable referral code at creation.
-		const referralCode = opts.referralCode ?? await this.allocateReferralCode(opts.workspaceId);
+		let referralCode = opts.referralCode ?? await this.allocateReferralCode(opts.workspaceId);
 
 		// If they signed up with someone's code, record who referred them (same
 		// workspace). An unknown code is ignored, not an error — signup shouldn't
@@ -557,28 +592,46 @@ export class CustomerModel {
 			? await this.resolveReferralCode(opts.workspaceId, opts.referredByCode)
 			: null;
 
-		const [row] = await this.store.query<ICustomer>(
-			`INSERT INTO fonderie_customers
-			   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			 RETURNING ${SELECT_CUSTOMER}`,
-			[
-				opts.workspaceId,
-				opts.type ?? 'individual',
-				opts.sex ?? 'UNKNOWN',
-				opts.firstName ?? null,
-				opts.lastName ?? null,
-				opts.companyName ?? null,
-				opts.avatarUrl ?? null,
-				opts.locale ?? DEFAULT_SYSTEM_LOCALE,
-				referenceCode,
-				referralCode,
-				referredBy,
-				opts.createdBy ?? null,
-			],
-		);
-		if (!row) throw new Error('Failed to create customer');
-		return row;
+		// A generated code can still be taken between its check and this insert
+		// (a concurrent create, a code typed by hand). That one is generated
+		// again; a code the caller chose is theirs to change, so its duplicate
+		// goes back to them (duplicateCode → 409), never a 500.
+		for (let attempt = 0; ; attempt++) {
+			try {
+				const [row] = await this.store.query<ICustomer>(
+					`INSERT INTO fonderie_customers
+					   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by)
+					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+					 RETURNING ${SELECT_CUSTOMER}`,
+					[
+						opts.workspaceId,
+						opts.type ?? 'individual',
+						opts.sex ?? 'UNKNOWN',
+						opts.firstName ?? null,
+						opts.lastName ?? null,
+						opts.companyName ?? null,
+						opts.avatarUrl ?? null,
+						opts.locale ?? DEFAULT_SYSTEM_LOCALE,
+						referenceCode,
+						referralCode,
+						referredBy,
+						opts.createdBy ?? null,
+					],
+				);
+				if (!row) throw new Error('Failed to create customer');
+				return row;
+			} catch (err) {
+				const which = duplicateCode(err);
+				if (attempt >= MAX_CODE_RETRIES) throw err;
+				if (which === 'reference' && !opts.referenceCode) {
+					referenceCode = await this.allocateCode(opts.workspaceId, prefix);
+				} else if (which === 'referral' && !opts.referralCode) {
+					referralCode = await this.allocateReferralCode(opts.workspaceId);
+				} else {
+					throw err;
+				}
+			}
+		}
 	}
 
 	async update(
@@ -634,14 +687,26 @@ export class CustomerModel {
 			sets.push(`reference_code = $${params.length}`);
 		}
 
-		const [row] = await this.store.query<ICustomer>(
-			`UPDATE fonderie_customers
-			 SET ${sets.join(', ')}
-			 WHERE id = $1 AND workspace_id = $2
-			 RETURNING ${SELECT_CUSTOMER}`,
-			params,
-		);
-		return row ?? null;
+		// As in create(): a generated code lost to a concurrent writer is
+		// generated again; a duplicate the caller chose is thrown for a 409.
+		for (let attempt = 0; ; attempt++) {
+			try {
+				const [row] = await this.store.query<ICustomer>(
+					`UPDATE fonderie_customers
+					 SET ${sets.join(', ')}
+					 WHERE id = $1 AND workspace_id = $2
+					 RETURNING ${SELECT_CUSTOMER}`,
+					params,
+				);
+				return row ?? null;
+			} catch (err) {
+				if (autoCode === undefined || duplicateCode(err) !== 'reference' || attempt >= MAX_CODE_RETRIES) {
+					throw err;
+				}
+				autoCode = await this.allocateCode(workspaceId, referenceCodePrefix);
+				params[params.length - 1] = autoCode;
+			}
+		}
 	}
 
 	/**

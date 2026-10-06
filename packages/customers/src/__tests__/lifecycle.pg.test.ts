@@ -255,3 +255,51 @@ test('a refused delete leaves nothing in the bin; a restore whose reference code
 	assert.ok((await emptyCustomerBin(store)) >= 1);
 	assert.equal((await store.query('SELECT 1 FROM fonderie_customer_bin WHERE id = $1', [taker.id])).length, 0, 'past the retention: gone');
 });
+
+test('a code the caller chose that someone holds is a 409 naming it, on create and on update', { skip }, async () => {
+	const o = await owner();
+	const a = await create(o, { firstName: 'Code', lastName: 'Holder' });
+	const dupReferral = await call(o.token, 'POST', '/customers', { firstName: 'Same', referralCode: a.referralCode }, o.ws);
+	assert.deepEqual([dupReferral.status, dupReferral.reason], [409, 'DUPLICATE_REFERRAL_CODE']);
+	const b = await create(o, { firstName: 'Other', lastName: 'Holder' });
+	const dupReference = await call(o.token, 'PUT', `/customers/${b.id}`, { referenceCode: a.referenceCode }, o.ws);
+	assert.deepEqual([dupReference.status, dupReference.reason], [409, 'DUPLICATE_REFERENCE_CODE']);
+});
+
+test('the reference-code counter steps over a code typed by hand, on create and on update', { skip }, async () => {
+	const o = await owner();
+	const first = await create(o, { firstName: 'Counted' });
+	const n = Number(String(first.referenceCode).split('-')[1]);
+	const code = (i: number) => `CLT-${String(i).padStart(4, '0')}`;
+	await create(o, { firstName: 'Typed', referenceCode: code(n + 1) });
+	const next = await call(o.token, 'POST', '/customers', { firstName: 'Next' }, o.ws);
+	assert.equal(next.status, 201, `the counter handed out a code it never checked: ${JSON.stringify(next)}`);
+	assert.equal(next.result['customer'].referenceCode, code(n + 2));
+
+	// A customer without a code gets one on update — the same counter.
+	await create(o, { firstName: 'Typed', referenceCode: code(n + 3) });
+	await store.query('UPDATE fonderie_customers SET reference_code = NULL WHERE id = $1', [first.id]);
+	const upd = await call(o.token, 'PUT', `/customers/${first.id}`, { firstName: 'Recoded' }, o.ws);
+	assert.equal(upd.status, 200, JSON.stringify(upd));
+	assert.equal(upd.result['customer'].referenceCode, code(n + 4));
+});
+
+test('two creates drawing the same referral code: both are created, with different codes', { skip }, async () => {
+	const { CustomerModel } = await import('../models/customer.model');
+	const { randomUUID } = await import('node:crypto');
+	const model = new CustomerModel(store);
+	const workspaceId = randomUUID();
+	// Both pre-checks see the code free; the unique index decides at insert.
+	const draws = ['RACE2345', 'RACE2345'];
+	const m = model as unknown as { randomReferralCode: () => string };
+	const real = m.randomReferralCode.bind(model);
+	m.randomReferralCode = () => draws.shift() ?? real();
+	const made = await Promise.allSettled([
+		model.create({ workspaceId, firstName: 'One' }),
+		model.create({ workspaceId, firstName: 'Two' }),
+	]);
+	assert.deepEqual(made.map((r) => r.status), ['fulfilled', 'fulfilled'], JSON.stringify(made.map((r) => r.status === 'rejected' ? String(r.reason) : 'ok')));
+	const codes = made.map((r) => (r as PromiseFulfilledResult<{ referralCode: string }>).value.referralCode);
+	assert.notEqual(codes[0], codes[1]);
+	await store.query('DELETE FROM fonderie_customers WHERE workspace_id = $1', [workspaceId]);
+});
