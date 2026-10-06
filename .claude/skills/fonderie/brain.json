@@ -4,19 +4,19 @@
     "adapter-express": "5.4.10",
     "adapter-hono": "6.3.8",
     "adapter-koa": "5.4.11",
-    "admin": "1.8.2",
+    "admin": "1.8.3",
     "audit": "5.3.1",
-    "auth": "7.27.3",
-    "billing": "11.3.0",
+    "auth": "7.27.4",
+    "billing": "11.4.0",
     "client": "3.19.1",
     "config": "6.6.9",
     "core": "0.32.0",
-    "courier": "7.16.1",
+    "courier": "7.16.2",
     "customers": "6.8.1",
     "events": "5.13.2",
     "geo": "0.5.13",
     "logger": "0.3.9",
-    "media": "0.4.1",
+    "media": "0.5.0",
     "permissions": "5.1.5",
     "rate-limit": "4.1.1",
     "react": "0.11.0",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.8.2",
+      "version": "1.8.3",
       "stability": "experimental",
       "requires": [
         "core",
@@ -352,7 +352,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.27.3",
+      "version": "7.27.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -661,7 +661,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "11.3.0",
+      "version": "11.4.0",
       "stability": "stable",
       "requires": [
         "core",
@@ -1071,7 +1071,7 @@
       "hasOutcomes": true
     },
     "courier": {
-      "version": "7.16.1",
+      "version": "7.16.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -1501,7 +1501,7 @@
       "hasOutcomes": false
     },
     "media": {
-      "version": "0.4.1",
+      "version": "0.5.0",
       "stability": "experimental",
       "requires": [
         "core",
