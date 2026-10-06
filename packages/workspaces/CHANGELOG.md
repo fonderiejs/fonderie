@@ -1,5 +1,12 @@
 # @fonderie/workspaces
 
+## 7.3.0
+
+### Minor Changes
+
+- 3760ddb: The business profile carries what a field-service business prints: `industry` (the app's own sector key), `address.accessCode` (buzzer / door code; the unit stays `line2`), a `rate` (percent) on each tax registration — which may now be saved before its number arrives — and `settings.documentPrefixes` (`{ invoice: 'ACME', job: 'ACME-JOB' }`). All optional and additive; migration 009 adds the nullable `industry` column. Bad values are refused with a 422 naming the field (`industry:`, `address.accessCode:`, `taxRegistrations.0.rate:`, `documentPrefixes.invoice:`).
+- 3760ddb: A workspace now holds several emails and phones (one primary each) and its locations (one head office, archivable), under `GET /workspaces/contacts`, `/workspaces/emails`, `/workspaces/phones` and `/workspaces/locations` — members read, owners and managers write. The workspace's `email`, `phone` and `address` stay, as the mirror of the primary email, the primary phone and the head office's address, kept in step both ways in one transaction: a `PUT /workspaces` with them updates (or creates) the entries. Phones are E.164 with an optional extension; a location's `taxRegion` (`CA-QC`) is derived from its address unless given. Migration 010 creates the three tables and turns each existing workspace's email, phone (when already E.164) and address into its first entries. Client: `getContacts`, `addEmail` / `updateEmail` / `removeEmail`, `addPhone` / `updatePhone` / `removePhone`, `createLocation` / `updateLocation` / `archiveLocation` / `restoreLocation`. Hooks: `useWorkspaceContacts()`, `useWorkspaceLocations()`.
+
 ## 7.2.1
 
 ### Patch Changes

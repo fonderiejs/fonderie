@@ -8,7 +8,7 @@
     "audit": "5.3.1",
     "auth": "7.27.4",
     "billing": "11.4.0",
-    "client": "3.19.1",
+    "client": "3.20.0",
     "config": "6.6.9",
     "core": "0.32.0",
     "courier": "7.16.2",
@@ -46,12 +46,12 @@
     "react-native-media": "0.1.3",
     "react-native-webhooks": "0.1.5",
     "react-native-webhooks-screens": "0.4.1",
-    "react-native-workspaces": "0.1.9",
-    "react-native-workspaces-screens": "0.5.1",
+    "react-native-workspaces": "0.2.0",
+    "react-native-workspaces-screens": "0.5.2",
     "react-webhooks": "0.6.0",
     "react-webhooks-screens": "0.4.2",
-    "react-workspaces": "0.12.0",
-    "react-workspaces-screens": "0.5.4",
+    "react-workspaces": "0.13.0",
+    "react-workspaces-screens": "0.5.5",
     "risk": "0.3.10",
     "sse": "0.2.9",
     "storage": "0.1.31",
@@ -74,10 +74,10 @@
     "vue-media": "0.2.8",
     "vue-webhooks": "0.7.0",
     "vue-webhooks-screens": "0.4.2",
-    "vue-workspaces": "0.13.0",
-    "vue-workspaces-screens": "0.5.4",
+    "vue-workspaces": "0.14.0",
+    "vue-workspaces-screens": "0.5.5",
     "webhooks": "7.2.1",
-    "workspaces": "7.2.1"
+    "workspaces": "7.3.0"
   },
   "packages": {
     "adapter-express": {
@@ -874,7 +874,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.19.1",
+      "version": "3.20.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -2272,7 +2272,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces": {
-      "version": "0.1.9",
+      "version": "0.2.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2289,7 +2289,7 @@
       "hasOutcomes": false
     },
     "react-native-workspaces-screens": {
-      "version": "0.5.1",
+      "version": "0.5.2",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2355,7 +2355,7 @@
       "hasOutcomes": false
     },
     "react-workspaces": {
-      "version": "0.12.0",
+      "version": "0.13.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2392,7 +2392,7 @@
       "hasOutcomes": false
     },
     "react-workspaces-screens": {
-      "version": "0.5.4",
+      "version": "0.5.5",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -2989,7 +2989,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces": {
-      "version": "0.13.0",
+      "version": "0.14.0",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -3026,7 +3026,7 @@
       "hasOutcomes": false
     },
     "vue-workspaces-screens": {
-      "version": "0.5.4",
+      "version": "0.5.5",
       "stability": "beta",
       "requires": [],
       "dependsOn": [
@@ -3133,7 +3133,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "7.2.1",
+      "version": "7.3.0",
       "stability": "stable",
       "requires": [
         "core",
