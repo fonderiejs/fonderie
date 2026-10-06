@@ -212,6 +212,84 @@ export const updateSettingsSchema = z
 	})
 	.refine((o) => Object.values(o).some((v) => v !== undefined), 'No settings provided');
 
+// ── Contacts & locations ────────────────────────────────────────────────────
+
+// '+1 (514) 555-0100' → '+15145550100'. International format only: a number
+// without its country code is ambiguous once a business works across borders.
+const e164 = z
+	.string()
+	.trim()
+	.transform((v) => v.replace(/[\s().-]/g, ''))
+	.pipe(z.string().regex(/^\+[1-9][0-9]{6,14}$/, 'Not a phone number in international format (e.g. +15145550100)'));
+const contactLabel = z.string().trim().max(100).nullable().optional();
+const position = z.number().int().min(0).max(32767);
+const lowerEmail = email.transform((v) => v.toLowerCase()).pipe(z.string().max(254));
+const atLeastOne = (o: Record<string, unknown>) => Object.values(o).some((v) => v !== undefined);
+
+export const addWorkspaceEmailSchema = z.object({
+	email: lowerEmail,
+	label: contactLabel,
+	isPrimary: z.boolean().optional(),
+});
+
+export const updateWorkspaceEmailSchema = z
+	.object({ label: contactLabel, isPrimary: z.boolean().optional(), position: position.optional() })
+	.refine(atLeastOne, 'Provide at least one field');
+
+const extension = z.string().trim().regex(/^[0-9]{1,8}$/, 'An extension is 1–8 digits').nullable().optional();
+
+export const addWorkspacePhoneSchema = z.object({
+	phone: e164,
+	extension,
+	label: contactLabel,
+	isPrimary: z.boolean().optional(),
+});
+
+export const updateWorkspacePhoneSchema = z
+	.object({ extension, label: contactLabel, isPrimary: z.boolean().optional(), position: position.optional() })
+	.refine(atLeastOne, 'Provide at least one field');
+
+// 'qc' → 'CA-QC' needs the country; a full code ('CA-QC') is checked against
+// the country's subdivisions when it has a pack (CA, US).
+const taxRegion = z
+	.string()
+	.trim()
+	.transform((v) => v.toUpperCase())
+	.pipe(z.string().regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/, "A tax region is an ISO 3166-2 code (e.g. 'CA-QC', 'US-NY')"))
+	.superRefine((v, ctx) => {
+		const [country, sub] = v.split('-') as [string, string];
+		const subs = regions.get(country)?.subdivisions;
+		if (subs && !subs[sub]) ctx.addIssue({ code: 'custom', message: `'${v}' is not a ${regions.get(country)?.subdivisionLabel ?? 'subdivision'} of ${country}` });
+	});
+
+const locationFields = {
+	name: z.string().trim().min(1, 'name is required').max(100),
+	address: addressSchema,
+	taxRegion: taxRegion.nullable().optional(),
+	latitude: z.number().min(-90).max(90).nullable().optional(),
+	longitude: z.number().min(-180).max(180).nullable().optional(),
+	phone: e164.nullable().optional(),
+	email: lowerEmail.nullable().optional(),
+	isHeadOffice: z.boolean().optional(),
+	position: position.optional(),
+};
+
+export const createWorkspaceLocationSchema = z.object(locationFields);
+
+export const updateWorkspaceLocationSchema = z
+	.object({
+		name: locationFields.name.optional(),
+		address: addressSchema.optional(),
+		taxRegion: locationFields.taxRegion,
+		latitude: locationFields.latitude,
+		longitude: locationFields.longitude,
+		phone: locationFields.phone,
+		email: locationFields.email,
+		isHeadOffice: locationFields.isHeadOffice,
+		position: locationFields.position,
+	})
+	.refine(atLeastOne, 'Provide at least one field');
+
 export const transferOwnershipSchema = z.object({ userId: z.string().min(1, 'userId is required') });
 
 export const addMemberRoleSchema = z.object({ roleId: z.string().min(1, 'roleId is required') });

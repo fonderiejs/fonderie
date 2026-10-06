@@ -46,5 +46,11 @@ export const target = (ctx: IFonderieContext): Facts => ({ targetUserId: params(
 export const roleOf = (ctx: IFonderieContext): Facts => ({
 	roleId: params(ctx)['roleId'] ?? (typeof body(ctx)['roleId'] === 'string' ? (body(ctx)['roleId'] as string) : undefined),
 });
+/** The workspace email / phone / location a route acts on (`:emailId`…), or the one it created. */
+export const contactOf =
+	(kind: 'email' | 'phone' | 'location') =>
+	(ctx: IFonderieContext, result: Record<string, unknown> | undefined): Facts => ({
+		[`${kind}Id`]: params(ctx)[`${kind}Id`] ?? ((result?.[kind] as { id?: string } | undefined)?.id),
+	});
 /** The invitation a route acts on (`:inviteId`). */
 export const inviteOf = (ctx: IFonderieContext): Facts => ({ inviteId: params(ctx)['inviteId'] });

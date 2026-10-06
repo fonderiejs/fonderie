@@ -64,6 +64,21 @@ kind                     TEXT NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
+### `fonderie_workspace_emails`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+email                    TEXT NOT NULL CHECK (email = lower(email) AND length(email) <= 254)
+label                    TEXT CHECK (label IS NULL OR length(label) <= 100)
+is_primary               BOOLEAN NOT NULL DEFAULT false
+position                 SMALLINT NOT NULL DEFAULT 0
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- UNIQUE (workspace_id, email)
+-- UNIQUE INDEX ux_fwe_primary (workspace_id)
+```
+
 ### `fonderie_workspace_invitations`
 
 ```sql
@@ -78,6 +93,30 @@ expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 ```
 
+### `fonderie_workspace_locations`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+name                     TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100)
+address                  JSONB NOT NULL DEFAULT '{}'::jsonb
+country                  TEXT GENERATED ALWAYS AS (address->>'country') STORED
+tax_region               TEXT CHECK (tax_region IS NULL OR tax_region ~ '^[A-Z]{2}-[A-Z0-9]{1,3}$')
+latitude                 NUMERIC(9,6)
+longitude                NUMERIC(9,6)
+phone                    TEXT CHECK (phone IS NULL OR phone ~ '^\+[1-9][0-9]{6,14}$')
+email                    TEXT CHECK (email IS NULL OR email = lower(email))
+is_head_office           BOOLEAN NOT NULL DEFAULT false
+position                 SMALLINT NOT NULL DEFAULT 0
+archived_at              TIMESTAMPTZ
+archived_by              UUID
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CHECK (NOT (is_head_office AND archived_at IS NOT NULL))
+-- UNIQUE INDEX ux_fwl_head_office (workspace_id)
+-- INDEX idx_fwl_workspace (workspace_id)
+```
+
 ### `fonderie_workspace_ownership_offers`
 
 ```sql
@@ -86,6 +125,22 @@ from_user_id             UUID NOT NULL
 to_user_id               UUID NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 expires_at               TIMESTAMPTZ NOT NULL
+```
+
+### `fonderie_workspace_phones`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+phone                    TEXT NOT NULL CHECK (phone ~ '^\+[1-9][0-9]{6,14}$')
+extension                TEXT CHECK (extension IS NULL OR extension ~ '^[0-9]{1,8}$')
+label                    TEXT CHECK (label IS NULL OR length(label) <= 100)
+is_primary               BOOLEAN NOT NULL DEFAULT false
+position                 SMALLINT NOT NULL DEFAULT 0
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- UNIQUE (workspace_id, phone, extension)
+-- UNIQUE INDEX ux_fwp_primary (workspace_id)
 ```
 
 ### `fonderie_workspaces`
@@ -123,6 +178,9 @@ Raw SQL ships in `node_modules/@fonderie/workspaces/dist/migrations/sql/` — re
 
 ```sql
 INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES ('ADMIN', NULL, true, 'System administrator with full access'), ('GUEST', NULL, true, 'Guest user with read-only access') ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_workspace_emails (workspace_id, email, is_primary) SELECT id, lower(email), true FROM fonderie_workspaces WHERE email IS NOT NULL AND email <> '' ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_workspace_phones (workspace_id, phone, is_primary) SELECT id, phone, true FROM fonderie_workspaces WHERE phone ~ '^\+[1-9][0-9]{6,14}$' ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_region, is_head_office) SELECT id, 'Head office', address, CASE WHEN address->>'country' IN ('CA','US') AND upper(coalesce(address->>'state','')) ~ '^[A-Z0-9]{1,3}$' THEN (address->>'country') || '-' || upper(address->>'state') END, true FROM fonderie_workspaces WHERE address IS NOT NULL AND address <> '{}'::jsonb ON CONFLICT DO NOTHING;
 ```
 
 ## HTTP routes registered
@@ -134,14 +192,22 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
 | POST | `/workspaces/archive` | `requireAuth → wsCtx → owner → T(K.workspaceArchived) → workspace.archive` |
+| GET | `/workspaces/contacts` | `requireAuth → wsCtx → contacts.list` |
 | GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
 | GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |
+| POST | `/workspaces/emails` | `requireAuth → wsCtx → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail` |
+| DELETE | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail` |
+| PATCH | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
 | POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite` |
 | DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
 | POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → T(K.invitationResent, inviteOf) → invitation.resend` |
 | POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined) → invitation.accept` |
 | POST | `/workspaces/leave` | `requireAuth → wsCtx → T(K.memberLeft) → member.leave` |
+| POST | `/workspaces/locations` | `requireAuth → wsCtx → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation` |
+| PATCH | `/workspaces/locations/:locationId` | `requireAuth → wsCtx → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation` |
+| POST | `/workspaces/locations/:locationId/archive` | `requireAuth → wsCtx → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation` |
+| POST | `/workspaces/locations/:locationId/restore` | `requireAuth → wsCtx → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
 | DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove` |
 | DELETE | `/workspaces/members/:userId/brake` | `requireAuth → wsCtx → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }` |
@@ -151,6 +217,9 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole` |
 | DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole` |
 | GET | `/workspaces/permissions/catalog` | `requireAuth → wsCtx → access.catalog` |
+| POST | `/workspaces/phones` | `requireAuth → wsCtx → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone` |
+| DELETE | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone` |
+| PATCH | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone` |
 | POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → T(K.workspaceRestored) → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
 | POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create` |
@@ -169,3 +238,8 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 | POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → stepUp → validate(transferOwnershipSchema) → T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |
 | POST | `/workspaces/transfer-ownership/accept` | `requireAuth → wsCtx → T(K.ownershipTransferred, (_c, r) => ({ targetUserId: r?.['previousOwnerId'] as string | undefined })) → member.acceptOwnership` |
 | POST | `/workspaces/transfer-ownership/decline` | `requireAuth → wsCtx → T(K.ownershipDeclined) → member.declineOwnership` |
+
+## Migration statements not replayed (verify in raw SQL)
+
+- `END IF`
+- `END $$`

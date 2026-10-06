@@ -778,6 +778,46 @@ interface IUpdateWorkspaceInput {
     languages?: string[];
 }
 
+interface IAddWorkspaceEmailInput {
+    email: string;
+    label?: string | null;
+    isPrimary?: boolean;
+}
+
+interface IUpdateWorkspaceEmailInput {
+    label?: string | null;
+    isPrimary?: boolean;
+    position?: number;
+}
+
+interface IAddWorkspacePhoneInput {
+    phone: string;
+    extension?: string | null;
+    label?: string | null;
+    isPrimary?: boolean;
+}
+
+interface IUpdateWorkspacePhoneInput {
+    extension?: string | null;
+    label?: string | null;
+    isPrimary?: boolean;
+    position?: number;
+}
+
+interface IWorkspaceLocationInput {
+    name: string;
+    address: NonNullable<IUpdateWorkspaceInput['address']>;
+    taxRegion?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    phone?: string | null;
+    email?: string | null;
+    isHeadOffice?: boolean;
+    position?: number;
+}
+
+type IUpdateWorkspaceLocationInput = Partial<IWorkspaceLocationInput>;
+
 new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .setAccessToken(token: string | undefined): void
   .setWorkspaceId(workspaceId: string | undefined): void
@@ -821,6 +861,17 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
   .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
+  .getContacts(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceContactsResult>>
+  .addEmail(input: IAddWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
+  .updateEmail(emailId: string, input: IUpdateWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
+  .removeEmail(emailId: string): Promise<IApiResponse<{ deleted: boolean; }>>
+  .addPhone(input: IAddWorkspacePhoneInput): Promise<IApiResponse<IWorkspacePhoneResult>>
+  .updatePhone(phoneId: string, input: IUpdateWorkspacePhoneInput): Promise<IApiResponse<IWorkspacePhoneResult>>
+  .removePhone(phoneId: string): Promise<IApiResponse<{ deleted: boolean; }>>
+  .createLocation(input: IWorkspaceLocationInput): Promise<IApiResponse<IWorkspaceLocationResult>>
+  .updateLocation(locationId: string, input: Partial<IWorkspaceLocationInput>): Promise<IApiResponse<IWorkspaceLocationResult>>
+  .archiveLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
+  .restoreLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
@@ -2065,6 +2116,63 @@ interface IWorkspaceSettingsDTO {
 
 interface IWorkspaceSettingsResult {
     settings: IWorkspaceSettingsDTO;
+}
+
+interface IWorkspaceEmailDTO {
+    id: string;
+    email: string;
+    label: string;
+    isPrimary: boolean;
+    position: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface IWorkspacePhoneDTO {
+    id: string;
+    phone: string;
+    extension: string;
+    label: string;
+    isPrimary: boolean;
+    position: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface IWorkspaceLocationDTO {
+    id: string;
+    name: string;
+    address: IWorkspaceAddressDTO;
+    taxRegion: string;
+    latitude: number | null;
+    longitude: number | null;
+    phone: string;
+    email: string;
+    isHeadOffice: boolean;
+    position: number;
+    isArchived: boolean;
+    archivedAt: string;
+    archivedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface IWorkspaceContactsResult {
+    emails: IWorkspaceEmailDTO[];
+    phones: IWorkspacePhoneDTO[];
+    locations: IWorkspaceLocationDTO[];
+}
+
+interface IWorkspaceEmailResult {
+    email: IWorkspaceEmailDTO;
+}
+
+interface IWorkspacePhoneResult {
+    phone: IWorkspacePhoneDTO;
+}
+
+interface IWorkspaceLocationResult {
+    location: IWorkspaceLocationDTO;
 }
 
 type SubscriberType = 'user' | 'workspace';

@@ -8,6 +8,7 @@ import { WorkspaceModel } from '../models/workspace.model';
 import { MemberModel } from '../models/member.model';
 import { RoleModel } from '../models/role.model';
 import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
+import { fromProfile } from '../services/contacts';
 
 export function workspaceController(store: IStoreAdapter, config: IWorkspacesConfig) {
 	const workspaces = new WorkspaceModel(store);
@@ -109,7 +110,17 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (Array.isArray(body?.['taxRegistrations'])) opts.taxRegistrations = body['taxRegistrations'] as NonNullable<typeof opts.taxRegistrations>;
 			if (Array.isArray(body?.['languages'])) opts.languages = body['languages'] as string[];
 
-			const workspace = await workspaces.update(ctx.workspace.id, opts);
+			// The profile's email / phone / address are the mirror of the primary
+			// email, the primary phone and the head office: one transaction moves both.
+			const id = ctx.workspace.id;
+			const workspace = await store.transaction(async (tx) => {
+				const updated = await new WorkspaceModel(tx).update(id, opts);
+				if (!updated) return null;
+				const mirrored = { email: opts.email, phone: opts.phone, address: opts.address };
+				if (Object.values(mirrored).every((v) => v === undefined)) return updated;
+				await fromProfile(tx, id, mirrored);
+				return new WorkspaceModel(tx).findById(id);
+			});
 			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
 			return setApiResponse(HTTP.OK, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {

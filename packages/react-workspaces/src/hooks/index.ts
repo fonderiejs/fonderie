@@ -28,3 +28,7 @@ export type { IUseDeletedRolesReturn } from './useDeletedRoles';
 export { useDeletedRoles } from './useDeletedRoles';
 export type { IUseOwnershipOfferReturn } from './useOwnershipOffer';
 export { useOwnershipOffer } from './useOwnershipOffer';
+export type { IUseWorkspaceContactsReturn } from './useWorkspaceContacts';
+export { useWorkspaceContacts } from './useWorkspaceContacts';
+export type { IUseWorkspaceLocationsReturn } from './useWorkspaceLocations';
+export { useWorkspaceLocations } from './useWorkspaceLocations';

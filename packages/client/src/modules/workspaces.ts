@@ -20,6 +20,10 @@ import type {
 	IWorkspaceListResult,
 	IWorkspaceResult,
 	IWorkspaceSettingsResult,
+	IWorkspaceContactsResult,
+	IWorkspaceEmailResult,
+	IWorkspacePhoneResult,
+	IWorkspaceLocationResult,
 } from '../types';
 import { WorkspaceScope } from '../workspace-scope';
 
@@ -68,6 +72,54 @@ export interface IUpdateWorkspaceInput {
 	/** The languages the business serves customers in, e.g. ['en-CA', 'fr-CA']. */
 	languages?: string[];
 }
+
+export interface IAddWorkspaceEmailInput {
+	email: string;
+	label?: string | null;
+	/** Moves the primary flag here. The first email added is primary anyway. */
+	isPrimary?: boolean;
+}
+
+export interface IUpdateWorkspaceEmailInput {
+	label?: string | null;
+	/** true moves the flag here; false on the primary is refused (409 PRIMARY_REQUIRED). */
+	isPrimary?: boolean;
+	position?: number;
+}
+
+export interface IAddWorkspacePhoneInput {
+	/** International format; spaces, dots, dashes and parentheses are dropped: '+1 514 555-0100'. */
+	phone: string;
+	/** 1–8 digits. */
+	extension?: string | null;
+	label?: string | null;
+	isPrimary?: boolean;
+}
+
+export interface IUpdateWorkspacePhoneInput {
+	extension?: string | null;
+	label?: string | null;
+	isPrimary?: boolean;
+	position?: number;
+}
+
+export interface IWorkspaceLocationInput {
+	name: string;
+	/** Normalized by the country's rules, like the workspace address. */
+	address: NonNullable<IUpdateWorkspaceInput['address']>;
+	/** ISO 3166-2 ('CA-QC'); derived from the address's country + state when omitted. */
+	taxRegion?: string | null;
+	latitude?: number | null;
+	longitude?: number | null;
+	/** International format. */
+	phone?: string | null;
+	email?: string | null;
+	/** Moves the head office here. The first location added is the head office anyway. */
+	isHeadOffice?: boolean;
+	position?: number;
+}
+
+export type IUpdateWorkspaceLocationInput = Partial<IWorkspaceLocationInput>;
 
 export interface IInviteEntry {
 	email: string;
@@ -548,6 +600,117 @@ export class WorkspacesClient {
 			path: '/workspaces/invitations/accept',
 			body,
 			token: this.tokens.get(),
+		});
+	}
+
+	// ── Contacts & locations ─────────────────────────────────────────────────────
+	// Members read; owners / managers write. The primary email / phone and the
+	// head office's address are mirrored onto the workspace (IWorkspaceDTO).
+
+	getContacts(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceContactsResult>>({
+			method: 'GET',
+			path: '/workspaces/contacts',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	addEmail(input: IAddWorkspaceEmailInput) {
+		return this.http.request<IApiResponse<IWorkspaceEmailResult>>({
+			method: 'POST',
+			path: '/workspaces/emails',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	updateEmail(emailId: string, input: IUpdateWorkspaceEmailInput) {
+		return this.http.request<IApiResponse<IWorkspaceEmailResult>>({
+			method: 'PATCH',
+			path: `/workspaces/emails/${encodeURIComponent(emailId)}`,
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	removeEmail(emailId: string) {
+		return this.http.request<IApiResponse<{ deleted: boolean }>>({
+			method: 'DELETE',
+			path: `/workspaces/emails/${encodeURIComponent(emailId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	addPhone(input: IAddWorkspacePhoneInput) {
+		return this.http.request<IApiResponse<IWorkspacePhoneResult>>({
+			method: 'POST',
+			path: '/workspaces/phones',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	updatePhone(phoneId: string, input: IUpdateWorkspacePhoneInput) {
+		return this.http.request<IApiResponse<IWorkspacePhoneResult>>({
+			method: 'PATCH',
+			path: `/workspaces/phones/${encodeURIComponent(phoneId)}`,
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	removePhone(phoneId: string) {
+		return this.http.request<IApiResponse<{ deleted: boolean }>>({
+			method: 'DELETE',
+			path: `/workspaces/phones/${encodeURIComponent(phoneId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	createLocation(input: IWorkspaceLocationInput) {
+		return this.http.request<IApiResponse<IWorkspaceLocationResult>>({
+			method: 'POST',
+			path: '/workspaces/locations',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	updateLocation(locationId: string, input: IUpdateWorkspaceLocationInput) {
+		return this.http.request<IApiResponse<IWorkspaceLocationResult>>({
+			method: 'PATCH',
+			path: `/workspaces/locations/${encodeURIComponent(locationId)}`,
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// The head office cannot be archived (409 HEAD_OFFICE_ARCHIVE): move it first.
+	archiveLocation(locationId: string) {
+		return this.http.request<IApiResponse<IWorkspaceLocationResult>>({
+			method: 'POST',
+			path: `/workspaces/locations/${encodeURIComponent(locationId)}/archive`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	restoreLocation(locationId: string) {
+		return this.http.request<IApiResponse<IWorkspaceLocationResult>>({
+			method: 'POST',
+			path: `/workspaces/locations/${encodeURIComponent(locationId)}/restore`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
 		});
 	}
 

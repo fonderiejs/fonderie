@@ -44,6 +44,22 @@ adds `documentPrefixes`, e.g. `{ invoice: 'ACME', job: 'ACME-JOB' }`, for
 apps that print a prefix before a document's number. A refusal is a 422
 naming the field: `taxRegistrations.1.rate: …`.
 
+### Emails, phones and locations
+
+A business is reached in more than one way and works from more than one
+place. `GET /workspaces/contacts` (any member) lists its emails, phones and
+locations; owners and managers add and change them under `/workspaces/emails`,
+`/workspaces/phones` and `/workspaces/locations` (archive / restore — never
+delete a location). One email and one phone are primary, one location is the
+head office; the first added takes the flag, and setting it on another moves
+it. The workspace's own `email`, `phone` and `address` mirror the primary
+email, the primary phone and the head office's address — a `PUT /workspaces`
+with any of them updates the entries too, in the same transaction. Phones are
+E.164 (`+15145550100`, optional `extension`); a location's `taxRegion`
+(`CA-QC`) comes from its address unless given. Limits: 10 emails, 10 phones,
+50 locations. Frontend: `useWorkspaceContacts()` and `useWorkspaceLocations()`
+in the React, React Native and Vue workspaces packages.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

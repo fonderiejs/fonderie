@@ -1,6 +1,17 @@
 import { booleanOrFalse, dateOrEmpty, stringOrEmpty } from '@fonderie/core/parser';
 
-import type { IWorkspace, IRole, IMember, IInvitation, IWorkspaceSettings } from '../types';
+import type {
+	IWorkspace,
+	IRole,
+	IMember,
+	IInvitation,
+	IWorkspaceSettings,
+	IWorkspaceAddress,
+	IWorkspaceContacts,
+	IWorkspaceEmail,
+	IWorkspaceLocation,
+	IWorkspacePhone,
+} from '../types';
 
 export interface IWorkspaceAddressDTO {
 	line1: string;
@@ -131,6 +142,131 @@ export interface IWorkspaceSettingsDTO {
 	timeFormat: string;
 	/** What goes before a document's number, per kind: { invoice: 'ACME', job: 'ACME-JOB' }; {} when none. */
 	documentPrefixes: Record<string, string>;
+}
+
+export interface IWorkspaceEmailDTO {
+	id: string;
+	/** Lower-cased. */
+	email: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhoneDTO {
+	id: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits; '' when none. */
+	extension: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocationDTO {
+	id: string;
+	name: string;
+	address: IWorkspaceAddressDTO;
+	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
+	taxRegion: string;
+	latitude: number | null;
+	longitude: number | null;
+	/** E.164; '' when none. */
+	phone: string;
+	email: string;
+	isHeadOffice: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceContactsDTO {
+	/** The primary first. */
+	emails: IWorkspaceEmailDTO[];
+	/** The primary first. */
+	phones: IWorkspacePhoneDTO[];
+	/** The head office first; archived ones last (restorable). */
+	locations: IWorkspaceLocationDTO[];
+}
+
+function toAddressDTO(a: IWorkspaceAddress | null | undefined): IWorkspaceAddressDTO {
+	const addr = a ?? {};
+	return {
+		line1: stringOrEmpty(addr.line1),
+		line2: stringOrEmpty(addr.line2),
+		city: stringOrEmpty(addr.city),
+		state: stringOrEmpty(addr.state),
+		zip: stringOrEmpty(addr.zip),
+		country: stringOrEmpty(addr.country),
+		accessCode: stringOrEmpty(addr.accessCode),
+	};
+}
+
+const numberOrNull = (v: unknown): number | null => {
+	if (v === null || v === undefined || v === '') return null;
+	const n = Number(v);
+	return Number.isFinite(n) ? n : null;
+};
+
+export function toWorkspaceEmailDTO(e: IWorkspaceEmail): IWorkspaceEmailDTO {
+	return {
+		id: stringOrEmpty(e.id),
+		email: stringOrEmpty(e.email),
+		label: stringOrEmpty(e.label),
+		isPrimary: booleanOrFalse(e.isPrimary),
+		position: Number(e.position ?? 0),
+		createdAt: dateOrEmpty(e.createdAt),
+		updatedAt: dateOrEmpty(e.updatedAt),
+	};
+}
+
+export function toWorkspacePhoneDTO(p: IWorkspacePhone): IWorkspacePhoneDTO {
+	return {
+		id: stringOrEmpty(p.id),
+		phone: stringOrEmpty(p.phone),
+		extension: stringOrEmpty(p.extension),
+		label: stringOrEmpty(p.label),
+		isPrimary: booleanOrFalse(p.isPrimary),
+		position: Number(p.position ?? 0),
+		createdAt: dateOrEmpty(p.createdAt),
+		updatedAt: dateOrEmpty(p.updatedAt),
+	};
+}
+
+export function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocationDTO {
+	return {
+		id: stringOrEmpty(l.id),
+		name: stringOrEmpty(l.name),
+		address: toAddressDTO(l.address),
+		taxRegion: stringOrEmpty(l.taxRegion),
+		latitude: numberOrNull(l.latitude),
+		longitude: numberOrNull(l.longitude),
+		phone: stringOrEmpty(l.phone),
+		email: stringOrEmpty(l.email),
+		isHeadOffice: booleanOrFalse(l.isHeadOffice),
+		position: Number(l.position ?? 0),
+		isArchived: l.archivedAt !== null && l.archivedAt !== undefined,
+		archivedAt: dateOrEmpty(l.archivedAt),
+		archivedBy: stringOrEmpty(l.archivedBy),
+		createdAt: dateOrEmpty(l.createdAt),
+		updatedAt: dateOrEmpty(l.updatedAt),
+	};
+}
+
+export function toWorkspaceContactsDTO(c: IWorkspaceContacts): IWorkspaceContactsDTO {
+	return {
+		emails: c.emails.map(toWorkspaceEmailDTO),
+		phones: c.phones.map(toWorkspacePhoneDTO),
+		locations: c.locations.map(toWorkspaceLocationDTO),
+	};
 }
 
 export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {

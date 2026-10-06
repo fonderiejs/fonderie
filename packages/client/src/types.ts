@@ -549,6 +549,76 @@ export interface IAcceptInvitationResult {
 	workspaceId: string;
 }
 
+// ── Workspace contacts & locations ───────────────────────────────────────────
+// The primary email, the primary phone and the head office's address are what
+// IWorkspaceDTO.email / phone / address show.
+
+export interface IWorkspaceEmailDTO {
+	id: string;
+	/** Lower-cased. */
+	email: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhoneDTO {
+	id: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits; '' when none. */
+	extension: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocationDTO {
+	id: string;
+	name: string;
+	address: IWorkspaceAddressDTO;
+	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
+	taxRegion: string;
+	latitude: number | null;
+	longitude: number | null;
+	/** E.164; '' when none. */
+	phone: string;
+	email: string;
+	isHeadOffice: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** GET /workspaces/contacts. */
+export interface IWorkspaceContactsResult {
+	/** The primary first. */
+	emails: IWorkspaceEmailDTO[];
+	/** The primary first. */
+	phones: IWorkspacePhoneDTO[];
+	/** The head office first; archived ones last (restorable). */
+	locations: IWorkspaceLocationDTO[];
+}
+
+export interface IWorkspaceEmailResult {
+	email: IWorkspaceEmailDTO;
+}
+
+export interface IWorkspacePhoneResult {
+	phone: IWorkspacePhoneDTO;
+}
+
+export interface IWorkspaceLocationResult {
+	location: IWorkspaceLocationDTO;
+}
+
 export interface IWorkspaceSettingsResult {
 	settings: IWorkspaceSettingsDTO;
 }

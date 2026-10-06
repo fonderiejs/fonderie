@@ -115,3 +115,60 @@ export interface IWorkspaceSettings {
 	/** What goes before a document's number, per kind: { invoice: 'ACME' }. */
 	documentPrefixes?: Record<string, string>;
 }
+
+// ── Contacts & locations (migration 010) ─────────────────────────────────────
+// The primary email, the primary phone and the head office's address are
+// mirrored onto fonderie_workspaces.email / phone / address.
+
+export interface IWorkspaceEmail {
+	id: string;
+	workspaceId: string;
+	/** Lower-cased. */
+	email: string;
+	label: string | null;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhone {
+	id: string;
+	workspaceId: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits only, e.g. '204'. */
+	extension: string | null;
+	label: string | null;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocation {
+	id: string;
+	workspaceId: string;
+	name: string;
+	address: IWorkspaceAddress;
+	/** address.country, as stored (a generated column). */
+	country: string | null;
+	/** ISO 3166-2, e.g. 'CA-QC' — the region whose sales taxes apply here. */
+	taxRegion: string | null;
+	latitude: number | string | null;
+	longitude: number | string | null;
+	phone: string | null;
+	email: string | null;
+	isHeadOffice: boolean;
+	position: number;
+	archivedAt: string | null;
+	archivedBy: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceContacts {
+	emails: IWorkspaceEmail[];
+	phones: IWorkspacePhone[];
+	locations: IWorkspaceLocation[];
+}
