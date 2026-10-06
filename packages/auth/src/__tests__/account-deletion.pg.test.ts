@@ -627,3 +627,87 @@ test('phone: signing in again within the cooldown sends no second text, and the 
 	assert.equal((await call('POST', '/auth/verify', { token: otp }, again[0]!.result['otpToken'])).status, 200);
 	void first;
 });
+
+// ── Atomicity audit: auth (A19, A17, B3, A12, B5) ────────────────────────────
+
+test('email: a code sent to an address the account no longer uses does not verify the current one', { skip }, async () => {
+	const a = await account();
+	const other = `moved-${n}-${Date.now()}@${DOMAIN}`;
+	// The state a race between a resend and a change leaves: the live code was
+	// sent to the OLD address, the account is now on another one.
+	await store.query(
+		`INSERT INTO fonderie_email_verifications (user_id, token, expires_at, email) VALUES ($1, '424242', now() + interval '1 hour', $2)
+		 ON CONFLICT (user_id) DO UPDATE SET token = '424242', expires_at = now() + interval '1 hour', email = $2`,
+		[a.id, a.email],
+	);
+	await store.query(`UPDATE fonderie_users SET email = $2, email_verified_at = NULL WHERE id = $1`, [a.id, other]);
+	const r = await call('POST', '/auth/verify', { token: '424242' }, a.token);
+	assert.equal(r.status, 400, JSON.stringify(r));
+	const [row] = await store.query<{ v: Date | null }>(`SELECT email_verified_at AS v FROM fonderie_users WHERE id = $1`, [a.id]);
+	assert.equal(row!.v, null, 'the new address was never proven');
+});
+
+test('email: two accounts racing for one address — one gets it, the other a 409, never a 500', { skip }, async () => {
+	const [a, b] = [await account(), await account()];
+	const wanted = `race-${n}-${Date.now()}@${DOMAIN}`;
+	const replies = await Promise.all([a, b].map((p) => call('PUT', '/users/email', { email: wanted }, p.token)));
+	assert.deepEqual(replies.map((r) => r.status).sort(), [200, 409], JSON.stringify(replies.map((r) => [r.status, r.reason])));
+});
+
+test('register: two sign-ups racing for one email — 201 and 409, never a 500', { skip }, async () => {
+	const email = `dup-${n++}-${Date.now()}@${DOMAIN}`;
+	const replies = await Promise.all([1, 2].map(() => call('POST', '/auth/register', { email, password: PASSWORD })));
+	assert.deepEqual(replies.map((r) => r.status).sort(), [201, 409], JSON.stringify(replies.map((r) => [r.status, r.reason])));
+});
+
+test('register by phone: a racing sign-up never rewrites the account it lost to', { skip }, async () => {
+	const phone = `+1438557${String(1000 + (n++ % 9000)).padStart(4, '0')}`;
+	await store.query(`DELETE FROM fonderie_users WHERE phone = $1`, [phone]);
+	const replies = await Promise.all(
+		['First', 'Second'].map((firstName) => call('POST', '/auth/register', { phone, firstName })),
+	);
+	assert.deepEqual(replies.map((r) => r.status).sort(), [202, 409], JSON.stringify(replies.map((r) => [r.status, r.reason])));
+	// The model a racing sign-up reaches: the existing account comes back untouched.
+	const { UserModel } = await import('../models/user.model');
+	await store.query(`UPDATE fonderie_users SET first_name = 'Original' WHERE phone = $1`, [phone]);
+	const again = await new UserModel(store).findOrCreateByPhone(phone, 'Intruder', 'X');
+	assert.equal(again.created, false);
+	const [row] = await store.query<{ firstName: string }>(`SELECT first_name AS "firstName" FROM fonderie_users WHERE phone = $1`, [phone]);
+	assert.equal(row!.firstName, 'Original', 'never rewritten');
+	await store.query(`DELETE FROM fonderie_users WHERE phone = $1`, [phone]);
+});
+
+test('password: a sign-in that checked the OLD password cannot store a session after the change', { skip }, async () => {
+	const { SessionModel } = await import('../models/session.model');
+	const a = await account();
+	const [before] = await store.query<{ h: string }>(`SELECT password_hash AS h FROM fonderie_users WHERE id = $1`, [a.id]);
+	assert.equal((await call('PUT', '/users/password', { currentPassword: PASSWORD, newPassword: 'Dd4!changed-changed' }, a.token)).status, 200);
+	const stored = await new SessionModel(store).create(a.id, `tok-${Date.now()}`, new Date(Date.now() + 60_000), undefined, undefined, { passwordHash: before!.h });
+	assert.equal(stored, false, 'the old-password session is refused');
+	const [s] = await store.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM fonderie_sessions WHERE user_id = $1`, [a.id]);
+	assert.equal(s!.n, 0, 'every session ended with the change');
+});
+
+test('mfa: with two-factor on, setup is refused — another authenticator cannot take it over', { skip }, async () => {
+	const { generateTotpSecret, generateTotpCode } = await import('../services/mfa');
+	const a = await account();
+	const secret = generateTotpSecret();
+	await store.query(`UPDATE fonderie_users SET mfa_enabled = true, mfa_secret = $2, email_verified_at = now() WHERE id = $1`, [a.id, secret]);
+	const setup = await call('POST', '/auth/mfa/setup', {}, a.token);
+	assert.deepEqual([setup.status, setup.reason], [409, 'MFA_ALREADY_ENABLED']);
+	const [row] = await store.query<{ s: string; p: string | null }>(`SELECT mfa_secret AS s, mfa_secret_pending AS p FROM fonderie_users WHERE id = $1`, [a.id]);
+	assert.deepEqual([row!.s, row!.p], [secret, null], 'the working secret is untouched');
+	void generateTotpCode;
+});
+
+test('mfa: confirming does not enable a secret that a second setup replaced since it was checked', { skip }, async () => {
+	const { UserModel } = await import('../models/user.model');
+	const a = await account();
+	const users = new UserModel(store);
+	await users.saveMfaPendingSecret(a.id, 'cipher-S1');
+	await users.saveMfaPendingSecret(a.id, 'cipher-S2'); // a second setup lands
+	assert.equal(await users.confirmMfaSecret(a.id, 'cipher-S1'), false, 'S1 was checked; S2 is pending — refuse');
+	const [row] = await store.query<{ e: boolean }>(`SELECT mfa_enabled AS e FROM fonderie_users WHERE id = $1`, [a.id]);
+	assert.equal(row!.e, false);
+	assert.equal(await users.confirmMfaSecret(a.id, 'cipher-S2'), true);
+});

@@ -50,6 +50,7 @@ user_id                  UUID NOT NULL REFERENCES fonderie_users(id) ON DELETE C
 expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 PRIMARY                  KEY (user_id)
+email                    TEXT
 ```
 
 ### `fonderie_login_events`

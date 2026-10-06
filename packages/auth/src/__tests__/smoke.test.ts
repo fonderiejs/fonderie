@@ -321,8 +321,23 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 				return (opts.upsertResult
 					? [opts.upsertResult]
 					: opts.insertedId
-						? [{ id: opts.insertedId }]
+						? [{ id: opts.insertedId, created: true }]
 						: []) as unknown as T[];
+
+			// A session row is stored (the password guard holds in these tests).
+			if (sql.includes('INSERT INTO fonderie_sessions'))
+				return [{ stored: 1 }] as unknown as T[];
+
+			// The email code consumed and applied in one statement.
+			if (sql.includes('fonderie_email_verifications') && sql.includes('WITH v AS'))
+				return (opts.verifyRow != null
+					? [{ found: true, expired: new Date(opts.verifyRow.expires_at) <= new Date(), verified: true }]
+					: []) as unknown as T[];
+
+			// MFA enabled with the pending secret that was checked.
+			if (sql.includes('mfa_secret_pending = $2') && sql.includes('RETURNING id'))
+				return [{ id: 'user-1' }] as unknown as T[];
+
 
 			if (sql.includes('fonderie_users') && sql.includes('WHERE email = $1'))
 				return (opts.userByEmail != null ? [opts.userByEmail] : []) as unknown as T[];
@@ -771,6 +786,11 @@ test('login: rehash-on-login re-stores a legacy-hash user as bcrypt', async () =
 			if (sql.includes('UPDATE fonderie_users') && sql.includes('password_hash')) {
 				rehashedTo = (params?.[0] as string) ?? null;
 				return [] as unknown as T[];
+			}
+			// The session is guarded by the REHASHED value (the one now stored).
+			if (sql.includes('INSERT INTO fonderie_sessions')) {
+				assert.equal(params?.[8], rehashedTo, 'the guard checks the re-stored hash');
+				return [{ stored: 1 }] as unknown as T[];
 			}
 			return [] as unknown as T[];
 		},
@@ -2437,8 +2457,9 @@ test('changePassword: revokes all of the user sessions', async () => {
 		}),
 	);
 	assert.equal(res.status, 200);
+	// The new password and the end of every session, in ONE statement.
 	const revoked = seenSql.some(
-		(s) => s.includes('DELETE FROM fonderie_sessions') && s.includes('WHERE user_id = $1'),
+		(s) => s.includes('UPDATE fonderie_users SET password_hash') && s.includes('DELETE FROM fonderie_sessions'),
 	);
 	assert.ok(revoked, 'changePassword must delete the user\'s sessions');
 });

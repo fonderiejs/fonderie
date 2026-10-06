@@ -26,7 +26,7 @@ import { PhoneVerificationModel } from '../models/phone-verification.model';
 import { normalizeEmailSafe } from '../services/email';
 import { AccountDeletionModel } from '../models/account-deletion.model';
 import { checkCooldown } from '../services/cooldown';
-import { deletionDate } from '../services/pending-deletion';
+import { archivedAddressResponse, deletionDate } from '../services/pending-deletion';
 import { verifySecondFactor } from '../services/second-factor';
 
 // The deletion code: short-lived (a decision taken now), one request a minute.
@@ -281,11 +281,16 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			if (existing) {
 				return setApiResponse(HTTP.CONFLICT, 'EMAIL_IN_USE', 'Email already in use');
 			}
+			// An account awaiting deletion still holds its address (design D6).
+			if (await users.findArchivedByEmail(normalised)) return archivedAddressResponse();
 
 			const pin = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
-			await users.updateEmail(ctx.user!.id, normalised);
+			// The change and the code for the new address, together; the unique
+			// index — not the read above — decides a race for the address.
+			if (!(await emailVerif.changeEmail(ctx.user!.id, normalised, pin, expiresAt))) {
+				return setApiResponse(HTTP.CONFLICT, 'EMAIL_IN_USE', 'Email already in use');
+			}
 
 			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
@@ -387,12 +392,10 @@ export function userController(store: IStoreAdapter, config: IAuthConfig, bus?: 
 			}
 
 			const hash = await hashPassword(newPassword);
-			await users.updatePassword(ctx.user!.id, hash);
-
-			// Revoke all sessions so a changed password invalidates any tokens an
-			// attacker (or the user's old device) may still hold. The client must
-			// re-authenticate after changing its password.
-			await sessions.deleteByUser(ctx.user!.id);
+			// The new password and the end of every session, in one statement: a
+			// changed password invalidates any tokens an attacker (or the user's
+			// old device) may still hold. The client must re-authenticate.
+			await users.changePasswordEndingSessions(ctx.user!.id, hash);
 			await background(bus?.emit(EVENT_KEYS.sessionRevoked, { userId: ctx.user!.id, sids: null, reason: 'password-changed' } satisfies ISessionRevokedEvent));
 
 			return setApiResponse(HTTP.OK, 'PASSWORD_CHANGED', 'Password updated successfully.');
