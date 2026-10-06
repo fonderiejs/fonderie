@@ -2,9 +2,9 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import type { Operation, IPermissionCatalogEntry, IEffectivePermissions } from './types';
 import type { IPermissionsConfig } from './config';
-import { OPERATIONS } from './constants';
+import { OPERATIONS, PERMISSION_COLUMN } from './constants';
 import { getMembership, hasRole, listSystemRoleNames } from './services/membership';
-import { checkPermission, listGrantedPermissions } from './services/permissions';
+import { checkPermission, listGrantedPermissions, readAccess } from './services/permissions';
 
 const ALL_OPERATIONS = Object.values(OPERATIONS) as Operation[];
 
@@ -105,12 +105,22 @@ export class PermissionsEngine {
 		permissionKey: string,
 		workspaceId: string,
 	): Promise<boolean> {
-		const isMember = await getMembership(userId, workspaceId, this.store);
-		if (!isMember) return false;
+		// An operation outside the four has no grant column; keep the old,
+		// step-by-step path for it rather than change what it answers.
+		if (!Object.hasOwn(PERMISSION_COLUMN, operation)) {
+			const isMember = await getMembership(userId, workspaceId, this.store);
+			if (!isMember) return false;
+			if (await hasRole(userId, workspaceId, this.superRole, this.store)) return true;
+			return this.allows(userId, workspaceId, permissionKey, operation);
+		}
 
-		if (await hasRole(userId, workspaceId, this.superRole, this.store)) return true;
-
-		return this.allows(userId, workspaceId, permissionKey, operation);
+		// Member → super-role → config system grants → stored grants: the same
+		// decisions in the same order, read in one round-trip.
+		const a = await readAccess(userId, workspaceId, permissionKey, operation, this.superRole, this.store);
+		if (!a.member) return false;
+		if (a.isSuper) return true;
+		if (a.systemRoles.some((r) => this.systemGrants[r]?.[permissionKey]?.includes(operation) ?? false)) return true;
+		return a.granted;
 	}
 
 	async assert(

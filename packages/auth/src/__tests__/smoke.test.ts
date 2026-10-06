@@ -307,7 +307,7 @@ type AuthStoreOpts = {
 
 function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 	const stub: IStoreAdapter = {
-		query: async <T = unknown>(sql: string): Promise<T[]> => {
+		query: async <T = unknown>(sql: string, _params?: unknown[]): Promise<T[]> => {
 			// The reset's one statement (password + spend code + end sessions):
 			// changes a LIVE account only.
 			if (sql.includes('WITH spent AS'))
@@ -338,6 +338,13 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('mfa_secret_pending = $2') && sql.includes('RETURNING id'))
 				return [{ id: 'user-1' }] as unknown as T[];
 
+
+			// withSession's one read: the account plus its session's liveness
+			// (always alive for a token without a sid).
+			if (sql.includes('"sessionAlive"'))
+				return (opts.userById != null
+					? [{ ...opts.userById, sessionAlive: _params?.[1] == null || !!opts.sessionExists }]
+					: []) as unknown as T[];
 
 			if (sql.includes('fonderie_users') && sql.includes('WHERE email = $1'))
 				return (opts.userByEmail != null ? [opts.userByEmail] : []) as unknown as T[];

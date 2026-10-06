@@ -75,6 +75,29 @@ export class UserModel {
 		return row ?? null;
 	}
 
+	/**
+	 * What withSession needs in ONE round-trip: the account row (archived or
+	 * not — the caller decides which it may use) and whether the session named
+	 * by `sid` is still alive. `sessionAlive` is true when no sid is given (a
+	 * token not bound to a session). No row → no such account at all.
+	 */
+	async findForSession(
+		id: string,
+		sid: string | null,
+	): Promise<{ user: IUser; sessionAlive: boolean } | null> {
+		const [row] = await this.store.query<IUser & { sessionAlive: boolean }>(
+			`SELECT ${USER_COLUMNS},
+			        ($2::uuid IS NULL OR EXISTS (
+			          SELECT 1 FROM fonderie_sessions WHERE sid = $2::uuid AND expires_at > now()
+			        )) AS "sessionAlive"
+			 FROM fonderie_users WHERE id = $1`,
+			[id, sid],
+		);
+		if (!row) return null;
+		const { sessionAlive, ...user } = row;
+		return { user: user as IUser, sessionAlive: sessionAlive === true };
+	}
+
 	async findById(id: string): Promise<IUser | null> {
 		const [row] = await this.store.query<IUser>(
 			`SELECT ${USER_COLUMNS} FROM fonderie_users WHERE id = $1 AND deleted_at IS NULL`,
