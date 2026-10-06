@@ -107,6 +107,7 @@ otp                      TEXT NOT NULL
 expires_at               TIMESTAMPTZ NOT NULL
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 user_id                  UUID REFERENCES fonderie_users(id) ON DELETE CASCADE
+attempts                 INT NOT NULL DEFAULT 0
 ```
 
 ### `fonderie_sessions`

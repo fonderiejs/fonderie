@@ -569,3 +569,61 @@ test('step-up: the proof names its user, is not a session, and the verifier chec
 	assert.equal(hasStepUp(ctx(a.id), config), false, 'no proof');
 	assert.equal(hasStepUp(ctx(a.id, a.token), config), false, 'a session token is not a proof');
 });
+
+// ── Phone sign-in codes (atomicity audit A3/A18) ─────────────────────────────
+
+const phoneAccount = async () => {
+	const a = await account();
+	const phone = `+1438556${String(1000 + (n % 9000)).padStart(4, '0')}`;
+	await store.query(`UPDATE fonderie_users SET phone = $2 WHERE id = $1`, [a.id, phone]);
+	return { ...a, phone };
+};
+const sessionsOf = async (id: string) =>
+	(await store.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM fonderie_sessions WHERE user_id = $1`, [id]))[0]!.n;
+
+test('phone: one code used twice at once signs in ONCE', { skip }, async () => {
+	const a = await phoneAccount();
+	const login = await call('POST', '/auth/login', { phone: a.phone });
+	const otp = sent('phone-otp', a.phone)!.data['otp'];
+	const before = await sessionsOf(a.id);
+	const replies = await Promise.all([1, 2].map(() => call('POST', '/auth/verify', { token: otp }, login.result['otpToken'])));
+	assert.deepEqual(replies.map((r) => r.status).sort(), [200, 400], JSON.stringify(replies.map((r) => r.reason)));
+	assert.equal((await sessionsOf(a.id)) - before, 1, 'one session');
+});
+
+test('phone: five wrong codes spend it — the right one after that is refused', { skip }, async () => {
+	const a = await phoneAccount();
+	const login = await call('POST', '/auth/login', { phone: a.phone });
+	const otp = sent('phone-otp', a.phone)!.data['otp'] as string;
+	const wrong = otp === '000000' ? '111111' : '000000';
+	for (let i = 0; i < 5; i++) assert.equal((await call('POST', '/auth/verify', { token: wrong }, login.result['otpToken'])).status, 400);
+	const late = await call('POST', '/auth/verify', { token: otp }, login.result['otpToken']);
+	assert.equal(late.status, 400, 'spent');
+	const [row] = await store.query<{ attempts: number }>(`SELECT attempts FROM fonderie_phone_verifications WHERE user_id = $1`, [a.id]);
+	assert.ok((row?.attempts ?? 0) >= 5, 'the code is spent');
+});
+
+test('phone: a suspended account gets no session, not even a stored one', { skip }, async () => {
+	const a = await phoneAccount();
+	const login = await call('POST', '/auth/login', { phone: a.phone });
+	const otp = sent('phone-otp', a.phone)!.data['otp'];
+	await store.query(`UPDATE fonderie_users SET suspended = true WHERE id = $1`, [a.id]);
+	const before = await sessionsOf(a.id);
+	const r = await call('POST', '/auth/verify', { token: otp }, login.result['otpToken']);
+	// Refused — by the session guard (401) before verify, or by verify (403).
+	assert.ok([401, 403].includes(r.status), JSON.stringify(r));
+	assert.equal(await sessionsOf(a.id), before, 'no session row');
+});
+
+test('phone: signing in again within the cooldown sends no second text, and the first code still works', { skip }, async () => {
+	const a = await phoneAccount();
+	const first = await call('POST', '/auth/login', { phone: a.phone });
+	const otp = sent('phone-otp', a.phone)!.data['otp'];
+	const texts = () => emitted.filter((e) => e.payload['type'] === 'phone-otp' && JSON.stringify(e.payload['recipient']).includes(a.phone)).length;
+	const sentBefore = texts();
+	const again = await Promise.all([1, 2, 3].map(() => call('POST', '/auth/login', { phone: a.phone })));
+	assert.ok(again.every((r) => r.status === 202), 'the same answer');
+	assert.equal(texts(), sentBefore, 'no flood of texts');
+	assert.equal((await call('POST', '/auth/verify', { token: otp }, again[0]!.result['otpToken'])).status, 200);
+	void first;
+});
