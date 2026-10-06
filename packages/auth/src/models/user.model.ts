@@ -137,15 +137,16 @@ export class UserModel {
 		lastName: string | null = null,
 		// Only on insert: an existing account keeps the locale it chose.
 		locale: string | null = null,
-	): Promise<{ id: string }> {
-		const [row] = await this.store.query<{ id: string }>(
+	): Promise<{ id: string; created: boolean }> {
+		// An existing account is returned untouched: anyone can type a number at
+		// sign-up, so a racing registration must never rewrite its name
+		// (atomicity audit A17). `created` tells the caller which happened —
+		// xmax is 0 only on a row this statement inserted.
+		const [row] = await this.store.query<{ id: string; created: boolean }>(
 			`INSERT INTO fonderie_users (phone, first_name, last_name, locale)
 			VALUES ($1, $2, $3, COALESCE($4, 'en-US'))
-			ON CONFLICT (phone) DO UPDATE
-			SET first_name = COALESCE(EXCLUDED.first_name, fonderie_users.first_name),
-			    last_name  = COALESCE(EXCLUDED.last_name,  fonderie_users.last_name),
-			    updated_at = now()
-			RETURNING id`,
+			ON CONFLICT (phone) DO UPDATE SET phone = fonderie_users.phone
+			RETURNING id, (xmax = 0) AS created`,
 			[phone, firstName, lastName, locale],
 		);
 		return row!;
@@ -163,6 +164,9 @@ export class UserModel {
 		const [row] = await this.store.query<{ id: string }>(
 			`INSERT INTO fonderie_users (email, password_hash, first_name, last_name, locale)
 			VALUES ($1, $2, $3, $4, COALESCE($5, 'en-US'))
+			-- Two sign-ups racing for one address: the second gets no row (409),
+			-- not a unique-violation 500 (atomicity audit A17).
+			ON CONFLICT (email) DO NOTHING
 			RETURNING id`,
 			[email.toLowerCase().trim(), passwordHash, firstName, lastName, locale],
 		);
@@ -224,6 +228,22 @@ export class UserModel {
 		return rows.length > 0;
 	}
 
+	/**
+	 * Set a new password and end every session of the account, in ONE
+	 * transaction: if ending the sessions failed after the password was saved,
+	 * every old session — an attacker's included — stayed valid (atomicity
+	 * audit B3).
+	 */
+	async changePasswordEndingSessions(id: string, passwordHash: string): Promise<void> {
+		await this.store.query(
+			`WITH pw AS (
+			   UPDATE fonderie_users SET password_hash = $2, updated_at = now() WHERE id = $1 RETURNING id
+			 )
+			 DELETE FROM fonderie_sessions WHERE user_id IN (SELECT id FROM pw)`,
+			[id, passwordHash],
+		);
+	}
+
 	async updatePassword(id: string, passwordHash: string): Promise<void> {
 		await this.store.query(`UPDATE fonderie_users SET password_hash = $1 WHERE id = $2`, [
 			passwordHash,
@@ -277,17 +297,25 @@ export class UserModel {
 		return row?.mfa_secret_pending ?? null;
 	}
 
-	async confirmMfaSecret(id: string): Promise<void> {
-		await this.store.query(
+	/**
+	 * Enable MFA with the pending secret — only if it is still the one the code
+	 * was checked against (and not expired). A second setup between the check
+	 * and this write used to enable a secret the person's authenticator never
+	 * saw, locking them out (atomicity audit A12). Answers whether it applied.
+	 */
+	async confirmMfaSecret(id: string, checkedPendingSecret: string): Promise<boolean> {
+		const rows = await this.store.query(
 			`UPDATE fonderie_users
 			 SET mfa_secret                    = mfa_secret_pending,
 			     mfa_secret_pending            = NULL,
 			     mfa_secret_pending_expires_at = NULL,
 			     mfa_enabled                   = true,
 			     updated_at                    = now()
-			 WHERE id = $1`,
-			[id],
+			 WHERE id = $1 AND mfa_secret_pending = $2 AND mfa_secret_pending_expires_at > now()
+			 RETURNING id`,
+			[id, checkedPendingSecret],
 		);
+		return rows.length > 0;
 	}
 
 	async enableMfa(id: string): Promise<void> {

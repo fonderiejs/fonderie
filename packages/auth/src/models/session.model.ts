@@ -48,15 +48,23 @@ export class SessionModel {
 		expiresAt: Date,
 		sid?: string,
 		meta?: IRequestMeta,
-	): Promise<void> {
+		// A password sign-in: store the session only if the account's password is
+		// still the one that was checked. A password change (which ends every
+		// session) racing the sign-in otherwise left this one alive on the old
+		// password (atomicity audit B3). Answers whether it was stored.
+		guard?: { passwordHash: string },
+	): Promise<boolean> {
 		const location =
 			this.locate && meta?.headers
 				? await resolveLocation(this.locate, { ip: meta.ipAddress, headers: meta.headers })
 				: null;
-		await this.store.query(
+		const rows = await this.store.query(
 			`INSERT INTO fonderie_sessions (user_id, token, expires_at, sid, user_agent, ip_address, location, last_used_at, client_kind)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $8)
-			ON CONFLICT (token) DO NOTHING`,
+			SELECT $1, $2, $3, $4, $5, $6, $7, now(), $8
+			WHERE $9::text IS NULL
+			   OR EXISTS (SELECT 1 FROM fonderie_users WHERE id = $1 AND password_hash = $9)
+			ON CONFLICT (token) DO NOTHING
+			RETURNING 1`,
 			[
 				userId,
 				hashRefreshToken(token),
@@ -66,8 +74,10 @@ export class SessionModel {
 				meta?.ipAddress ?? null,
 				location ? JSON.stringify(location) : null,
 				meta?.clientKind ?? null,
+				guard?.passwordHash ?? null,
 			],
 		);
+		return rows.length > 0;
 	}
 
 	async delete(token: string): Promise<void> {

@@ -110,12 +110,13 @@ export function authController(
 				);
 
 				if (!row) {
-					return setApiResponse(HTTP.SERVER_ERROR, 'SERVER_ERROR', 'Registration failed');
+					// Lost a race for the address to a concurrent sign-up.
+					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Email already registered');
 				}
 
 				const pin = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-				await emailVerif.create(row.id, pin, expiresAt);
+				await emailVerif.create(row.id, pin, expiresAt, normalizedEmail);
 
 				const user = await users.findById(row.id);
 				if (!user) {
@@ -194,12 +195,16 @@ export function authController(
 				// archived account's name and then fail.
 				if (await users.findArchivedByPhone(normalizePhone(phone))) return archivedAddressResponse();
 
-				const { id } = await users.findOrCreateByPhone(
+				const { id, created } = await users.findOrCreateByPhone(
 					normalizePhone(phone),
 					(firstName as string | null) ?? null,
 					(lastName as string | null) ?? null,
 					locale,
 				);
+				// Lost a race for the number to a concurrent sign-up.
+				if (!created) {
+					return setApiResponse(HTTP.CONFLICT, 'USER_ALREADY_EXISTS', 'Phone already registered');
+				}
 
 				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -326,8 +331,10 @@ export function authController(
 
 				// Rehash-on-login: a password validated via the legacy verifier is
 				// re-stored as bcrypt so the foreign hash is used at most once.
+				let checkedHash = user.passwordHash;
 				if (needsRehash) {
-					await users.updatePassword(user.id, await hashPassword(password));
+					checkedHash = await hashPassword(password);
+					await users.updatePassword(user.id, checkedHash);
 				}
 
 				if (user.suspended) {
@@ -351,7 +358,11 @@ export function authController(
 				const { accessToken, refreshToken, sid } = issueTokenPair(user.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'email',
 				});
-				await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta);
+				// Stored only if the password is still the one just checked: a
+				// concurrent password change ends every session, this one included.
+				if (!(await sessions.create(user.id, refreshToken, refreshTokenExpiry(refreshToken), sid, meta, { passwordHash: checkedHash }))) {
+					return setApiResponse(HTTP.UNAUTHORIZED, 'INVALID_CREDENTIALS', 'Invalid credentials');
+				}
 				await loginEvents.recordSafe({
 					userId: user.id,
 					emailAttempted: email,
@@ -873,26 +884,22 @@ export function authController(
 			}
 
 			// ── Email branch ─────────────────────────────────────────
-			const row = await emailVerif.findByUser(ctx.user!.id, pin);
-			if (!row) {
+			// Consumed and applied in one statement — and only to the address the
+			// code was sent to (atomicity audit A19).
+			const checked = await emailVerif.verify(ctx.user!.id, pin);
+			if (checked === 'invalid') {
 				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Invalid or expired pin');
 			}
-			if (new Date() > row.expiresAt) {
+			if (checked === 'expired') {
 				return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Pin expired');
 			}
-
-			await store.transaction(async (tx) => {
-				await Promise.all([
-					tx.query(
-						`UPDATE fonderie_users SET email_verified_at = now(), updated_at = now() WHERE id = $1`,
-						[ctx.user!.id],
-					),
-					tx.query(`DELETE FROM fonderie_email_verifications WHERE user_id = $1 AND token = $2`, [
-						ctx.user!.id,
-						pin,
-					]),
-				]);
-			});
+			if (checked === 'stale') {
+				return setApiResponse(
+					HTTP.BAD_REQUEST,
+					'VERIFICATION_FAILED',
+					'This code was sent to an address this account no longer uses. Request a new one.',
+				);
+			}
 
 			return setApiResponse(HTTP.OK, 'VERIFIED', 'Email verified successfully.', {
 				verified: true,
@@ -982,7 +989,7 @@ export function authController(
 
 			const pin = randomInt(100000, 1000000).toString();
 			const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
-			await emailVerif.replace(ctx.user!.id, pin, expiresAt);
+			await emailVerif.replace(ctx.user!.id, pin, expiresAt, ctx.user!.email ?? null);
 
 			await background(bus
 				?.emit(NOTIFICATION_EVENT, {
