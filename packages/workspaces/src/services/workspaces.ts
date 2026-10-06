@@ -65,6 +65,47 @@ export async function findWorkspaceById(
 	return row ?? null;
 }
 
+/**
+ * What withWorkspace needs in ONE round-trip: the workspace, whether `userId`
+ * is an active member (the same predicate as getMember: a row neither removed
+ * nor suspended), and the active SYSTEM roles they hold there — the input
+ * requireManager matches its manager list against. Null when the workspace
+ * does not exist. A null userId answers isMember false and no roles.
+ */
+export async function findWorkspaceAccess(
+	workspaceId: string,
+	userId: string | null,
+	store: IStoreAdapter,
+): Promise<{ workspace: IWorkspace; isMember: boolean; systemRoles: string[] } | null> {
+	const [row] = await store.query<IWorkspace & { isMember: boolean; systemRoles: string[] | null }>(
+		`SELECT ${SELECT_WS_W},
+		        EXISTS (
+		          SELECT 1 FROM fonderie_role_user_workspaces ruw
+		           WHERE ruw.user_id      = $2
+		             AND ruw.workspace_id = w.id
+		             AND ruw.removed      = false
+		             AND ruw.suspended    = false
+		        ) AS "isMember",
+		        ARRAY (
+		          SELECT DISTINCT r.name
+		            FROM fonderie_role_user_workspaces ruw
+		            JOIN fonderie_roles r ON r.id = ruw.role_id
+		           WHERE ruw.user_id      = $2
+		             AND ruw.workspace_id = w.id
+		             AND ruw.removed      = false
+		             AND ruw.suspended    = false
+		             AND r.is_system      = true
+		             AND r.active         = true
+		        ) AS "systemRoles"
+		 FROM fonderie_workspaces w
+		 WHERE w.id = $1`,
+		[workspaceId, userId],
+	);
+	if (!row) return null;
+	const { isMember, systemRoles, ...workspace } = row;
+	return { workspace: workspace as IWorkspace, isMember: isMember === true, systemRoles: systemRoles ?? [] };
+}
+
 export async function findWorkspacesByUserId(
 	userId: string,
 	store: IStoreAdapter,

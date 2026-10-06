@@ -5,13 +5,11 @@ import type { IAuthConfig } from '../config';
 import { verifyToken } from '../services/jwt';
 import type { IAccessPayload } from '../services/jwt';
 import { UserModel } from '../models/user.model';
-import { SessionModel } from '../models/session.model';
 
 // Reads the Bearer token or session cookie, populates ctx.user
 // Does NOT reject — anonymous requests pass through
 export function withSession(store: IStoreAdapter, config: IAuthConfig): Middleware {
 	const users = new UserModel(store);
-	const sessions = new SessionModel(store);
 
 	return async (ctx, next) => {
 		const token = extractToken(ctx.request);
@@ -30,19 +28,21 @@ export function withSession(store: IStoreAdapter, config: IAuthConfig): Middlewa
 		// Tokens without a sid pass through: short-lived mfaPending tokens
 		// (no session exists yet) and legacy tokens from before session
 		// binding, which age out within one accessTokenDuration of deploy.
-		if (payload.sid && !(await sessions.aliveBySid(payload.sid))) {
+		//
+		// One round-trip for both: the session's liveness and the account row
+		// (archived included — the rule below decides whether it may be used).
+		const found = await users.findForSession(payload.sub, payload.sid || null);
+		if (!found || !found.sessionAlive) {
 			return next();
 		}
 
-		let user = await users.findById(payload.sub);
 		// One narrow exception: a PHONE sign-in to an ARCHIVED account. Its
 		// 5-minute pending token reaches /auth/verify like any phone sign-in, so
 		// the code the person types can prove the account is theirs — and verify
 		// then offers to keep it instead of opening a session. Only that token
 		// shape: an archived account never authenticates anything else.
-		if (!user && (payload as IAccessPayload).mfaPending && payload.loginMethod === 'phone') {
-			user = await users.findArchivedById(payload.sub);
-		}
+		const archivedPhoneSignIn = !!(payload as IAccessPayload).mfaPending && payload.loginMethod === 'phone';
+		const user = found.user.deletedAt && !archivedPhoneSignIn ? null : found.user;
 		if (!user || user.suspended || (user.deletedAt && !(payload as IAccessPayload).mfaPending)) {
 			return next();
 		}

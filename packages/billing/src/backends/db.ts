@@ -80,6 +80,62 @@ export class DBCounterBackend implements ICounterBackend {
 		return Number(rows[0]?.quantity ?? quantity);
 	}
 
+	// The same atomic upsert as increment(), for several counters in ONE
+	// statement (unnest). Distinct keys only: Postgres refuses to update one row
+	// twice in a statement, so a repeated key falls back to one call each.
+	async incrementMany(
+		entries: ReadonlyArray<{ key: string; windowMs: number | null; quantity?: number }>,
+	): Promise<number[]> {
+		if (entries.length === 0) return [];
+		if (entries.length === 1 || new Set(entries.map((e) => e.key)).size !== entries.length) {
+			const out: number[] = [];
+			for (const e of entries) out.push(await this.increment(e.key, e.windowMs, e.quantity ?? 1));
+			return out;
+		}
+
+		const cols = {
+			type: [] as string[],
+			id: [] as string[],
+			metric: [] as string[],
+			windowMs: [] as number[],
+			start: [] as Date[],
+			quantity: [] as number[],
+			expiresAt: [] as Array<Date | null>,
+		};
+		for (const e of entries) {
+			const [subscriberType, subscriberId, metric] = parseKey(e.key);
+			const { start, expiresAt } = counterWindow(e.windowMs);
+			cols.type.push(subscriberType);
+			cols.id.push(subscriberId);
+			cols.metric.push(metric);
+			cols.windowMs.push(e.windowMs ?? 0);
+			cols.start.push(start);
+			cols.quantity.push(e.quantity ?? 1);
+			cols.expiresAt.push(expiresAt);
+		}
+
+		const rows = await this.store.query<{ metric: string; window_ms: string | number; quantity: string | number }>(
+			`INSERT INTO fonderie_usage_counters
+				(subscriber_type, subscriber_id, metric, window_ms, window_start, quantity, expires_at)
+			 SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::bigint[], $5::timestamptz[], $6::bigint[], $7::timestamptz[])
+			 ON CONFLICT (subscriber_type, subscriber_id, metric, window_ms, window_start)
+			 DO UPDATE SET quantity = fonderie_usage_counters.quantity + EXCLUDED.quantity
+			 RETURNING subscriber_type, subscriber_id, metric, window_ms, quantity`,
+			[cols.type, cols.id, cols.metric, cols.windowMs, cols.start, cols.quantity, cols.expiresAt],
+		);
+
+		this.maybePurge();
+		// RETURNING order is not guaranteed — match each row back to its entry.
+		const totals = new Map<string, number>();
+		for (const r of rows as Array<{ subscriber_type: string; subscriber_id: string; metric: string; window_ms: string | number; quantity: string | number }>) {
+			totals.set(`${r.subscriber_type}:${r.subscriber_id}:${r.metric}:${Number(r.window_ms)}`, Number(r.quantity));
+		}
+		return entries.map((e, i) => {
+			const [t, id, m] = parseKey(e.key);
+			return totals.get(`${t}:${id}:${m}:${cols.windowMs[i]}`) ?? (e.quantity ?? 1);
+		});
+	}
+
 	async get(key: string, windowMs: number | null): Promise<number> {
 		const [subscriberType, subscriberId, metric] = parseKey(key);
 		const { start } = counterWindow(windowMs);
