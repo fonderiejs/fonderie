@@ -40,7 +40,7 @@
 		"@fonderie/core": "^0.32.0"
 	},
 	"devDependencies": {
-		"@types/node": "^26.6.3",
+		"@types/node": "^26.6.4",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3"

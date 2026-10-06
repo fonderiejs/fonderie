@@ -52,13 +52,13 @@
 	"devDependencies": {
 		"@fonderie/core": "../core",
 		"@fonderie/store": "../store",
-		"@types/node": "^26.6.3",
+		"@types/node": "^26.6.4",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3",
-		"pg": "^8.23.0",
+		"pg": "^8.23.1",
 		"@types/pg": "^8.21.0",
-		"redis": "^6.2.1"
+		"redis": "^6.3.0"
 	},
 	"publishConfig": {
 		"access": "public"
