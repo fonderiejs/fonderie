@@ -7,7 +7,7 @@
     "admin": "1.8.1",
     "audit": "5.3.1",
     "auth": "7.27.1",
-    "billing": "11.1.0",
+    "billing": "11.2.0",
     "client": "3.19.0",
     "config": "6.6.8",
     "core": "0.32.0",
@@ -661,7 +661,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "11.1.0",
+      "version": "11.2.0",
       "stability": "stable",
       "requires": [
         "core",
