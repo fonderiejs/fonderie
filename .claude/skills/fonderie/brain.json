@@ -4,15 +4,15 @@
     "adapter-express": "5.4.10",
     "adapter-hono": "6.3.8",
     "adapter-koa": "5.4.11",
-    "admin": "1.8.1",
+    "admin": "1.8.2",
     "audit": "5.3.1",
     "auth": "7.27.2",
     "billing": "11.2.0",
-    "client": "3.19.0",
-    "config": "6.6.8",
+    "client": "3.19.1",
+    "config": "6.6.9",
     "core": "0.32.0",
     "courier": "7.16.1",
-    "customers": "6.8.0",
+    "customers": "6.8.1",
     "events": "5.13.2",
     "geo": "0.5.13",
     "logger": "0.3.9",
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.8.1",
+      "version": "1.8.2",
       "stability": "experimental",
       "requires": [
         "core",
@@ -874,7 +874,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.19.0",
+      "version": "3.19.1",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -914,7 +914,7 @@
       "hasOutcomes": false
     },
     "config": {
-      "version": "6.6.8",
+      "version": "6.6.9",
       "stability": "stable",
       "requires": [
         "core",
@@ -1173,7 +1173,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.8.0",
+      "version": "6.8.1",
       "stability": "stable",
       "requires": [
         "core",
