@@ -365,6 +365,18 @@ function makeStore(opts: AuthStoreOpts = {}): IStoreAdapter {
 			if (sql.includes('SELECT created_at') && sql.includes('WHERE user_id'))
 				return (opts.lastSentAt != null ? [{ created_at: opts.lastSentAt }] : []) as unknown as T[];
 
+			// The phone code consumed in one statement (matched / expired / tries).
+			if (sql.includes('fonderie_phone_verifications') && sql.includes('WITH current'))
+				return (opts.phoneVerifRow != null
+					? [{ matched: true, expired: new Date(opts.phoneVerifRow.expires_at) <= new Date(), attempts: 0 }]
+					: []) as unknown as T[];
+
+			// A code is stored (and may be sent) only outside the cooldown.
+			if (sql.includes('INSERT INTO fonderie_phone_verifications') && sql.includes('RETURNING phone'))
+				return (opts.lastSentAt != null && Date.now() - new Date(opts.lastSentAt).getTime() < 5 * 60_000
+					? []
+					: [{ phone: '+15141234567' }]) as unknown as T[];
+
 			if (sql.includes('fonderie_phone_verifications') && sql.includes('WHERE user_id'))
 				return (opts.phoneVerifRow != null ? [opts.phoneVerifRow] : []) as unknown as T[];
 

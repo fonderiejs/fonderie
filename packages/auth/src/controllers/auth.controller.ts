@@ -399,15 +399,19 @@ export function authController(
 
 				const otp = randomInt(100000, 1000000).toString();
 				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(user.id, normalizePhone(phone), otp, expiresAt);
-
-				await background(bus
-					?.emit(NOTIFICATION_EVENT, {
-						type: MESSAGE_KEYS.phoneOtp,
-						locale: user.locale,
-						data: { otp },
-						recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
-					} satisfies ICourierMessage));
+				// Within the cooldown no new text goes out (anyone who knows a
+				// number could flood it); the code already sent stays valid, and
+				// the answer is the same either way.
+				const loginCooldown = { ...config, ...config.resolve?.(ctx) }.verificationCooldown ?? DEFAULT_VERIFICATION_COOLDOWN;
+				if (await phoneVerif.claimSend(user.id, normalizePhone(phone), otp, expiresAt, loginCooldown)) {
+					await background(bus
+						?.emit(NOTIFICATION_EVENT, {
+							type: MESSAGE_KEYS.phoneOtp,
+							locale: user.locale,
+							data: { otp },
+							recipient: { email: null, phone: normalizePhone(phone), deviceToken: null },
+						} satisfies ICourierMessage));
+				}
 
 				// Same rule as phone registration: the OTP IS the credential, so no
 				// session/full tokens until verify() confirms it. Also no user DTO —
@@ -777,20 +781,26 @@ export function authController(
 				// this path for months — an audit of "where do logins happen" reads
 				// login() and the OAuth callbacks, and never a route named verify.
 				const phoneMeta = requestMeta(ctx);
-				const record = await phoneVerif.findByUser(ctx.user!.id, pin);
-				if (!record) {
+				// Consumed in ONE statement: a right code works once (two racing
+				// requests used to both sign in), a wrong one spends a try, five
+				// spend the code.
+				const used = await phoneVerif.consume(ctx.user!.id, pin);
+				if (used === 'invalid' || used === 'exhausted') {
 					await loginEvents.recordSafe({
 						userId: ctx.user!.id,
 						emailAttempted: null,
 						method: 'phone',
 						outcome: 'failed',
-						failureReason: 'invalid_pin',
+						failureReason: used === 'exhausted' ? 'pin_exhausted' : 'invalid_pin',
 						...phoneMeta,
 					});
-					return setApiResponse(HTTP.BAD_REQUEST, 'VERIFICATION_FAILED', 'Invalid or expired pin');
+					return setApiResponse(
+						HTTP.BAD_REQUEST,
+						'VERIFICATION_FAILED',
+						used === 'exhausted' ? 'Too many wrong codes. Request a new one.' : 'Invalid or expired pin',
+					);
 				}
-				if (new Date() > record.expiresAt) {
-					await phoneVerif.deleteByUser(ctx.user!.id);
+				if (used === 'expired') {
 					await loginEvents.recordSafe({
 						userId: ctx.user!.id,
 						emailAttempted: null,
@@ -805,8 +815,6 @@ export function authController(
 						'Verification code expired',
 					);
 				}
-				await phoneVerif.deleteByUser(ctx.user!.id);
-
 				// The phone is proven. An archived account is told when it will be
 				// deleted and offered to keep it — never handed a session.
 				if (ctx.user!.deletedAt) {
@@ -821,6 +829,20 @@ export function authController(
 					return pendingDeletionResponse({ ...ctx.user!, deletedAt: ctx.user!.deletedAt }, 'phone', config);
 				}
 
+				// The account BEFORE any session: a suspended one used to get a
+				// session row (refresh token stored) and only then the refusal.
+				const verifiedUser = await users.findById(ctx.user!.id);
+				if (!verifiedUser) {
+					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
+				}
+				if (verifiedUser.suspended) {
+					return setApiResponse(
+						HTTP.FORBIDDEN,
+						'ACCOUNT_SUSPENDED',
+						'Account suspended. Please contact support.',
+					);
+				}
+
 				const { accessToken, refreshToken, sid } = issueTokenPair(ctx.user!.id, configForClient(config, config.resolve?.(ctx), clientKindOf(ctx.request.headers)), {
 					loginMethod: 'phone',
 					phoneVerified: true,
@@ -833,18 +855,6 @@ export function authController(
 					outcome: 'success',
 					...phoneMeta,
 				});
-
-				const verifiedUser = await users.findById(ctx.user!.id);
-				if (!verifiedUser) {
-					return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'User not found');
-				}
-				if (verifiedUser.suspended) {
-					return setApiResponse(
-						HTTP.FORBIDDEN,
-						'ACCOUNT_SUSPENDED',
-						'Account suspended. Please contact support.',
-					);
-				}
 
 				return Response.json(
 					{
@@ -910,7 +920,12 @@ export function authController(
 					);
 				}
 
-				const remaining = checkCooldown(await phoneVerif.findLastSentAt(ctx.user!.id), cooldown);
+				const otp = randomInt(100000, 1000000).toString();
+				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+				// Claimed in ONE statement: parallel resends cannot each send a text.
+				const remaining = (await phoneVerif.claimSend(ctx.user!.id, phone, otp, expiresAt, cooldown))
+					? 0
+					: Math.max(checkCooldown(await phoneVerif.findLastSentAt(ctx.user!.id), cooldown), 1000);
 				if (remaining > 0) {
 					return setApiResponse(
 						HTTP.TOO_MANY_REQUESTS,
@@ -922,9 +937,6 @@ export function authController(
 					);
 				}
 
-				const otp = randomInt(100000, 1000000).toString();
-				const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-				await phoneVerif.upsert(ctx.user!.id, phone, otp, expiresAt);
 
 				await background(bus
 					?.emit(NOTIFICATION_EVENT, {
