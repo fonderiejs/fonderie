@@ -10,7 +10,6 @@ import {
 	insertMessageLog,
 	markMessageSent,
 	markMessageFailed,
-	setMessageProviderId,
 	setMessageResolvedLocale,
 } from './log';
 
@@ -123,13 +122,9 @@ export class Dispatcher {
 					const result = await channel.send(message, template);
 
 					if (this.store && logId) {
-						// Persist the provider id FIRST — delivery webhooks key on it,
-						// and they can arrive within seconds of the send.
-						if (result?.providerMessageId) {
-							await setMessageProviderId(logId, result.providerMessageId, this.store).catch(
-								() => undefined,
-							);
-						}
+						// The provider id and the 'sent' status in ONE write — delivery
+						// webhooks key on the id, and they can arrive within seconds of
+						// the send; a row never carries the id while still 'pending'.
 						// AWAITED, like the failure write below. Detaching these left
 						// the row at 'pending' forever whenever the process stopped
 						// before the write landed — which on serverless is routine,
@@ -138,7 +133,9 @@ export class Dispatcher {
 						// the log under-reported successes exactly where it is the
 						// only evidence a send occurred. Awaiting costs nothing that
 						// matters: this runs in the consumer, not the request path.
-						await markMessageSent(logId, this.store).catch(() => undefined);
+						await markMessageSent(logId, this.store, result?.providerMessageId).catch(
+							() => undefined,
+						);
 					}
 				} catch (err) {
 					const errMsg = err instanceof Error ? err.message : String(err);

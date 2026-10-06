@@ -125,6 +125,8 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 					});
 				} catch (err) {
 					// Metadata insert failed — don't orphan the bytes we just stored.
+					// (A crash between put and insert still orphans them: bytes with
+					// no row are unreachable and harmless, only wasted space.)
 					await config.provider.delete(ref).catch(() => {});
 					throw err;
 				}
@@ -189,17 +191,27 @@ export function buildMediaRoutes(store: IStoreAdapter, config: IMediaConfig): Ro
 				if (!id || !UUID_RE.test(id)) {
 					return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.');
 				}
-				const asset = await assets.get(id);
-				if (!asset) return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.');
-				if (asset.createdBy !== ctx.user!.id) {
+				// The row first, ownership in the same statement; the bytes after.
+				// The other order deleted the bytes, then failed on the row, leaving
+				// an asset that 404s forever with nothing left to retry. A failed
+				// byte delete now leaves an orphan blob nothing points to — wasted
+				// space, never a broken link.
+				const removed = await assets.deleteOwned(id, ctx.user!.id);
+				if (!removed) {
+					const asset = await assets.get(id);
+					if (!asset) return setApiResponse(HTTP.NOT_FOUND, 'ASSET_NOT_FOUND', 'No such asset.');
 					return setApiResponse(
 						HTTP.FORBIDDEN,
 						'FORBIDDEN',
 						'You can only delete assets you uploaded.',
 					);
 				}
-				await config.provider.delete(asset.storageRef);
-				await assets.delete(id);
+				await config.provider.delete(removed.storageRef).catch((err: unknown) => {
+					console.warn(
+						`[media] asset ${id} deleted; its stored bytes (${removed.storageRef}) could not be removed:`,
+						err,
+					);
+				});
 				return setApiResponse(HTTP.OK, 'ASSET_DELETED', 'Asset deleted.', { id });
 			},
 		],

@@ -232,6 +232,13 @@ export function webhookController(
 				// across retries); the durable domain event fires every time, but a
 				// human must get exactly one email. Read separately, two concurrent
 				// deliveries both saw the old status and both sent it.
+				//
+				// A subscription that carries a trial durably records the consumed
+				// trial in the SAME transaction, so a later cancel → resubscribe
+				// can't farm a fresh one (checkout consults it before applying
+				// trialDays). Written after the commit, a failure left the trial
+				// unrecorded — and a provider retry arriving after a newer event is
+				// rejected as stale, so nothing recorded it again.
 				const { applied, priorStatus } = await subscriptions.upsertWithPrior({
 					subscriberType: event.subscription.subscriberType,
 					subscriberId: event.subscription.subscriberId,
@@ -246,7 +253,7 @@ export function webhookController(
 					trialEndsAt: event.subscription.trialEndsAt,
 					// Ordering key: a stale/out-of-order retry no-ops the upsert.
 					providerEventAt: event.eventAt ?? null,
-				});
+				}, { markTrialConsumed: !!event.subscription.trialEndsAt });
 
 				// The ordering guard rejected this event as stale — the stored row is
 				// correctly unchanged. Skip the lifecycle event + customer notice too:
@@ -255,17 +262,6 @@ export function webhookController(
 				// cancellation), resurrecting the subscription via the event bus.
 				if (!applied) {
 					return Response.json({ received: true, ignored: 'stale-subscription-event' });
-				}
-
-				// Durably record a consumed trial so a later cancel → resubscribe can't
-				// farm a fresh one (checkout consults this before applying trialDays).
-				// Idempotent; awaited so a transient failure retries with the webhook
-				// rather than silently leaving the subscriber trial-eligible again.
-				if (event.subscription.trialEndsAt) {
-					await subscriptions.markTrialConsumed(
-						event.subscription.subscriberType,
-						event.subscription.subscriberId,
-					);
 				}
 
 				// Publish the lifecycle domain event. Fire-and-forget: a bus
