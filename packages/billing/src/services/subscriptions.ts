@@ -23,6 +23,11 @@ const SELECT_SUBSCRIPTION = `
 // column first, so the table name is not baked into the column list.
 const FROM_SUBSCRIPTIONS = ' FROM fonderie_subscriptions';
 
+// Statuses under which a subscription still exists at the provider and can
+// bill or be resumed. A row in one of these with a provider subscription id is
+// a real, live subscription: nothing but its own webhooks may replace it.
+export const LIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing', 'past_due', 'unpaid', 'paused'];
+
 // Dunning grace: a past_due subscriber still counts as having access for
 // `graceDays` beyond the (failed) renewal date, so a transient card failure
 // doesn't instantly lock out a paying customer while the provider retries.
@@ -144,6 +149,15 @@ export async function upsertSubscription(
 		// to correct it (deleted is terminal). When true, the UPDATE additionally
 		// refuses to touch a row a webhook has already canceled.
 		guardNotWebhookCanceled?: boolean;
+		// Checkout's in-place upgrade read the row, then spent a provider round
+		// trip. Write only if the row still holds THIS live provider subscription:
+		// a cancel that landed meanwhile (a terminal deleted webhook) must not be
+		// overwritten with the upgrade's 'active'.
+		guardLiveSubscriptionId?: string;
+		// Checkout's new-subscription marker ('incomplete', no provider id). Write
+		// only if the row is not a live subscription: a paid-session webhook that
+		// landed meanwhile must not be orphaned by a null provider id.
+		guardNotLive?: boolean;
 	},
 	store: IStoreAdapter,
 ): Promise<boolean> {
@@ -154,9 +168,34 @@ export async function upsertSubscription(
 	// An optimistic write with guardNotWebhookCanceled likewise returns false when
 	// a webhook already terminated the subscription, so the caller can report the
 	// truthful (canceled) state instead of a phantom reactivation.
-	const terminalGuard = data.guardNotWebhookCanceled
+	const params: unknown[] = [
+		data.subscriberType,
+		data.subscriberId,
+		data.plan,
+		data.interval ?? 'month',
+		data.status,
+		data.providerCustomerId ?? null,
+		data.providerSubscriptionId ?? null,
+		data.currentPeriodStart ?? null,
+		data.currentPeriodEnd ?? null,
+		data.cancelAtPeriodEnd ?? false,
+		data.trialEndsAt ?? null,
+		data.providerEventAt ?? null,
+	];
+	let terminalGuard = data.guardNotWebhookCanceled
 		? `\n\t\t    AND NOT (fonderie_subscriptions.status = 'canceled' AND fonderie_subscriptions.provider_event_at IS NOT NULL)`
 		: '';
+	if (data.guardLiveSubscriptionId !== undefined || data.guardNotLive) {
+		params.push(LIVE_SUBSCRIPTION_STATUSES);
+		const live = `fonderie_subscriptions.status = ANY($${params.length}::text[])`;
+		if (data.guardNotLive) {
+			terminalGuard += `\n\t\t    AND NOT (fonderie_subscriptions.provider_subscription_id IS NOT NULL AND ${live})`;
+		}
+		if (data.guardLiveSubscriptionId !== undefined) {
+			params.push(data.guardLiveSubscriptionId);
+			terminalGuard += `\n\t\t    AND ${live} AND fonderie_subscriptions.provider_subscription_id = $${params.length}`;
+		}
+	}
 	const rows = await store.query<{ applied: number }>(
 		`INSERT INTO fonderie_subscriptions
 			(subscriber_type, subscriber_id, plan, interval, status,
@@ -185,22 +224,35 @@ export async function upsertSubscription(
 		    OR $12::timestamptz IS NULL
 		    OR $12::timestamptz >= fonderie_subscriptions.provider_event_at)${terminalGuard}
 		 RETURNING 1 AS applied`,
-		[
-			data.subscriberType,
-			data.subscriberId,
-			data.plan,
-			data.interval ?? 'month',
-			data.status,
-			data.providerCustomerId ?? null,
-			data.providerSubscriptionId ?? null,
-			data.currentPeriodStart ?? null,
-			data.currentPeriodEnd ?? null,
-			data.cancelAtPeriodEnd ?? false,
-			data.trialEndsAt ?? null,
-			data.providerEventAt ?? null,
-		],
+		params,
 	);
 	return rows.length > 0;
+}
+
+// The webhook's write: the upsert plus the status it REPLACED, taken under the
+// same lock. The customer notices fire on the transition into canceled /
+// past_due, so the prior status must be the one this write overwrote — read in
+// a separate statement, two concurrent deliveries of one event both saw the old
+// status and both sent the email. A per-subscriber transaction lock (taken
+// before the row exists, so a first-ever insert is covered too) makes the
+// second delivery see the first one's result.
+export async function upsertSubscriptionWithPrior(
+	data: Parameters<typeof upsertSubscription>[0],
+	store: IStoreAdapter,
+): Promise<{ applied: boolean; priorStatus: string | null }> {
+	return store.transaction(async (tx) => {
+		await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+			`fonderie_subscriptions:${data.subscriberType}:${data.subscriberId}`,
+		]);
+		const [prior] = await tx.query<{ status: string }>(
+			`SELECT status FROM fonderie_subscriptions
+			 WHERE subscriber_type = $1 AND subscriber_id = $2
+			 FOR UPDATE`,
+			[data.subscriberType, data.subscriberId],
+		);
+		const applied = await upsertSubscription(data, tx);
+		return { applied, priorStatus: prior?.status ?? null };
+	});
 }
 
 // Durably record that a subscriber has consumed a free trial. Idempotent — the

@@ -3051,6 +3051,83 @@ test('chargeback: a dispute lost after it was opened does not double-claw', asyn
 	assert.equal(store.state.ledger.filter((l) => l.type === 'refund').length, 1);
 });
 
+test('chargeback: a dispute won BEFORE its clawback landed is retried, then restores — credits are not lost', async () => {
+	// dispute.created failed (the provider is retrying it) and dispute.closed
+	// 'won' arrives first. Acknowledging the close used to let the clawback land
+	// afterwards with nothing left to restore it: the buyer won and lost credits.
+	const store = walletEmulator();
+	await buyPack(store);
+	const won = refundEvent(
+		{ kind: 'dispute', id: 'dp_9', amount: 499n, status: 'won' },
+		'charge.dispute.closed',
+	);
+	const early = await handleReversalEvent(store, won);
+	assert.ok(early.status >= 500, `a won close with its clawback still due must be retried, got ${early.status}`);
+	assert.equal(balOf(store), 5000n, 'nothing moved yet');
+
+	// The opening event's retry lands, then the provider redelivers the close.
+	await handleReversalEvent(
+		store,
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_9', amount: 499n, status: 'needs_response' },
+			'charge.dispute.created',
+		),
+	);
+	assert.equal(balOf(store), 0n);
+	const again = await handleReversalEvent(store, won);
+	assert.equal(again.status, 200);
+	assert.equal(balOf(store), 5000n, 'the won dispute gave the credits back');
+});
+
+test('chargeback: a won close with no clawback due is acknowledged (no endless retry)', async () => {
+	// The charge was already fully refunded, so the dispute had nothing to claw.
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(store, refundEvent({ id: 're_full' }));
+	const res = await handleReversalEvent(
+		store,
+		refundEvent({ kind: 'dispute', id: 'dp_8', amount: 499n, status: 'won' }, 'charge.dispute.closed'),
+	);
+	assert.equal(res.status, 200);
+	assert.equal(balOf(store), 0n);
+});
+
+test('inquiry: closing an inquiry without a chargeback (warning_closed) restores its clawback', async () => {
+	const store = walletEmulator();
+	await buyPack(store);
+	await handleReversalEvent(
+		store,
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_inq', amount: 499n, status: 'warning_needs_response' },
+			'charge.dispute.created',
+		),
+	);
+	assert.equal(balOf(store), 0n, 'the inquiry clawed the credits when it opened');
+	const res = await handleReversalEvent(
+		store,
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_inq', amount: 499n, status: 'warning_closed' },
+			'charge.dispute.closed',
+		),
+	);
+	assert.equal(res.status, 200);
+	assert.equal(balOf(store), 5000n, 'the inquiry closed in our favor: credits back');
+});
+
+test('dispute: unattributable because the charge could not be read → retried, not acknowledged', async () => {
+	// No purchase credit yet and no packId: normally "not ours". But when the
+	// provider could not read the charge that carries the packId, we do not know.
+	const store = walletEmulator();
+	const res = await handleReversalEvent(
+		store,
+		refundEvent(
+			{ kind: 'dispute', id: 'dp_x', status: 'needs_response', metadataUnresolved: true },
+			'charge.dispute.created',
+		),
+	);
+	assert.ok(res.status >= 500, `expected a retryable answer, got ${res.status}`);
+});
+
 test('reversal: no matching purchase is acknowledged and touches no wallet', async () => {
 	const store = walletEmulator();
 	await buyPack(store);
@@ -3717,6 +3794,31 @@ test('normalizeInvoice: an invoice with neither location yields nulls, not a thr
 // Without it, a pack-purchase invoice fails the controller's `inv.providerTxId`
 // guard and answers 422, so the provider retries and eventually gives up — the
 // orphan-heal backstop for a credit purchase silently stops backstopping.
+// A dispute carries no metadata of its own; the packId that marks the charge as
+// a pack purchase is on the charge. Read from the dispute alone, a dispute that
+// arrived before its purchase credit looked foreign, was acknowledged, and its
+// clawback never happened.
+test('enrichDisputeMetadata: reads the packId from the disputed charge', async () => {
+	const { enrichDisputeMetadata, normalizeDispute } = await import('../providers/stripe');
+	const asked: string[] = [];
+	const dispute = normalizeDispute({ id: 'dp_1', charge: 'ch_1', payment_intent: 'pi_1', metadata: {} });
+	const out = await enrichDisputeMetadata(dispute, async (id) => {
+		asked.push(id);
+		return { id, metadata: { packId: 'pack_500', subscriberId: 'x' } };
+	});
+	assert.deepEqual(asked, ['ch_1']);
+	assert.equal(out.metadata['packId'], 'pack_500');
+	assert.equal(out.metadataUnresolved, undefined);
+
+	const failed = await enrichDisputeMetadata(dispute, async () => {
+		throw new Error('connection reset');
+	});
+	assert.equal(failed.metadataUnresolved, true, 'an unreadable charge is flagged, not treated as foreign');
+
+	const refund = { ...dispute, kind: 'refund' as const };
+	assert.equal(await enrichDisputeMetadata(refund, async () => assert.fail('no read')), refund);
+});
+
 test('enrichInvoiceRefs: re-reads the PaymentIntent a 2025+ payload cannot carry', async () => {
 	const { enrichInvoiceRefs } = await import('../providers/stripe');
 	let asked = 0;

@@ -75,6 +75,22 @@ export async function handleSubscriberDeleted(
 	const alreadyEnding = policy === 'cancel-at-period-end' && current?.cancelAtPeriodEnd === true;
 	if (live && !alreadyEnding && typeof config.provider.cancelSubscription === 'function') {
 		const atPeriodEnd = policy === 'cancel-at-period-end';
+		// Mark the subscription as ended by deletion BEFORE asking the provider,
+		// and only while it is still the live one we read. A restore that runs
+		// while the provider call is in flight then finds the mark (and clears
+		// it); marked afterwards, a restore in that window found nothing to
+		// resume and the kept account's subscription still ended.
+		if (atPeriodEnd) {
+			const claimed = await store.query(
+				`UPDATE fonderie_subscriptions SET ended_by_account_deletion = true
+				 WHERE subscriber_type = $1 AND subscriber_id = $2
+				   AND provider_subscription_id = $3 AND status <> 'canceled'
+				   AND (cancel_at_period_end = false OR ended_by_account_deletion = true)
+				 RETURNING 1 AS claimed`,
+				[subscriber.type, subscriber.id, current.providerSubscriptionId],
+			);
+			if (claimed.length === 0) return disarmCharging(store, subscriber, outcome);
+		}
 		try {
 			// The provider's webhook confirms the new state and owns the stored
 			// transition — the same rule the customer-initiated cancel follows, so
@@ -88,14 +104,42 @@ export async function handleSubscriberDeleted(
 		}
 		outcome.canceled = atPeriodEnd ? 'at-period-end' : 'now';
 		if (atPeriodEnd) {
-			await store.query(
-				`UPDATE fonderie_subscriptions SET ended_by_account_deletion = true
+			// A restore cleared the mark while the cancel was in flight: the
+			// account is kept, so the cancel this handler just made is undone
+			// here (the restore may have resumed before the cancel landed).
+			const [still] = await store.query<{ marked: boolean }>(
+				`SELECT ended_by_account_deletion AS marked FROM fonderie_subscriptions
 				 WHERE subscriber_type = $1 AND subscriber_id = $2`,
 				[subscriber.type, subscriber.id],
 			);
+			if (!still?.marked) {
+				outcome.canceled = 'none';
+				if (typeof config.provider.reactivateSubscription === 'function') {
+					try {
+						await config.provider.reactivateSubscription({
+							subscriptionId: current.providerSubscriptionId as string,
+						});
+					} catch (err) {
+						// Not rethrown: a redelivered DELETION would cancel the kept
+						// account's subscription again.
+						console.error(
+							'[billing] could not resume a subscription after its account was restored:',
+							(err as Error).message,
+						);
+					}
+				}
+			}
 		}
 	}
 
+	return disarmCharging(store, subscriber, outcome);
+}
+
+async function disarmCharging(
+	store: IStoreAdapter,
+	subscriber: ISubscriberRef,
+	outcome: ISubscriberDeletedOutcome,
+): Promise<ISubscriberDeletedOutcome> {
 	// Off-session charges are the other way money moves without the person:
 	// auto-recharge. Disarm it and forget the stored card id, so no code path
 	// can charge a deleted account. The card itself goes with the provider
@@ -122,25 +166,27 @@ export async function handleSubscriberRestored(
 	config: Pick<IBillingConfig, 'provider'>,
 	subscriber: ISubscriberRef,
 ): Promise<{ resumed: boolean }> {
-	const [row] = await store.query<{ providerSubscriptionId: string | null; status: string; cancelAtPeriodEnd: boolean }>(
-		`SELECT provider_subscription_id AS "providerSubscriptionId", status, cancel_at_period_end AS "cancelAtPeriodEnd"
-		 FROM fonderie_subscriptions
-		 WHERE subscriber_type = $1 AND subscriber_id = $2 AND ended_by_account_deletion = true`,
+	// Clear the mark and learn whether there was one in ONE statement: a
+	// deletion still in flight checks the mark after its provider call, so it
+	// sees this restore and undoes its own cancel.
+	const [row] = await store.query<{ providerSubscriptionId: string | null; status: string }>(
+		`UPDATE fonderie_subscriptions SET ended_by_account_deletion = false
+		 WHERE subscriber_type = $1 AND subscriber_id = $2 AND ended_by_account_deletion = true
+		 RETURNING provider_subscription_id AS "providerSubscriptionId", status`,
 		[subscriber.type, subscriber.id],
 	);
 	if (!row) return { resumed: false };
-	let resumed = false;
-	if (row.status !== 'canceled' && row.cancelAtPeriodEnd && row.providerSubscriptionId && typeof config.provider.reactivateSubscription === 'function') {
+	// The mark is only ever set when deletion chose to end the subscription, so
+	// resuming never undoes a cancellation the person chose. The local
+	// cancel_at_period_end is not consulted: the provider's webhook for the
+	// deletion's cancel may not have landed yet, and resuming a subscription
+	// that is not set to end is a no-op at the provider.
+	if (row.status !== 'canceled' && row.providerSubscriptionId && typeof config.provider.reactivateSubscription === 'function') {
 		// The provider's webhook confirms the new state, as for a customer reactivate.
 		await config.provider.reactivateSubscription({ subscriptionId: row.providerSubscriptionId });
-		resumed = true;
+		return { resumed: true };
 	}
-	await store.query(
-		`UPDATE fonderie_subscriptions SET ended_by_account_deletion = false
-		 WHERE subscriber_type = $1 AND subscriber_id = $2`,
-		[subscriber.type, subscriber.id],
-	);
-	return { resumed };
+	return { resumed: false };
 }
 
 export async function handleSubscriberPurged(

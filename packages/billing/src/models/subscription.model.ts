@@ -7,6 +7,7 @@ import {
 	hasOwnerConsumedTrial,
 	markTrialConsumed,
 	upsertSubscription,
+	upsertSubscriptionWithPrior,
 } from '../services/subscriptions';
 
 export class SubscriptionModel {
@@ -18,6 +19,12 @@ export class SubscriptionModel {
 
 	upsert(data: Parameters<typeof upsertSubscription>[0]): Promise<boolean> {
 		return upsertSubscription(data, this.store);
+	}
+
+	upsertWithPrior(
+		data: Parameters<typeof upsertSubscription>[0],
+	): Promise<{ applied: boolean; priorStatus: string | null }> {
+		return upsertSubscriptionWithPrior(data, this.store);
 	}
 
 	hasConsumedTrial(subscriberType: SubscriberType, subscriberId: string): Promise<boolean> {

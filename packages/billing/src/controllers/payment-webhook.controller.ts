@@ -24,6 +24,28 @@ function toBigIntOrNull(v: unknown): bigint | null {
 	return null;
 }
 
+// The credits a clawback for this reversal takes back from the purchase it
+// reverses, or null when a partial amount has no basis to prorate. Shared by the
+// clawback itself and by a won dispute deciding whether a clawback is still due.
+function clawbackRequest(
+	purchase: { credits: bigint; metadata: Record<string, unknown> },
+	reversal: INormalizedReversal,
+): bigint | null {
+	// No amount ⇒ full reversal (the cap clamps to what remains).
+	if (reversal.amount == null) return purchase.credits;
+	const amountPaid = toBigIntOrNull(purchase.metadata['amountPaid']);
+	// Prorate granted credits to the reversed money (both in the payment
+	// currency's smallest unit); bigint division floors, so we never
+	// over-reverse on rounding.
+	if (amountPaid != null && amountPaid > 0n) return (purchase.credits * reversal.amount) / amountPaid;
+	return null;
+}
+
+// A dispute closed in the merchant's favor: 'won' for a chargeback, and
+// 'warning_closed' for an inquiry that was closed without becoming one. Either
+// way the money stayed, so the credits the dispute clawed come back.
+const DISPUTE_RELEASED = ['won', 'warning_closed'];
+
 // One-time payment webhook — a SEPARATE endpoint (and secret) from the
 // subscription webhook, so each provider endpoint carries one event family.
 // Idempotency: the ledger key `<provider>:checkout:<sessionId>` makes event
@@ -55,7 +77,12 @@ export function paymentWebhookController(
 			// and the clawback lands once the credit exists — dropping it here would
 			// leak the refunded value. A reversal with no packId isn't ours to
 			// reverse: acknowledge and leave the wallet alone.
-			if (typeof reversal.metadata['packId'] === 'string' && reversal.metadata['packId'] !== '') {
+			// A dispute's packId is read from its charge; when that read failed we
+			// cannot tell, and acknowledging could drop a clawback that is due.
+			if (
+				reversal.metadataUnresolved ||
+				(typeof reversal.metadata['packId'] === 'string' && reversal.metadata['packId'] !== '')
+			) {
 				return setApiResponse(
 					HTTP.SERVER_ERROR,
 					'CLAWBACK_DEFERRED',
@@ -73,12 +100,30 @@ export function paymentWebhookController(
 		const packId =
 			typeof purchase.metadata['packId'] === 'string' ? purchase.metadata['packId'] : null;
 
-		// Dispute WON: funds were returned, so restore exactly what this
-		// dispute's chargeback clawed (if anything). Distinct idempotency key.
-		if (reversal.kind === 'dispute' && reversal.status === 'won') {
+		// Dispute WON (or an inquiry closed): funds were returned, so restore
+		// exactly what this dispute's chargeback clawed (if anything). Distinct
+		// idempotency key.
+		if (reversal.kind === 'dispute' && DISPUTE_RELEASED.includes(reversal.status ?? '')) {
 			const clawKey = `${config.provider.name}:dispute:${reversal.id}`;
 			const clawed = await wallet.ledgerAmountByKey(clawKey); // negative, or null
-			if (clawed === null || clawed >= 0n) return Response.json({ received: true });
+			if (clawed === null || clawed >= 0n) {
+				// Nothing clawed YET is not "nothing to restore" when the clawback is
+				// still due: the opening event failed and the provider is retrying
+				// it. Acknowledging here would let that clawback land after this
+				// close, and the credits would never come back. A clawback is due
+				// when the opening event would take something (a prorate basis and
+				// room under the charge's cap), so ask the provider to redeliver
+				// this close until it has landed.
+				const due = clawbackRequest(purchase, reversal);
+				if (due !== null && due > 0n && (await wallet.reversedCredits(pi)) < purchase.credits) {
+					return setApiResponse(
+						HTTP.SERVER_ERROR,
+						'RESTORE_DEFERRED',
+						'Dispute closed before its clawback was recorded; provider will retry',
+					);
+				}
+				return Response.json({ received: true });
+			}
 			const result = await wallet.credit({
 				...sub,
 				amount: -clawed,
@@ -107,17 +152,8 @@ export function paymentWebhookController(
 		// to reverse; reverseWallet enforces the cumulative cap (never reverse
 		// more than was granted for this charge) INSIDE its transaction under a
 		// per-charge lock, so concurrent reversals can't over-reverse.
-		const amountPaid = toBigIntOrNull(purchase.metadata['amountPaid']);
-		let requested: bigint;
-		if (reversal.amount == null) {
-			// No amount ⇒ full reversal (the cap clamps to what remains).
-			requested = purchase.credits;
-		} else if (amountPaid != null && amountPaid > 0n) {
-			// Prorate granted credits to the reversed money (both in the payment
-			// currency's smallest unit); bigint division floors, so we never
-			// over-reverse on rounding.
-			requested = (purchase.credits * reversal.amount) / amountPaid;
-		} else {
+		const requested = clawbackRequest(purchase, reversal);
+		if (requested === null) {
 			// A known partial amount with no basis to prorate — refuse to guess
 			// rather than claw the whole balance for a partial refund.
 			return Response.json({ received: true, reversed: '0', ignored: 'no-proration-basis' });

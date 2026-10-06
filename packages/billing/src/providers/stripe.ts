@@ -282,6 +282,27 @@ export async function enrichInvoiceRefs(
 	}
 }
 
+// A dispute's own metadata is almost always empty: Stripe does not copy the
+// charge's metadata onto it. The packId that marks a charge as one of OUR pack
+// purchases lives on the charge (copied there from the PaymentIntent), so read
+// it from there — otherwise a dispute that arrives before its purchase credit
+// looks foreign and is acknowledged, and the clawback never happens. A charge
+// that cannot be read leaves the reversal flagged, so the webhook retries.
+export async function enrichDisputeMetadata(
+	reversal: INormalizedReversal,
+	retrieveCharge: (id: string) => Promise<unknown>,
+): Promise<INormalizedReversal> {
+	if (reversal.kind !== 'dispute' || reversal.metadata['packId'] || !reversal.chargeId) {
+		return reversal;
+	}
+	try {
+		const charge = (await retrieveCharge(reversal.chargeId)) as IStripeChargeRaw | null;
+		return { ...reversal, metadata: { ...(charge?.metadata ?? {}), ...reversal.metadata } };
+	} catch {
+		return { ...reversal, metadataUnresolved: true };
+	}
+}
+
 // Pure normalization of a failed one-time payment ATTEMPT — the checkout-session
 // variant (async_payment_failed) carries a session id; the PaymentIntent
 // variant does not.
@@ -484,16 +505,21 @@ export class StripeProvider implements IBillingProvider {
 		subscriberType: SubscriberType;
 		subscriberId: string;
 		userId: string;
+		idempotencyKey?: string;
 	}): Promise<{ customerId: string }> {
 		const stripe = await this.client();
-		const customer = await stripe.customers.create({
-			email: opts.email,
-			metadata: {
-				subscriberType: opts.subscriberType,
-				subscriberId: opts.subscriberId,
-				userId: opts.userId,
+		const customer = await stripe.customers.create(
+			{
+				email: opts.email,
+				metadata: {
+					subscriberType: opts.subscriberType,
+					subscriberId: opts.subscriberId,
+					userId: opts.userId,
+				},
 			},
-		});
+			// A lost response retried with the same key returns the same customer.
+			...(opts.idempotencyKey ? [{ idempotencyKey: opts.idempotencyKey }] : []),
+		);
 		return { customerId: customer.id };
 	}
 
@@ -1227,7 +1253,10 @@ export class StripeProvider implements IBillingProvider {
 			return {
 				type: raw.type,
 				subscription: null,
-				reversal: normalizeDispute(raw.data.object as IStripeDisputeRaw),
+				reversal: await enrichDisputeMetadata(
+					normalizeDispute(raw.data.object as IStripeDisputeRaw),
+					(id) => stripe.charges.retrieve(id),
+				),
 			};
 		}
 

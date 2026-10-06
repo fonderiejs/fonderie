@@ -77,6 +77,11 @@ export interface INormalizedReversal {
 	// closure returns the funds, so the clawback is reversed. null for a refund.
 	status: string | null;
 	metadata: Record<string, string>;
+	// True when the provider could not read the charge this reversal's metadata
+	// comes from (a dispute carries none of its own). The packId that says
+	// "this charge is ours" is then unknown, so the webhook asks for a retry
+	// instead of acknowledging a clawback it cannot attribute.
+	metadataUnresolved?: boolean;
 }
 
 // A completed one-time payment, normalized from the provider's checkout event.
@@ -199,6 +204,10 @@ export interface IBillingProvider {
 		subscriberType: SubscriberType;
 		subscriberId: string;
 		userId: string;
+		// Derived from the subscriber: a retried create returns the customer the
+		// first attempt made instead of a second one. Optional for providers
+		// without request idempotency.
+		idempotencyKey?: string;
 	}): Promise<{ customerId: string }>;
 
 	// Generate a hosted checkout URL
