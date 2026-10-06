@@ -281,3 +281,102 @@ test('an event published with no matching consumer is owed to nobody', { skip },
 		await cleanup();
 	}
 });
+
+// The status of one consumer row, read straight from the table.
+async function rowStatus(type: string, consumer: string): Promise<string | undefined> {
+	const { PGAdapter } = await import('@fonderie/store');
+	const store = new PGAdapter(PG_URL!);
+	try {
+		const [row] = await store.query<{ status: string }>(
+			`SELECT c.status FROM fonderie_event_consumers c
+			   JOIN fonderie_events e ON e.id = c.event_id
+			  WHERE e.type = $1 AND c.consumer = $2`,
+			[type, consumer],
+		);
+		return row?.status;
+	} finally {
+		await store.end();
+	}
+}
+
+for (const late of ['fails', 'succeeds'] as const) {
+	test(`a handler that outlives its lease and then ${late} cannot overwrite the newer outcome`, { skip }, async () => {
+		/**
+		 * The lease stops a second consumer from STARTING a row the first still
+		 * holds — but once it expires the row is reclaimed, and the first
+		 * consumer may only have been slow, not dead. When it finally returned,
+		 * its outcome write filtered on (event_id, consumer) alone and landed on
+		 * top of whatever the second consumer had decided since:
+		 *   • a late FAILURE turned a processed row back into 'failed', so the
+		 *     work was claimed and done yet again
+		 *   • a late SUCCESS marked processed a row the second consumer had
+		 *     already buried as dead, hiding it from the dead-letter list
+		 * The write must land only while the row still belongs to the claim
+		 * that is writing it.
+		 */
+		await prepareDb();
+		const consumer = `${RUN}-late-${late}`;
+		let release: (() => void) | undefined;
+		const hang = new Promise<void>((r) => { release = r; });
+
+		// maxRetries 2, so the takeover's failure is the last attempt and buries
+		// the row — the state a late success must not revive.
+		const slow = new PGTransport({ connectionUrl: PG_URL!, consume: false, maxRetries: 2 });
+		const takeover = new PGTransport({
+			connectionUrl: PG_URL!,
+			consume: false,
+			maxRetries: 2,
+			claimTimeoutMs: 0,
+		});
+		const publisher = new PGTransport({ connectionUrl: PG_URL!, consume: false });
+		publisher.subscribe(consumer, async () => {}, consumer);
+
+		slow.subscribe(consumer, async () => {
+			await hang;
+			if (late === 'fails') throw new Error('late failure');
+		}, consumer);
+		let runs = 0;
+		takeover.subscribe(consumer, async () => {
+			runs++;
+			// The opposite of the late outcome, so an overwrite shows as a change.
+			if (late === 'succeeds') throw new Error('given up on');
+		}, consumer);
+
+		const all = [slow, takeover, publisher];
+		await Promise.all(all.map((t) => t.start()));
+		const warn = console.warn;
+		const warnings: string[] = [];
+		console.warn = (...args: unknown[]) => { warnings.push(args.join(' ')); };
+		try {
+			await publisher.publish(consumer, { n: 'slow' }, meta(consumer));
+
+			const slowDrain = slow.drain({ maxMs: 1_000 });
+			await new Promise((r) => setTimeout(r, 300));
+
+			// A zero lease means the slow consumer's claim already counts as stale.
+			await takeover.drain({ maxMs: 3_000 });
+			const expected = late === 'fails' ? 'processed' : 'dead';
+			assert.equal(runs, 1, 'the takeover ran the stale row once');
+			assert.equal(await rowStatus(consumer, consumer), expected);
+
+			release?.();
+			await slowDrain;
+
+			assert.equal(
+				await rowStatus(consumer, consumer),
+				expected,
+				`the late ${late === 'fails' ? 'failure' : 'success'} overwrote the outcome of the ` +
+					'consumer that took the row over',
+			);
+			assert.ok(
+				warnings.some((w) => w.includes('outcome discarded')),
+				'losing a claim must be reported, not silent',
+			);
+		} finally {
+			console.warn = warn;
+			release?.();
+			await Promise.all(all.map((t) => t.stop()));
+			await cleanup();
+		}
+	});
+}
