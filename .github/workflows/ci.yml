@@ -70,6 +70,10 @@ jobs:
       # delivery payloads and echoed response bodies — JSON text matching a
       # mocked store cannot prove precise.
       WEBHOOKS_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
+      # @fonderie/config: a config kind check and a secret-key rotation racing
+      # writes — advisory locks a mocked store cannot prove. Runs in its own
+      # schema, since a rotation touches every secret.
+      CONFIG_PG_URL: postgres://postgres:postgres@localhost:5432/fonderie_test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
