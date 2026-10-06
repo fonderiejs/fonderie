@@ -19,6 +19,16 @@ export type {
 	IWorkspaceAddressDTO,
 	IWorkspaceDTO,
 	IWorkspaceSettingsDTO,
+	IWorkspaceEmailDTO,
+	IWorkspacePhoneDTO,
+	IWorkspaceLocationDTO,
+	IWorkspaceContactsResult,
+	IAddWorkspaceEmailInput,
+	IUpdateWorkspaceEmailInput,
+	IAddWorkspacePhoneInput,
+	IUpdateWorkspacePhoneInput,
+	IWorkspaceLocationInput,
+	IUpdateWorkspaceLocationInput,
 	WorkspacesClient,
 } from '@fonderie/client';
 
@@ -39,6 +49,8 @@ export type {
 	IUseWorkspacesReturn,
 	IUseDeletedRolesReturn,
 	IUseOwnershipOfferReturn,
+	IUseWorkspaceContactsReturn,
+	IUseWorkspaceLocationsReturn,
 } from './composables';
 export {
 	useCurrentWorkspace,
@@ -57,4 +69,6 @@ export {
 	useWorkspaces,
 	useDeletedRoles,
 	useOwnershipOffer,
+	useWorkspaceContacts,
+	useWorkspaceLocations,
 } from './composables';

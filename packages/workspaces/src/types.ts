@@ -9,14 +9,19 @@ export interface IWorkspaceAddress {
 	state?: string;
 	zip?: string;
 	country?: string;
+	/** Door / buzzer / gate code for whoever comes to the address. */
+	accessCode?: string | null;
 }
 
 export interface ITaxRegistration {
 	country: string;
 	type: string;
+	/** '' when only the rate is known (the number has not arrived yet). */
 	number: string;
 	region?: string | null;
 	label?: string | null;
+	/** The percent charged for this tax (5, 9.975, 13); null when not set. */
+	rate?: number | null;
 }
 
 export interface IWorkspace {
@@ -28,6 +33,8 @@ export interface IWorkspace {
 	motto: string | null;
 	phone: string | null;
 	businessType: string | null;
+	/** The sector / trade, as the app's own key ('plumbing'). */
+	industry?: string | null;
 	address: IWorkspaceAddress | null;
 	legalName: string | null;
 	email: string | null;
@@ -105,4 +112,63 @@ export interface IWorkspaceSettings {
 	currency: string;
 	dateFormat: string;
 	timeFormat: string;
+	/** What goes before a document's number, per kind: { invoice: 'ACME' }. */
+	documentPrefixes?: Record<string, string>;
+}
+
+// ── Contacts & locations (migration 010) ─────────────────────────────────────
+// The primary email, the primary phone and the head office's address are
+// mirrored onto fonderie_workspaces.email / phone / address.
+
+export interface IWorkspaceEmail {
+	id: string;
+	workspaceId: string;
+	/** Lower-cased. */
+	email: string;
+	label: string | null;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhone {
+	id: string;
+	workspaceId: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits only, e.g. '204'. */
+	extension: string | null;
+	label: string | null;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocation {
+	id: string;
+	workspaceId: string;
+	name: string;
+	address: IWorkspaceAddress;
+	/** address.country, as stored (a generated column). */
+	country: string | null;
+	/** ISO 3166-2, e.g. 'CA-QC' — the region whose sales taxes apply here. */
+	taxRegion: string | null;
+	latitude: number | string | null;
+	longitude: number | string | null;
+	phone: string | null;
+	email: string | null;
+	isHeadOffice: boolean;
+	position: number;
+	archivedAt: string | null;
+	archivedBy: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceContacts {
+	emails: IWorkspaceEmail[];
+	phones: IWorkspacePhone[];
+	locations: IWorkspaceLocation[];
 }

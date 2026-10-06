@@ -360,6 +360,8 @@ export interface IWorkspaceAddressDTO {
 	state: string;
 	zip: string;
 	country: string;
+	/** Door / buzzer / gate code; '' when not set (absent from older servers). The unit is line2. */
+	accessCode?: string;
 }
 
 export interface ITaxRegistrationDTO {
@@ -367,11 +369,14 @@ export interface ITaxRegistrationDTO {
 	country: string;
 	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'QST', 'EIN'. */
 	type: string;
+	/** '' when only the rate is known (the number has not arrived yet). */
 	number: string;
 	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
 	region: string;
 	/** Shown on documents instead of the type, e.g. 'TPS/TVH'. */
 	label: string;
+	/** The percent charged for this tax (5, 9.975, 13); null when not set (absent from older servers). */
+	rate?: number | null;
 }
 
 export interface IWorkspaceDTO {
@@ -383,6 +388,8 @@ export interface IWorkspaceDTO {
 	motto: string;
 	phone: string;
 	businessType: string;
+	/** The sector / trade, as the app's own key ('plumbing'); '' when not set (absent from older servers). */
+	industry?: string;
 	address: IWorkspaceAddressDTO;
 	/** Registered name, when it differs from the display name. */
 	legalName: string;
@@ -467,6 +474,8 @@ export interface IWorkspaceSettingsDTO {
 	currency: string;
 	dateFormat: string;
 	timeFormat: string;
+	/** What goes before a document's number, per kind: { invoice: 'ACME', job: 'ACME-JOB' }; {} when none (absent from older servers). */
+	documentPrefixes?: Record<string, string>;
 }
 
 export interface IWorkspaceListResult {
@@ -538,6 +547,76 @@ export type IAcceptInvitationInput = { token: string } | { pin: string };
 
 export interface IAcceptInvitationResult {
 	workspaceId: string;
+}
+
+// ── Workspace contacts & locations ───────────────────────────────────────────
+// The primary email, the primary phone and the head office's address are what
+// IWorkspaceDTO.email / phone / address show.
+
+export interface IWorkspaceEmailDTO {
+	id: string;
+	/** Lower-cased. */
+	email: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspacePhoneDTO {
+	id: string;
+	/** E.164, e.g. '+15145550100'. */
+	phone: string;
+	/** Digits; '' when none. */
+	extension: string;
+	label: string;
+	isPrimary: boolean;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface IWorkspaceLocationDTO {
+	id: string;
+	name: string;
+	address: IWorkspaceAddressDTO;
+	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
+	taxRegion: string;
+	latitude: number | null;
+	longitude: number | null;
+	/** E.164; '' when none. */
+	phone: string;
+	email: string;
+	isHeadOffice: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** GET /workspaces/contacts. */
+export interface IWorkspaceContactsResult {
+	/** The primary first. */
+	emails: IWorkspaceEmailDTO[];
+	/** The primary first. */
+	phones: IWorkspacePhoneDTO[];
+	/** The head office first; archived ones last (restorable). */
+	locations: IWorkspaceLocationDTO[];
+}
+
+export interface IWorkspaceEmailResult {
+	email: IWorkspaceEmailDTO;
+}
+
+export interface IWorkspacePhoneResult {
+	phone: IWorkspacePhoneDTO;
+}
+
+export interface IWorkspaceLocationResult {
+	location: IWorkspaceLocationDTO;
 }
 
 export interface IWorkspaceSettingsResult {

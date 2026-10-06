@@ -53,7 +53,7 @@ export class WorkspaceModel {
 		return getWorkspaceSettings(id, this.store);
 	}
 
-	updateSettings(id: string, settings: Partial<IWorkspaceSettings>): Promise<IWorkspaceSettings> {
+	updateSettings(id: string, settings: Parameters<typeof updateWorkspaceSettings>[1]): Promise<IWorkspaceSettings> {
 		return updateWorkspaceSettings(id, settings, this.store);
 	}
 }

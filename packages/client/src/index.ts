@@ -100,6 +100,12 @@ export type {
 	IUpdateRoleInput,
 	IUpdateSettingsInput,
 	IUpdateWorkspaceInput,
+	IAddWorkspaceEmailInput,
+	IUpdateWorkspaceEmailInput,
+	IAddWorkspacePhoneInput,
+	IUpdateWorkspacePhoneInput,
+	IWorkspaceLocationInput,
+	IUpdateWorkspaceLocationInput,
 } from './modules/workspaces';
 export { WorkspacesClient } from './modules/workspaces';
 export type {
@@ -275,6 +281,13 @@ export type {
 	IWorkspaceResult,
 	IWorkspaceSettingsDTO,
 	IWorkspaceSettingsResult,
+	IWorkspaceEmailDTO,
+	IWorkspacePhoneDTO,
+	IWorkspaceLocationDTO,
+	IWorkspaceContactsResult,
+	IWorkspaceEmailResult,
+	IWorkspacePhoneResult,
+	IWorkspaceLocationResult,
 	SubscriberType,
 } from './types';
 export { isMfaRequired, describeLocation } from './types';

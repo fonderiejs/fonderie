@@ -19,6 +19,16 @@ export type {
 	IWorkspaceAddressDTO,
 	IWorkspaceDTO,
 	IWorkspaceSettingsDTO,
+	IWorkspaceEmailDTO,
+	IWorkspacePhoneDTO,
+	IWorkspaceLocationDTO,
+	IWorkspaceContactsResult,
+	IAddWorkspaceEmailInput,
+	IUpdateWorkspaceEmailInput,
+	IAddWorkspacePhoneInput,
+	IUpdateWorkspacePhoneInput,
+	IWorkspaceLocationInput,
+	IUpdateWorkspaceLocationInput,
 	WorkspacesClient,
 } from '@fonderie/client';
 export { FonderieApiError } from '@fonderie/client';
@@ -38,6 +48,8 @@ export type {
 	IUseWorkspacesReturn,
 	IUseDeletedRolesReturn,
 	IUseOwnershipOfferReturn,
+	IUseWorkspaceContactsReturn,
+	IUseWorkspaceLocationsReturn,
 } from './hooks';
 export {
 	useCurrentWorkspace,
@@ -56,4 +68,6 @@ export {
 	useWorkspaces,
 	useDeletedRoles,
 	useOwnershipOffer,
+	useWorkspaceContacts,
+	useWorkspaceLocations,
 } from './hooks';

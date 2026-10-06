@@ -54,7 +54,7 @@ export function accountDeletionBlocker(store: IStoreAdapter) {
 //     permissions, memberships, invitations. An app table declared
 //     `REFERENCES fonderie_workspaces ON DELETE CASCADE` goes with it — a solo
 //     business's data leaves with its only person;
-//   - their id as `archived_by` on workspaces that stay.
+//   - their id as `archived_by` on workspaces (and locations) that stay.
 //
 // A team they own that still has other members is NOT deleted. D4 refuses the
 // request in that case, but people can join during the grace period: the
@@ -146,6 +146,10 @@ async function eraseAccount(store: IStoreAdapter, subject: IErasureSubject): Pro
 		}
 
 		await run(`UPDATE fonderie_workspaces SET archived_by = NULL, updated_at = now() WHERE archived_by = $1`, [userId]);
+		const [locations] = await tx.query<{ t: string | null }>(`SELECT to_regclass('fonderie_workspace_locations')::text AS t`);
+		if (locations?.t) {
+			await run(`UPDATE fonderie_workspace_locations SET archived_by = NULL WHERE archived_by = $1`, [userId]);
+		}
 
 		if (kept.length === 0) return { erased };
 		return {

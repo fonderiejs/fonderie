@@ -28,6 +28,7 @@ export interface IImportWorkspace {
 	motto?: string | null;
 	phone?: string | null;
 	businessType?: string | null;
+	industry?: string | null;
 	address?: Record<string, unknown>; // jsonb
 	// Preserve the original creation time; omitted defaults to now().
 	createdAt?: Date;
@@ -62,6 +63,7 @@ export async function importWorkspace(
 	if (ws.motto !== undefined) add('motto', ws.motto);
 	if (ws.phone !== undefined) add('phone', ws.phone);
 	if (ws.businessType !== undefined) add('business_type', ws.businessType);
+	if (ws.industry !== undefined) add('industry', ws.industry);
 	if (ws.address !== undefined) add('address', JSON.stringify(ws.address));
 	if (ws.createdAt !== undefined) add('created_at', ws.createdAt);
 	if (ws.archivedAt !== undefined) add('archived_at', ws.archivedAt);
