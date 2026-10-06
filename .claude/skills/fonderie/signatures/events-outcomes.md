@@ -20,6 +20,7 @@ error                    TEXT
 processed_at             TIMESTAMPTZ
 claimed_at               TIMESTAMPTZ
 CONSTRAINT               fonderie_event_consumers_status_check CHECK (status IN ('pending', 'processing', 'processed', 'failed', 'dead', 'dismissed'))
+claim_token              UUID
 -- PRIMARY KEY (event_id, consumer)
 ```
 

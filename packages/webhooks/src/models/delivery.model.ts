@@ -24,19 +24,32 @@ export type IPendingRetry = IWebhookDelivery & { url: string; secret: string };
 export class DeliveryModel {
 	constructor(private readonly store: IStoreAdapter) {}
 
+	/**
+	 * Record the delivery of one event to one endpoint — at most once. Null
+	 * when a row for this (endpoint, event) already exists.
+	 *
+	 * The events outbox re-runs a dispatch whose consumer row was not marked
+	 * processed (the process died, or the dispatch threw), so this is called
+	 * again for the same event. A plain INSERT made a second row each time and
+	 * the endpoint got the same webhook twice. The existing row is not handed
+	 * back on purpose: it belongs to the dispatch that created it, or — if that
+	 * one died before recording an attempt — to the retry loop once it goes
+	 * stale (see claimForRetry). Sending it here as well is the duplicate.
+	 */
 	async create(data: {
 		endpointId: string;
 		eventId: string;
 		eventType: string;
 		payload: Record<string, unknown>;
-	}): Promise<IWebhookDelivery> {
+	}): Promise<IWebhookDelivery | null> {
 		const [row] = await this.store.query<IWebhookDelivery>(
 			`INSERT INTO fonderie_webhook_deliveries (endpoint_id, event_id, event_type, payload)
 			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (endpoint_id, event_id) DO NOTHING
 			 RETURNING ${COLS}`,
 			[data.endpointId, data.eventId, data.eventType, JSON.stringify(data.payload)],
 		);
-		return row!;
+		return row ?? null;
 	}
 
 	async markResult(
@@ -93,6 +106,14 @@ export class DeliveryModel {
 	 * crash recovery: `markResult` overwrites it with the real backoff (or null
 	 * on success), and a process that dies mid-attempt simply leaves the row to
 	 * become due again once the lease expires.
+	 *
+	 * A 'pending' row is claimable too, once it is older than the lease. That is
+	 * a row whose FIRST attempt was never recorded — the process died between
+	 * inserting it and marking the result. Only 'failed' rows used to be
+	 * claimed, so such a row was never sent at all; and since create() no
+	 * longer inserts a second row on re-dispatch, this is now the only way it
+	 * goes out. Its first lease is measured from created_at, because the
+	 * dispatch that inserted it is attempting it right then.
 	 */
 	claimForRetry(limit = 10, leaseSeconds = 300): Promise<IPendingRetry[]> {
 		return this.store.query<IPendingRetry>(
@@ -100,11 +121,16 @@ export class DeliveryModel {
 			   SELECT d2.id
 			   FROM   fonderie_webhook_deliveries d2
 			   JOIN   fonderie_webhook_endpoints  e2 ON e2.id = d2.endpoint_id
-			   WHERE  d2.status = 'failed'
-			     AND  d2.next_attempt_at IS NOT NULL
-			     AND  d2.next_attempt_at <= now()
+			   WHERE  (
+			            (d2.status = 'failed'
+			             AND d2.next_attempt_at IS NOT NULL
+			             AND d2.next_attempt_at <= now())
+			            OR (d2.status = 'pending'
+			                AND coalesce(d2.next_attempt_at,
+			                             d2.created_at + make_interval(secs => $2)) <= now())
+			          )
 			     AND  e2.enabled = true
-			   ORDER  BY d2.next_attempt_at
+			   ORDER  BY coalesce(d2.next_attempt_at, d2.created_at)
 			   LIMIT  $1
 			   FOR UPDATE OF d2 SKIP LOCKED
 			 ), claimed AS (

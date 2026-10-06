@@ -432,14 +432,20 @@ export class PGTransport implements IEventTransport {
 			],
 		);
 
-		const claimed = await store.query<{ event_id: string }>(
+		const claimed = await store.query<{ event_id: string; claim_token: string }>(
 			// 'processing' rows older than the visibility timeout are claimable
 			// too: that is how work abandoned by a crashed instance comes back,
 			// without a blanket reset that cannot see who is still alive. The row
 			// lock makes the reclaim exclusive, so two consumers racing for the
 			// same stale row produce one winner, not two sends.
+			//
+			// Every claim draws a fresh claim_token. The lease only stops a second
+			// consumer from STARTING the row; the token is what stops the first
+			// one, if it was merely slow rather than dead, from writing its
+			// outcome over the second's.
 			`UPDATE fonderie_event_consumers c
-			 SET status = 'processing', attempts = c.attempts + 1, claimed_at = now()
+			 SET status = 'processing', attempts = c.attempts + 1, claimed_at = now(),
+			     claim_token = gen_random_uuid()
 			 FROM (
 			   SELECT event_id
 			   FROM   fonderie_event_consumers
@@ -456,12 +462,14 @@ export class PGTransport implements IEventTransport {
 			 ) AS locked
 			 WHERE c.event_id = locked.event_id
 			   AND c.consumer = $1
-			 RETURNING c.event_id`,
+			 RETURNING c.event_id, c.claim_token`,
 			[consumer, this.maxRetries, this.batchSize, this.claimTimeoutMs / 1000],
 		);
 
 		await Promise.all(
-			claimed.map((row) => this.processConsumerEvent(store, consumer, row.event_id)),
+			claimed.map((row) =>
+				this.processConsumerEvent(store, consumer, row.event_id, row.claim_token),
+			),
 		);
 		return claimed.length;
 	}
@@ -472,6 +480,7 @@ export class PGTransport implements IEventTransport {
 		store: IStoreAdapter,
 		consumer: string,
 		eventId: string,
+		claimToken: string,
 	): Promise<void> {
 		const [event] = await store.query<IEventRecord>(
 			`SELECT type, payload, meta FROM fonderie_events WHERE id = $1`,
@@ -483,21 +492,50 @@ export class PGTransport implements IEventTransport {
 			.filter((s) => s.consumer === consumer && matchesPattern(s.pattern, event.type))
 			.map((s) => s.handler);
 
+		// Both outcomes are compare-and-set on the claim: they land only while the
+		// row is still 'processing' under OUR token. A handler that ran past
+		// claimTimeoutMs may have had its row reclaimed — and then processed,
+		// failed or buried — by another consumer meanwhile. That outcome is the
+		// newer truth; overwriting it re-runs work that was done, or revives work
+		// that was given up on.
+		let outcome: 'processed' | 'failed';
+		let written: unknown[];
 		try {
 			await Promise.all(handlers.map((h) => h(event.payload, event.meta)));
-			await store.query(
+			outcome = 'processed';
+			written = await store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = 'processed', processed_at = now()
-				 WHERE event_id = $1 AND consumer = $2`,
-				[eventId, consumer],
+				 WHERE event_id = $1 AND consumer = $2
+				   AND status = 'processing' AND claim_token = $3
+				 RETURNING event_id`,
+				[eventId, consumer, claimToken],
 			);
 		} catch (err) {
-			await store.query(
+			outcome = 'failed';
+			written = await store.query(
 				`UPDATE fonderie_event_consumers
 				 SET status = CASE WHEN attempts >= $1 THEN 'dead' ELSE 'failed' END,
 				     error  = $2
-				 WHERE event_id = $3 AND consumer = $4`,
-				[this.maxRetries, err instanceof Error ? err.message : String(err), eventId, consumer],
+				 WHERE event_id = $3 AND consumer = $4
+				   AND status = 'processing' AND claim_token = $5
+				 RETURNING event_id`,
+				[
+					this.maxRetries,
+					err instanceof Error ? err.message : String(err),
+					eventId,
+					consumer,
+					claimToken,
+				],
+			);
+		}
+		if (written.length === 0) {
+			// Lost the claim. Say so: a handler that routinely outlives its lease
+			// is having its side effect performed twice.
+			console.warn(
+				`[events:pg] ${consumer}: event ${eventId} finished (${outcome}) after another ` +
+					'consumer took over its claim — outcome discarded; raise claimTimeoutMs above ' +
+					'the slowest handler',
 			);
 		}
 	}
