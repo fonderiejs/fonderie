@@ -79,6 +79,7 @@ const errors: typeof en = {
 		DUPLICATE_PHONE: 'Este cliente ya tiene este número de teléfono.',
 		DUPLICATE_ADDRESS: 'Este cliente ya tiene esta dirección.',
 		DUPLICATE_REFERENCE_CODE: 'Otro cliente ya usa este código de referencia.',
+		DUPLICATE_REFERRAL_CODE: 'Otro cliente ya usa este código de recomendación.',
 		CUSTOMER_IN_USE: 'Este cliente figura en un trabajo, una cotización o una factura. Archívalo en su lugar.',
 		EMAIL_NOT_FOUND: 'Ese correo electrónico no pertenece a este cliente.',
 		PHONE_NOT_FOUND: 'Ese número de teléfono no pertenece a este cliente.',

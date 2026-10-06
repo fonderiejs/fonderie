@@ -232,27 +232,46 @@ export async function enrollmentSecret(
 	return secret;
 }
 
+/**
+ * Confirm the first code and hand out backup codes — once per enrollment.
+ *
+ * Serialized per operator like checkSecondFactor: the row is re-read under a
+ * row lock, and the promotion is conditional on totp_confirmed_at still being
+ * NULL. Checked against the row loaded with the session, two requests with the
+ * same pending cookie and a valid code both passed: both wrote backup codes
+ * (the first response's ten were silently replaced) and both signed in. A burst
+ * of wrong codes all saw "not locked" too, so the lockout only counted them
+ * afterwards.
+ */
 export async function confirmEnrollment(
 	store: IStoreAdapter,
 	box: ISecretBox,
 	op: IOperatorRow,
 	code: string,
 ): Promise<string[] | null> {
-	if (!op.totpSecret || op.totpConfirmedAt || isLocked(op)) return null;
-	const step = verifyTotp(box.open(op.totpSecret), code, null);
-	if (step === null) {
-		await recordFailure(store, op.id);
-		return null;
-	}
-	const codes = newBackupCodes();
-	await store.query(
-		`UPDATE fonderie_admin_operators
-		    SET totp_confirmed_at = now(), totp_last_step = $2, backup_codes = $3,
-		        failed_attempts = 0, locked_until = NULL, last_login_at = now()
-		  WHERE id = $1`,
-		[op.id, step, codes.map((c) => sha256(normalizeBackupCode(c)))],
-	);
-	return codes;
+	return store.transaction(async (tx) => {
+		const [fresh] = await tx.query<IOperatorRow>(
+			`SELECT ${OP_COLS} FROM fonderie_admin_operators WHERE id = $1 FOR UPDATE`,
+			[op.id],
+		);
+		if (!fresh || fresh.disabledAt) return null;
+		if (!fresh.totpSecret || fresh.totpConfirmedAt || isLocked(fresh)) return null;
+		const step = verifyTotp(box.open(fresh.totpSecret), code, null);
+		if (step === null) {
+			await recordFailure(tx, fresh.id);
+			return null;
+		}
+		const codes = newBackupCodes();
+		const rows = await tx.query(
+			`UPDATE fonderie_admin_operators
+			    SET totp_confirmed_at = now(), totp_last_step = $2, backup_codes = $3,
+			        failed_attempts = 0, locked_until = NULL, last_login_at = now()
+			  WHERE id = $1 AND totp_confirmed_at IS NULL
+			  RETURNING id`,
+			[fresh.id, step, codes.map((c) => sha256(normalizeBackupCode(c)))],
+		);
+		return rows.length ? codes : null;
+	});
 }
 
 export async function listOperators(store: IStoreAdapter) {
@@ -305,28 +324,37 @@ export async function createLink(
 	},
 ): Promise<{ id: string; token: string; expiresAt: string }> {
 	const token = newOpaqueToken(input.kind === 'invite' ? 'fai' : 'far');
-	if (input.operatorId) {
-		// A new recovery link retires any earlier one for the same operator.
-		await store.query(
-			`UPDATE fonderie_admin_invites SET used_at = now() WHERE operator_id = $1 AND used_at IS NULL`,
-			[input.operatorId],
+	// One transaction, serialized on the operator row: a new recovery link
+	// retires any earlier one for the same operator. Run as two loose
+	// statements, two concurrent clicks each retired the links they could see
+	// (neither saw the other's uncommitted insert) and both inserted, leaving
+	// two live recovery links.
+	return store.transaction(async (tx) => {
+		if (input.operatorId) {
+			await tx.query(`SELECT 1 FROM fonderie_admin_operators WHERE id = $1 FOR UPDATE`, [
+				input.operatorId,
+			]);
+			await tx.query(
+				`UPDATE fonderie_admin_invites SET used_at = now() WHERE operator_id = $1 AND used_at IS NULL`,
+				[input.operatorId],
+			);
+		}
+		const [row] = await tx.query<{ id: string; expiresAt: string }>(
+			`INSERT INTO fonderie_admin_invites (kind, token_hash, email, scopes, operator_id, created_by, expires_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, now() + make_interval(hours => $7)) RETURNING id, expires_at AS "expiresAt"`,
+			[
+				input.kind,
+				sha256(token),
+				normalizeEmail(input.email),
+				input.scopes ?? [],
+				input.operatorId ?? null,
+				input.createdBy,
+				input.hours,
+			],
 		);
-	}
-	const [row] = await store.query<{ id: string; expiresAt: string }>(
-		`INSERT INTO fonderie_admin_invites (kind, token_hash, email, scopes, operator_id, created_by, expires_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, now() + make_interval(hours => $7)) RETURNING id, expires_at AS "expiresAt"`,
-		[
-			input.kind,
-			sha256(token),
-			normalizeEmail(input.email),
-			input.scopes ?? [],
-			input.operatorId ?? null,
-			input.createdBy,
-			input.hours,
-		],
-	);
-	if (!row) throw new Error('[admin] link insert returned no row');
-	return { id: row.id, token, expiresAt: row.expiresAt };
+		if (!row) throw new Error('[admin] link insert returned no row');
+		return { id: row.id, token, expiresAt: row.expiresAt };
+	});
 }
 
 export async function findLink(store: IStoreAdapter, token: string) {

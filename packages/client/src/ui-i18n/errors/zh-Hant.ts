@@ -79,6 +79,7 @@ const errors: typeof en = {
 		DUPLICATE_PHONE: '此客戶已有這個電話號碼。',
 		DUPLICATE_ADDRESS: '此客戶已有這個地址。',
 		DUPLICATE_REFERENCE_CODE: '已有其他客戶使用這個參考編號。',
+		DUPLICATE_REFERRAL_CODE: '已有其他客戶使用這個推薦碼。',
 		CUSTOMER_IN_USE: '此客戶已連結到工作單、報價單或發票，請改為封存。',
 		EMAIL_NOT_FOUND: '此客戶沒有這個電子郵件。',
 		PHONE_NOT_FOUND: '此客戶沒有這個電話號碼。',
