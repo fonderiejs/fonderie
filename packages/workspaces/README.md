@@ -32,6 +32,18 @@ import { withWorkspace, requireWorkspace } from '@fonderie/workspaces';
 DTO mappers (`toWorkspaceDTO`, `toMemberDTO`, `toInvitationDTO`, …) and
 typed `EVENT_KEYS` are exported for your handlers and event consumers.
 
+### The business profile
+
+`PUT /workspaces` (owner / managers) holds what a quote, an invoice or a
+customer email needs: name, motto, legal form, `industry` (your app's own
+sector key, e.g. `'plumbing'`), phone, email, website, logo, address (with
+`line2` for the unit and `accessCode` for a buzzer or door code) and
+`taxRegistrations` — each with a `number`, a `rate` (percent, e.g. `9.975`),
+or both, checked against the country's rules. `PUT /workspaces/settings`
+adds `documentPrefixes`, e.g. `{ invoice: 'ACME', job: 'ACME-JOB' }`, for
+apps that print a prefix before a document's number. A refusal is a 422
+naming the field: `taxRegistrations.1.rate: …`.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

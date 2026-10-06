@@ -744,6 +744,7 @@ interface IUpdateSettingsInput {
     currency?: string;
     dateFormat?: string;
     timeFormat?: string;
+    documentPrefixes?: Record<string, string> | null;
 }
 
 interface IUpdateWorkspaceInput {
@@ -752,6 +753,7 @@ interface IUpdateWorkspaceInput {
     motto?: string | null;
     phone?: string | null;
     businessType?: string | null;
+    industry?: string | null;
     address?: {
         line1?: string;
         line2?: string;
@@ -759,6 +761,7 @@ interface IUpdateWorkspaceInput {
         state?: string;
         zip?: string;
         country?: string;
+        accessCode?: string | null;
     } | null;
     legalName?: string | null;
     email?: string | null;
@@ -767,9 +770,10 @@ interface IUpdateWorkspaceInput {
     taxRegistrations?: Array<{
         country: string;
         type: string;
-        number: string;
+        number?: string | null;
         region?: string | null;
         label?: string | null;
+        rate?: number | null;
     }>;
     languages?: string[];
 }
@@ -2003,6 +2007,7 @@ interface IWorkspaceAddressDTO {
     state: string;
     zip: string;
     country: string;
+    accessCode?: string;
 }
 
 interface IWorkspaceDTO {
@@ -2014,6 +2019,7 @@ interface IWorkspaceDTO {
     motto: string;
     phone: string;
     businessType: string;
+    industry?: string;
     address: IWorkspaceAddressDTO;
     legalName: string;
     email: string;
@@ -2037,6 +2043,7 @@ interface ITaxRegistrationDTO {
     number: string;
     region: string;
     label: string;
+    rate?: number | null;
 }
 
 interface IWorkspaceListResult {
@@ -2053,6 +2060,7 @@ interface IWorkspaceSettingsDTO {
     currency: string;
     dateFormat: string;
     timeFormat: string;
+    documentPrefixes?: Record<string, string>;
 }
 
 interface IWorkspaceSettingsResult {

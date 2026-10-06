@@ -37,6 +37,8 @@ export interface IUpdateWorkspaceInput {
 	motto?: string | null;
 	phone?: string | null;
 	businessType?: string | null;
+	/** The sector / trade, as the app's own key: lowercase letters, digits, '_' or '-' (≤ 40). Null clears it. */
+	industry?: string | null;
 	address?: {
 		line1?: string;
 		line2?: string;
@@ -44,6 +46,8 @@ export interface IUpdateWorkspaceInput {
 		state?: string;
 		zip?: string;
 		country?: string;
+		/** Door / buzzer / gate code (≤ 20). */
+		accessCode?: string | null;
 	} | null;
 	legalName?: string | null;
 	email?: string | null;
@@ -51,7 +55,16 @@ export interface IUpdateWorkspaceInput {
 	/** The logo's URL — typically what client.media returned for the upload. */
 	logoUrl?: string | null;
 	/** Replaces the list. Each is checked against its country's rules (422 names the field). */
-	taxRegistrations?: Array<{ country: string; type: string; number: string; region?: string | null; label?: string | null }>;
+	taxRegistrations?: Array<{
+		country: string;
+		type: string;
+		/** Optional when `rate` is given — a business may charge a tax before its number arrives. */
+		number?: string | null;
+		region?: string | null;
+		label?: string | null;
+		/** The percent charged (0–100, at most 3 decimals: 9.975). */
+		rate?: number | null;
+	}>;
 	/** The languages the business serves customers in, e.g. ['en-CA', 'fr-CA']. */
 	languages?: string[];
 }
@@ -67,6 +80,12 @@ export interface IUpdateSettingsInput {
 	currency?: string;
 	dateFormat?: string;
 	timeFormat?: string;
+	/**
+	 * What goes before a document's number, per kind: { invoice: 'ACME', job: 'ACME-JOB' }.
+	 * Kinds are 1–20 lowercase letters or '_' (≤ 10 kinds); prefixes ≤ 10 of A–Z, 0–9, '-'
+	 * (upper-cased by the server; '' drops one). Replaces the map; null clears it.
+	 */
+	documentPrefixes?: Record<string, string> | null;
 }
 
 export interface ICreateRoleInput {

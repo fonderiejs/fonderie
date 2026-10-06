@@ -96,6 +96,8 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 				opts.phone = typeof body['phone'] === 'string' ? body['phone'].trim() : null;
 			if (body?.['businessType'] !== undefined)
 				opts.businessType = typeof body['businessType'] === 'string' ? body['businessType'] : null;
+			if (body?.['industry'] !== undefined)
+				opts.industry = typeof body['industry'] === 'string' ? body['industry'] : null;
 			if (body?.['address'] !== undefined && typeof body['address'] === 'object')
 				opts.address = (body['address'] ?? null) as NonNullable<
 					Parameters<typeof workspaces.update>[1]
@@ -158,9 +160,16 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'No settings provided');
 			}
 
-			const patch: Record<string, string> = {};
+			const patch: Record<string, string> & { documentPrefixes?: Record<string, string> | null } = {};
 			for (const key of ['locale', 'timezone', 'currency', 'dateFormat', 'timeFormat'] as const) {
 				if (typeof body[key] === 'string') patch[key] = body[key] as string;
+			}
+			// Validated and upper-cased by updateSettingsSchema; null clears the map.
+			if (body['documentPrefixes'] !== undefined) {
+				patch.documentPrefixes =
+					body['documentPrefixes'] && typeof body['documentPrefixes'] === 'object'
+						? (body['documentPrefixes'] as Record<string, string>)
+						: {};
 			}
 
 			const settings = await workspaces.updateSettings(ctx.workspace.id, patch);

@@ -9,6 +9,8 @@ export interface IWorkspaceAddressDTO {
 	state: string;
 	zip: string;
 	country: string;
+	/** Door / buzzer / gate code; '' when not set. The unit is line2. */
+	accessCode: string;
 }
 
 export interface ITaxRegistrationDTO {
@@ -16,10 +18,13 @@ export interface ITaxRegistrationDTO {
 	country: string;
 	/** A key of that country's tax-ID rules, e.g. 'GST_HST', 'EIN'. */
 	type: string;
+	/** '' when only the rate is known. */
 	number: string;
 	/** ISO 3166-2, e.g. 'CA-QC'; '' when not regional. */
 	region: string;
 	label: string;
+	/** The percent charged for this tax (5, 9.975, 13); null when not set. */
+	rate: number | null;
 }
 
 export interface IWorkspaceDTO {
@@ -31,6 +36,8 @@ export interface IWorkspaceDTO {
 	motto: string;
 	phone: string;
 	businessType: string;
+	/** The sector / trade, as the app's own key ('plumbing'); '' when not set. */
+	industry: string;
 	address: IWorkspaceAddressDTO;
 	/** Registered name, when it differs from the display name. */
 	legalName: string;
@@ -122,6 +129,8 @@ export interface IWorkspaceSettingsDTO {
 	currency: string;
 	dateFormat: string;
 	timeFormat: string;
+	/** What goes before a document's number, per kind: { invoice: 'ACME', job: 'ACME-JOB' }; {} when none. */
+	documentPrefixes: Record<string, string>;
 }
 
 export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
@@ -135,6 +144,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 		motto: stringOrEmpty(ws.motto),
 		phone: stringOrEmpty(ws.phone),
 		businessType: stringOrEmpty(ws.businessType),
+		industry: stringOrEmpty(ws.industry),
 		address: {
 			line1: stringOrEmpty(addr.line1),
 			line2: stringOrEmpty(addr.line2),
@@ -142,6 +152,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			state: stringOrEmpty(addr.state),
 			zip: stringOrEmpty(addr.zip),
 			country: stringOrEmpty(addr.country),
+			accessCode: stringOrEmpty(addr.accessCode),
 		},
 		legalName: stringOrEmpty(ws.legalName),
 		email: stringOrEmpty(ws.email),
@@ -153,6 +164,7 @@ export function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO {
 			number: stringOrEmpty(r.number),
 			region: stringOrEmpty(r.region),
 			label: stringOrEmpty(r.label),
+			rate: typeof r.rate === 'number' && Number.isFinite(r.rate) ? r.rate : null,
 		})),
 		languages: Array.isArray(ws.languages) ? ws.languages.map(String) : [],
 		plan: stringOrEmpty(ws.plan),
@@ -223,5 +235,6 @@ export function toSettingsDTO(s: IWorkspaceSettings): IWorkspaceSettingsDTO {
 		currency: stringOrEmpty(s.currency),
 		dateFormat: stringOrEmpty(s.dateFormat),
 		timeFormat: stringOrEmpty(s.timeFormat),
+		documentPrefixes: { ...(s.documentPrefixes ?? {}) },
 	};
 }

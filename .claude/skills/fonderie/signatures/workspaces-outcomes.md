@@ -114,6 +114,7 @@ website                  TEXT
 logo_url                 TEXT
 tax_registrations        JSONB NOT NULL DEFAULT '[]'
 languages                TEXT[] NOT NULL DEFAULT '{}'
+industry                 TEXT
 ```
 
 Raw SQL ships in `node_modules/@fonderie/workspaces/dist/migrations/sql/` — read it there if you must; never download tarballs.

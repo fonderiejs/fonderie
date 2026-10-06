@@ -52,6 +52,7 @@ interface IWorkspace {
     motto: string | null;
     phone: string | null;
     businessType: string | null;
+    industry?: string | null;
     address: IWorkspaceAddress | null;
     legalName: string | null;
     email: string | null;
@@ -112,6 +113,7 @@ interface IWorkspaceSettings {
     currency: string;
     dateFormat: string;
     timeFormat: string;
+    documentPrefixes?: Record<string, string>;
 }
 
 interface IWorkspaceDTO {
@@ -123,6 +125,7 @@ interface IWorkspaceDTO {
     motto: string;
     phone: string;
     businessType: string;
+    industry: string;
     address: IWorkspaceAddressDTO;
     legalName: string;
     email: string;
@@ -184,6 +187,7 @@ interface IWorkspaceSettingsDTO {
     currency: string;
     dateFormat: string;
     timeFormat: string;
+    documentPrefixes: Record<string, string>;
 }
 
 function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO
@@ -204,7 +208,7 @@ function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>):
 
 function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware
 
-namespace schemas — exports: BUSINESS_TYPES, acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
+namespace schemas — exports: BUSINESS_TYPES, DOCUMENT_PREFIX_KINDS_MAX, acceptInvitationSchema, addMemberRoleSchema, createInvitationsSchema, createRoleSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceSchema
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
 
@@ -225,6 +229,7 @@ interface IImportWorkspace {
     motto?: string | null;
     phone?: string | null;
     businessType?: string | null;
+    industry?: string | null;
     address?: Record<string, unknown>;
     createdAt?: Date;
     archivedAt?: Date | null;

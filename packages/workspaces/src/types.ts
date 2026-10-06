@@ -9,14 +9,19 @@ export interface IWorkspaceAddress {
 	state?: string;
 	zip?: string;
 	country?: string;
+	/** Door / buzzer / gate code for whoever comes to the address. */
+	accessCode?: string | null;
 }
 
 export interface ITaxRegistration {
 	country: string;
 	type: string;
+	/** '' when only the rate is known (the number has not arrived yet). */
 	number: string;
 	region?: string | null;
 	label?: string | null;
+	/** The percent charged for this tax (5, 9.975, 13); null when not set. */
+	rate?: number | null;
 }
 
 export interface IWorkspace {
@@ -28,6 +33,8 @@ export interface IWorkspace {
 	motto: string | null;
 	phone: string | null;
 	businessType: string | null;
+	/** The sector / trade, as the app's own key ('plumbing'). */
+	industry?: string | null;
 	address: IWorkspaceAddress | null;
 	legalName: string | null;
 	email: string | null;
@@ -105,4 +112,6 @@ export interface IWorkspaceSettings {
 	currency: string;
 	dateFormat: string;
 	timeFormat: string;
+	/** What goes before a document's number, per kind: { invoice: 'ACME' }. */
+	documentPrefixes?: Record<string, string>;
 }
