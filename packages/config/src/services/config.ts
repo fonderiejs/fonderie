@@ -112,14 +112,6 @@ export async function setConfigEntry(
 	store: IStoreAdapter,
 ): Promise<IConfigEntry> {
 	const environment = opts.environment ?? 'all';
-	if (!opts.allowTypeChange) {
-		const current = await getConfigEntry(opts.key, environment, store);
-		if (current) {
-			const from = configValueKind(withParsedValue(current).value);
-			const to = configValueKind(opts.value);
-			if (from !== to) throw new ConfigTypeChangeError(opts.key, from, to);
-		}
-	}
 	// ALWAYS JSON-encoded — text included. Text used to be stored raw, and the
 	// reader parses with a raw-text fallback, so a text value that happened to
 	// look like JSON changed type on the way back: "42" became a number, "true"
@@ -127,12 +119,30 @@ export async function setConfigEntry(
 	const rawValue = JSON.stringify(opts.value ?? null);
 	const data: Record<string, unknown> = { value: rawValue, active: opts.active ?? true };
 	if (opts.description !== undefined) data['description'] = opts.description;
-	return versionedWrite<IConfigEntry>(CONFIG_TABLE, store, {
-		key: opts.key,
-		scope: environment,
-		data,
-		...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
-		actor: opts.actor ?? null,
+	return store.transaction(async (tx) => {
+		// The kind check runs under the same advisory lock versionedWrite takes
+		// (it is re-entrant within a transaction). Checked before the lock, two
+		// first writes of one key with different kinds both saw no row and both
+		// saved — the second a silent type change.
+		await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`, [
+			opts.key,
+			environment,
+		]);
+		if (!opts.allowTypeChange) {
+			const current = await getConfigEntry(opts.key, environment, tx);
+			if (current) {
+				const from = configValueKind(withParsedValue(current).value);
+				const to = configValueKind(opts.value);
+				if (from !== to) throw new ConfigTypeChangeError(opts.key, from, to);
+			}
+		}
+		return versionedWrite<IConfigEntry>(CONFIG_TABLE, tx, {
+			key: opts.key,
+			scope: environment,
+			data,
+			...(opts.ifVersion !== undefined ? { ifVersion: opts.ifVersion } : {}),
+			actor: opts.actor ?? null,
+		});
 	});
 }
 

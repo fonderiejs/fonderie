@@ -937,6 +937,7 @@
       "tables": [
         "fonderie_config",
         "fonderie_config_revisions",
+        "fonderie_secret_key_check",
         "fonderie_secret_revisions",
         "fonderie_secrets"
       ],

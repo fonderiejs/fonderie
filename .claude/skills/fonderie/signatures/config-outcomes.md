@@ -36,6 +36,14 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 -- PRIMARY KEY (key, environment, version)
 ```
 
+### `fonderie_secret_key_check`
+
+```sql
+id                       BOOLEAN PRIMARY KEY DEFAULT true CHECK (id)
+check_value              TEXT NOT NULL
+rotated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
 ### `fonderie_secret_revisions`
 
 ```sql
