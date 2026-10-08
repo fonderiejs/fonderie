@@ -1,5 +1,12 @@
 # @fonderie/customers
 
+## 6.9.1
+
+### Patch Changes
+
+- Updated dependencies [0423614]
+  - @fonderie/workspaces@8.0.0
+
 ## 6.9.0
 
 ### Minor Changes
