@@ -46,12 +46,21 @@ function createMigrationsPath(importMetaUrl: string): string
 
 function classifyMigration(sql: string): IMigrationClassification
 
+function assertUniqueMigrationNames(sets: readonly MigrationSetInput[]): void
+
+function runMigrationSets(store: IStoreAdapter, sets: readonly MigrationSetInput[]): Promise<void>
+
 interface IMigrationClassification {
     impact: MigrationImpact;
     destructive: string[];
 }
 
 type MigrationImpact = 'additive' | 'destructive';
+
+type MigrationSetInput = string | readonly [
+    name: string,
+    dir: string
+];
 
 new PGAdapter(config: string | IPoolConfig): PGAdapter
   .testConnection(): Promise<boolean>

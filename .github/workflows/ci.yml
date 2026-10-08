@@ -115,6 +115,9 @@ jobs:
       # Env-declaration guard — every brick's env.json names each process.env it
       # reads, and every variable it calls direct is really read.
       - run: npm run check:env-declarations
+      # Migration-filename guard — fonderie_migrations is keyed by filename only,
+      # so a name shipped by two bricks would be skipped forever on the second.
+      - run: npm run check:migration-names
       # Lockfile guard — `changeset version` bumps package.json files but not the
       # lockfile, so workspace versions in package-lock.json drifted for weeks
       # and every local `npm install` rewrote it. The version script now syncs it;
