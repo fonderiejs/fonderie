@@ -1,5 +1,12 @@
 # @fonderie/geo
 
+## 0.5.14
+
+### Patch Changes
+
+- Updated dependencies [8ac8a40]
+  - @fonderie/core@0.33.0
+
 ## 0.5.13
 
 ### Patch Changes

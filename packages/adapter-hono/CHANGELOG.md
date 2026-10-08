@@ -1,5 +1,12 @@
 # @fonderie/adapter-hono
 
+## 6.3.9
+
+### Patch Changes
+
+- Updated dependencies [8ac8a40]
+  - @fonderie/core@0.33.0
+
 ## 6.3.8
 
 ### Patch Changes

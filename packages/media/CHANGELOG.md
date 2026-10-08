@@ -1,5 +1,12 @@
 # @fonderie/media
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [8ac8a40]
+  - @fonderie/core@0.33.0
+
 ## 0.5.0
 
 ### Minor Changes
