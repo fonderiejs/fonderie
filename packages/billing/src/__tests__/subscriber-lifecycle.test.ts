@@ -10,6 +10,10 @@ import {
 	handleSubscriberPurged,
 	handleSubscriberRestored,
 	USER_RESTORED_EVENT,
+	WORKSPACE_ARCHIVED_EVENT,
+	WORKSPACE_RESTORED_EVENT,
+	handleWorkspaceArchived,
+	handleWorkspaceRestored,
 } from '../services/subscriber-lifecycle';
 
 // What happens to a user's money when the user goes away. Real PostgreSQL (the
@@ -261,10 +265,99 @@ test('BillingModule subscribes to both account events on the bus, and routes the
 		{ provider, plans: [], successUrl: 'x', cancelUrl: 'y' } as never,
 		bus as never,
 	);
-	assert.deepEqual([...handlers.keys()].sort(), [USER_DELETED_EVENT, USER_PURGED_EVENT, USER_RESTORED_EVENT].sort());
+	assert.deepEqual(
+		[...handlers.keys()].sort(),
+		[USER_DELETED_EVENT, USER_PURGED_EVENT, USER_RESTORED_EVENT, WORKSPACE_ARCHIVED_EVENT, WORKSPACE_RESTORED_EVENT].sort(),
+	);
 	await handlers.get(USER_DELETED_EVENT)!({ userId: USER });
 	assert.ok(
 		seen.some((q) => q.includes(`"user","${USER}"`)),
 		'the handler looked up this user as a user subscriber',
 	);
+	seen.length = 0;
+	await handlers.get(WORKSPACE_ARCHIVED_EVENT)!({ workspaceId: WORKSPACE, userId: USER });
+	assert.ok(
+		seen.some((q) => q.includes(`"workspace","${WORKSPACE}"`)),
+		'an archived workspace is looked up as a workspace subscriber',
+	);
+	seen.length = 0;
+	await handlers.get(WORKSPACE_RESTORED_EVENT)!({ workspaceId: WORKSPACE, userId: USER });
+	assert.ok(seen.some((q) => q.includes(`"workspace","${WORKSPACE}"`)));
+});
+
+// ── workspace archived / restored (fonderie.workspace.archived / .restored) ───
+
+test('archived workspace: its subscription ends at the period end, the stored card is kept; restoring in time resumes it', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		await seed(store);
+		await store.query(
+			`INSERT INTO fonderie_wallet_customers (subscriber_type, subscriber_id, provider, provider_customer_id, payment_method_id)
+			 VALUES ('workspace', $1, 'fake', 'cus_ws_wallet', 'pm_ws_card')`,
+			[WORKSPACE],
+		);
+		const arch = fakeProvider();
+		const out = await handleWorkspaceArchived(store, { provider: arch.provider }, WORKSPACE);
+		assert.deepEqual(out, { canceled: 'at-period-end', chargingDisarmed: false });
+		assert.deepEqual(arch.calls, [{ op: 'cancel', arg: { subscriptionId: 'sub_ws_1', atPeriodEnd: true } }]);
+		const [card] = await store.query<{ pm: string | null; d: boolean }>(
+			`SELECT payment_method_id AS pm, auto_recharge_disabled AS d FROM fonderie_wallet_customers WHERE subscriber_id = $1`,
+			[WORKSPACE],
+		);
+		assert.deepEqual(card, { pm: 'pm_ws_card', d: false }, 'the workspace may come back: its card stays');
+		const [userSub] = await store.query<{ status: string; ending: boolean }>(
+			`SELECT status, cancel_at_period_end AS ending FROM fonderie_subscriptions WHERE subscriber_id = $1`,
+			[USER],
+		);
+		assert.deepEqual(userSub, { status: 'active', ending: false }, 'a user subscription is untouched');
+		// What the provider's webhook would record.
+		await store.query(`UPDATE fonderie_subscriptions SET cancel_at_period_end = true WHERE subscriber_id = $1`, [WORKSPACE]);
+
+		const res = fakeProvider();
+		assert.deepEqual(await handleWorkspaceRestored(store, { provider: res.provider }, WORKSPACE), { resumed: true });
+		assert.deepEqual(res.calls, [{ op: 'reactivate', arg: { subscriptionId: 'sub_ws_1' } }]);
+		const again = fakeProvider();
+		assert.deepEqual(await handleWorkspaceRestored(store, { provider: again.provider }, WORKSPACE), { resumed: false });
+		assert.equal(again.calls.length, 0, 'a redelivered restore does nothing more');
+	} finally {
+		await close(store);
+	}
+});
+
+test('archived workspace: restored after the period ended stays canceled; a cancel the owner chose is never undone; keep opts out', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		await seed(store);
+		await handleWorkspaceArchived(store, { provider: fakeProvider().provider }, WORKSPACE);
+		// The period ran out: the provider's webhook ended it.
+		await store.query(`UPDATE fonderie_subscriptions SET status = 'canceled' WHERE subscriber_id = $1`, [WORKSPACE]);
+		const late = fakeProvider();
+		assert.deepEqual(await handleWorkspaceRestored(store, { provider: late.provider }, WORKSPACE), { resumed: false });
+		assert.equal(late.calls.length, 0, 'nothing to resume once the period is over');
+
+		await store.query(
+			`UPDATE fonderie_subscriptions SET status = 'active', cancel_at_period_end = true, ended_by_account_deletion = false WHERE subscriber_id = $1`,
+			[WORKSPACE],
+		);
+		const chosen = fakeProvider();
+		await handleWorkspaceArchived(store, { provider: chosen.provider }, WORKSPACE);
+		assert.equal(chosen.calls.length, 0, 'already ending by the owner: not touched');
+		const res = fakeProvider();
+		assert.deepEqual(await handleWorkspaceRestored(store, { provider: res.provider }, WORKSPACE), { resumed: false });
+		assert.equal(res.calls.length, 0, 'restoring never undoes the owner\'s own cancellation');
+
+		await store.query(`UPDATE fonderie_subscriptions SET cancel_at_period_end = false WHERE subscriber_id = $1`, [WORKSPACE]);
+		const kept = fakeProvider();
+		assert.deepEqual(
+			await handleWorkspaceArchived(store, { provider: kept.provider, onWorkspaceArchived: 'keep' }, WORKSPACE),
+			{ canceled: 'none', chargingDisarmed: false },
+		);
+		assert.equal(kept.calls.length, 0, "'keep' touches nothing");
+	} finally {
+		await close(store);
+	}
 });

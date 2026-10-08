@@ -63,6 +63,11 @@ interface IInviteEntry {
     roleId?: string;
 }
 
+interface IListPageInput {
+    limit?: number;
+    cursor?: string;
+}
+
 interface IMemberDTO {
     userId: string;
     workspaceId: string;
@@ -285,6 +290,14 @@ interface IWorkspacePhoneDTO {
     updatedAt: string;
 }
 
+interface IWorkspaceSeatsResult {
+    used: number;
+    members: number;
+    pendingInvites: number;
+    limit: number | null;
+    available: number | null;
+}
+
 interface IWorkspaceSettingsDTO {
     locale: string;
     timezone: string;
@@ -306,6 +319,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getMyPermissions(opts?: IReadOptions | undefined): Promise<IApiResponse<IMyPermissionsResult>>
+  .getSeats(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSeatsResult>>
   .getPermissionCatalog(opts?: IReadOptions | undefined): Promise<IApiResponse<IPermissionCatalogResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
@@ -320,7 +334,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .purgeDeletedRole(id: string): Promise<undefined>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
-  .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
+  .listMembers(opts?: (IReadOptions & IListPageInput) | undefined): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
   .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
@@ -334,7 +348,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .declineOwnership(): Promise<IApiResponse<undefined>>
   .withdrawOwnershipOffer(): Promise<IApiResponse<undefined>>
   .leaveWorkspace(): Promise<IApiResponse<void>>
-  .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
+  .listInvitations(opts?: (IReadOptions & IListPageInput) | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
@@ -380,9 +394,16 @@ interface IUseInvitationsReturn {
     refresh: (opts?: {
         force?: boolean;
     }) => Promise<void>;
+    hasMore: boolean;
+    loadMore: () => Promise<void>;
+    isLoadingMore: boolean;
     invite: (entries: IInviteEntry | IInviteEntry[]) => Promise<void>;
     cancelInvitation: (inviteId: string) => Promise<void>;
     resendInvitation: (inviteId: string) => Promise<void>;
+}
+
+interface IUseListPageOptions {
+    pageSize?: number;
 }
 
 interface IUseMemberRolesReturn {
@@ -403,6 +424,9 @@ interface IUseMembersReturn {
     refresh: (opts?: {
         force?: boolean;
     }) => Promise<void>;
+    hasMore: boolean;
+    loadMore: () => Promise<void>;
+    isLoadingMore: boolean;
     removeMember: (userId: string) => Promise<void>;
     setManager: (userId: string) => Promise<void>;
     unsetManager: (userId: string) => Promise<void>;
@@ -425,6 +449,7 @@ interface IUseOwnershipOfferReturn {
 interface IUsePermissionCatalogReturn {
     catalog: IPermissionCatalogEntryDTO[];
     declared: boolean;
+    systemGrants: Record<string, Record<string, PermissionOperation[]>>;
     isLoading: boolean;
     error: FonderieApiError | null;
     refresh: (opts?: {
@@ -521,6 +546,15 @@ interface IUseWorkspaceReturn {
     }) => Promise<void>;
 }
 
+interface IUseWorkspaceSeatsReturn {
+    seats: IWorkspaceSeatsResult | null;
+    isLoading: boolean;
+    error: FonderieApiError | null;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
 interface IUseWorkspaceSettingsReturn {
     settings: IWorkspaceSettingsDTO | null;
     isLoading: boolean;
@@ -549,11 +583,11 @@ function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrent
 
 function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRolesReturn
 
-function useInvitations(client?: WorkspacesClient | undefined): IUseInvitationsReturn
+function useInvitations(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseInvitationsReturn
 
 function useMemberRoles(userId: string): IUseMemberRolesReturn
 
-function useMembers(client?: WorkspacesClient | undefined): IUseMembersReturn
+function useMembers(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseMembersReturn
 
 function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
 
@@ -574,6 +608,8 @@ function useWorkspaceContacts(client?: WorkspacesClient | undefined): IUseWorksp
 function useWorkspaceLocations(client?: WorkspacesClient | undefined): IUseWorkspaceLocationsReturn
 
 function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
+
+function useWorkspaceSeats(client?: WorkspacesClient | undefined): IUseWorkspaceSeatsReturn
 
 function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
 

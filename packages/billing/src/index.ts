@@ -217,8 +217,12 @@ export { describeBillingAdminReads } from './admin-reads';
 export {
 	USER_DELETED_EVENT,
 	USER_PURGED_EVENT,
+	WORKSPACE_ARCHIVED_EVENT,
+	WORKSPACE_RESTORED_EVENT,
 	handleSubscriberDeleted,
 	handleSubscriberPurged,
+	handleWorkspaceArchived,
+	handleWorkspaceRestored,
 } from './services/subscriber-lifecycle';
 export type {
 	ISubscriberDeletedOutcome,

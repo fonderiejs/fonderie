@@ -488,6 +488,30 @@ export interface IWorkspaceResult {
 
 export interface IMemberListResult {
 	members: IMemberDTO[];
+	/** Present when the list was paged (`limit` / `cursor`): the next page's cursor, null on the last. */
+	nextCursor?: string | null;
+}
+
+/** Optional cursor paging for the members and invitations lists. Omit both for the whole list. */
+export interface IListPageInput {
+	/** Rows per page (1–200; default 50 once paging). */
+	limit?: number;
+	/** The `nextCursor` of the previous page. */
+	cursor?: string;
+}
+
+/** GET /workspaces/seats — seats against the plan's limit. */
+export interface IWorkspaceSeatsResult {
+	/** Seats taken: people on the team other than the owner, plus pending invitations (what the limit is checked against). */
+	used: number;
+	/** Of `used`, the people on the team. */
+	members: number;
+	/** Of `used`, the pending invitations (each reserves a seat). */
+	pendingInvites: number;
+	/** The plan's seat limit; null when it sets none (or no billing is installed). */
+	limit: number | null;
+	/** Seats left to invite into; null when there is no limit. */
+	available: number | null;
 }
 
 export interface IRoleListResult {
@@ -500,6 +524,8 @@ export interface IRoleResult {
 
 export interface IInvitationListResult {
 	invitations: IInvitationDTO[];
+	/** Present when the list was paged (`limit` / `cursor`): the next page's cursor, null on the last. */
+	nextCursor?: string | null;
 }
 
 export interface IInviteResult {
@@ -530,6 +556,13 @@ export interface IPermissionCatalogResult {
 	catalog: IPermissionCatalogEntryDTO[];
 	/** False when the app declared no catalog (the list is then empty). */
 	declared: boolean;
+	/**
+	 * What each SYSTEM role (GUEST, ADMIN…) may do by the server's config —
+	 * role name → resource → operations. Never stored as role rows, so show
+	 * these instead of hard-coding them. Empty when none are configured (or
+	 * the server predates them).
+	 */
+	systemGrants?: Record<string, Record<string, PermissionOperation[]>>;
 }
 
 export interface IRoleDeleteResult {

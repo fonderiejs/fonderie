@@ -10,7 +10,7 @@ const ALL_OPERATIONS = Object.values(OPERATIONS) as Operation[];
 
 export class PermissionsEngine {
 	private superRole: string;
-	private systemGrants: Record<string, Record<string, Operation[]>>;
+	private grantsByRole: Record<string, Record<string, Operation[]>>;
 	/** The app's declared resources, or null when it declared none. */
 	readonly catalog: readonly IPermissionCatalogEntry[] | null;
 
@@ -20,12 +20,12 @@ export class PermissionsEngine {
 	) {
 		this.superRole = config.superRole ?? 'owner';
 		this.catalog = config.catalog ? Object.freeze(config.catalog.map((e) => ({ ...e }))) : null;
-		this.systemGrants = config.systemGrants ?? {};
+		this.grantsByRole = config.systemGrants ?? {};
 		// A misspelled resource in systemGrants would grant nothing, silently.
 		// Refuse to start instead — a config mistake, caught at boot.
 		if (this.catalog) {
 			const known = new Set(this.catalog.map((e) => e.key));
-			for (const [role, grants] of Object.entries(this.systemGrants)) {
+			for (const [role, grants] of Object.entries(this.grantsByRole)) {
 				for (const key of Object.keys(grants)) {
 					if (!known.has(key)) {
 						throw new Error(`[permissions] systemGrants.${role}.${key}: '${key}' is not in the catalog`);
@@ -33,6 +33,20 @@ export class PermissionsEngine {
 				}
 			}
 		}
+	}
+
+	/**
+	 * What each SYSTEM role is granted by config (`systemGrants`) — rights that
+	 * are never stored as rows, so a role editor reads them here to show them.
+	 * A copy: changing it changes nothing.
+	 */
+	get systemGrants(): Record<string, Record<string, Operation[]>> {
+		return Object.fromEntries(
+			Object.entries(this.grantsByRole).map(([role, grants]) => [
+				role,
+				Object.fromEntries(Object.entries(grants).map(([key, ops]) => [key, [...ops]])),
+			]),
+		);
 	}
 
 	/** Is this key in the catalog? Always true when the app declared no catalog. */
@@ -51,9 +65,9 @@ export class PermissionsEngine {
 		permissionKey: string,
 		operation: Operation,
 	): Promise<boolean> {
-		if (Object.keys(this.systemGrants).length > 0) {
+		if (Object.keys(this.grantsByRole).length > 0) {
 			const roles = await listSystemRoleNames(userId, workspaceId, this.store);
-			if (roles.some((r) => this.systemGrants[r]?.[permissionKey]?.includes(operation) ?? false)) return true;
+			if (roles.some((r) => this.grantsByRole[r]?.[permissionKey]?.includes(operation) ?? false)) return true;
 		}
 		return checkPermission(userId, workspaceId, permissionKey, operation, this.store);
 	}
@@ -80,11 +94,11 @@ export class PermissionsEngine {
 		}
 
 		const [systemRoles, stored] = await Promise.all([
-			Object.keys(this.systemGrants).length ? listSystemRoleNames(userId, workspaceId, this.store) : Promise.resolve([]),
+			Object.keys(this.grantsByRole).length ? listSystemRoleNames(userId, workspaceId, this.store) : Promise.resolve([]),
 			listGrantedPermissions(userId, workspaceId, this.store),
 		]);
 		for (const role of systemRoles) {
-			for (const [key, ops] of Object.entries(this.systemGrants[role] ?? {})) {
+			for (const [key, ops] of Object.entries(this.grantsByRole[role] ?? {})) {
 				for (const op of ops) entry(key)[op] = true;
 			}
 		}
@@ -119,7 +133,7 @@ export class PermissionsEngine {
 		const a = await readAccess(userId, workspaceId, permissionKey, operation, this.superRole, this.store);
 		if (!a.member) return false;
 		if (a.isSuper) return true;
-		if (a.systemRoles.some((r) => this.systemGrants[r]?.[permissionKey]?.includes(operation) ?? false)) return true;
+		if (a.systemRoles.some((r) => this.grantsByRole[r]?.[permissionKey]?.includes(operation) ?? false)) return true;
 		return a.granted;
 	}
 

@@ -34,6 +34,13 @@ export const USER_DELETED_EVENT = 'fonderie.user.deleted';
 export const USER_PURGED_EVENT = 'fonderie.user.purged';
 export const USER_RESTORED_EVENT = 'fonderie.user.restored';
 
+// From @fonderie/workspaces (its EVENT_KEYS.workspaceArchived / .workspaceRestored),
+// declared here for the same reason. An archived workspace is read-only: its
+// subscription stops at the end of the paid period, and restoring the
+// workspace while that period runs resumes it. Payload: { workspaceId, userId }.
+export const WORKSPACE_ARCHIVED_EVENT = 'fonderie.workspace.archived';
+export const WORKSPACE_RESTORED_EVENT = 'fonderie.workspace.restored';
+
 export type SubscriberDeletedPolicy = 'cancel' | 'cancel-at-period-end' | 'keep';
 
 interface ISubscriberRef {
@@ -61,7 +68,12 @@ export async function handleSubscriberDeleted(
 	store: IStoreAdapter,
 	config: Pick<IBillingConfig, 'provider' | 'onSubscriberDeleted'>,
 	subscriber: ISubscriberRef,
+	// false keeps off-session charging armed (the stored card): an archived
+	// workspace is coming back, a deleted account may not be.
+	opts: { disarm?: boolean } = {},
 ): Promise<ISubscriberDeletedOutcome> {
+	const done = (outcome: ISubscriberDeletedOutcome) =>
+		opts.disarm === false ? Promise.resolve(outcome) : disarmCharging(store, subscriber, outcome);
 	// Default: end at the period's end — the deleted account can no longer use
 	// it, nothing more is charged, and restoring the account resumes it (D7).
 	const policy = config.onSubscriberDeleted ?? 'cancel-at-period-end';
@@ -89,7 +101,7 @@ export async function handleSubscriberDeleted(
 				 RETURNING 1 AS claimed`,
 				[subscriber.type, subscriber.id, current.providerSubscriptionId],
 			);
-			if (claimed.length === 0) return disarmCharging(store, subscriber, outcome);
+			if (claimed.length === 0) return done(outcome);
 		}
 		try {
 			// The provider's webhook confirms the new state and owns the stored
@@ -132,7 +144,7 @@ export async function handleSubscriberDeleted(
 		}
 	}
 
-	return disarmCharging(store, subscriber, outcome);
+	return done(outcome);
 }
 
 async function disarmCharging(
@@ -187,6 +199,41 @@ export async function handleSubscriberRestored(
 		return { resumed: true };
 	}
 	return { resumed: false };
+}
+
+/**
+ * A workspace was archived (fonderie.workspace.archived): its subscription
+ * ends at the period's end — nothing more is charged for a read-only
+ * workspace — unless `onWorkspaceArchived: 'keep'`. Marked the way deletion
+ * marks it, so restoring resumes it and never undoes a cancellation the
+ * owner chose. The stored card is kept: the workspace may well come back.
+ */
+export async function handleWorkspaceArchived(
+	store: IStoreAdapter,
+	config: Pick<IBillingConfig, 'provider' | 'onWorkspaceArchived'>,
+	workspaceId: string,
+): Promise<ISubscriberDeletedOutcome> {
+	if (config.onWorkspaceArchived === 'keep') return { canceled: 'none', chargingDisarmed: false };
+	return handleSubscriberDeleted(
+		store,
+		{ provider: config.provider, onSubscriberDeleted: 'cancel-at-period-end' },
+		{ type: 'workspace', id: workspaceId },
+		{ disarm: false },
+	);
+}
+
+/**
+ * The workspace was restored (fonderie.workspace.restored): resume the
+ * subscription its archiving set to end — while the paid period still runs (a
+ * subscription already canceled at the provider stays canceled; the owner
+ * subscribes again).
+ */
+export async function handleWorkspaceRestored(
+	store: IStoreAdapter,
+	config: Pick<IBillingConfig, 'provider'>,
+	workspaceId: string,
+): Promise<{ resumed: boolean }> {
+	return handleSubscriberRestored(store, config, { type: 'workspace', id: workspaceId });
 }
 
 export async function handleSubscriberPurged(

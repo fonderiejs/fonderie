@@ -1219,7 +1219,7 @@ test('buildWorkspaceRoutes: privileged mutations carry the manager gate, reads d
 	const chainLen = (method: string, path: string) =>
 		routes.find(([m, p]) => m === method && p === path)!.length;
 	// manager-gated mutations carry manager (+ validate) beyond their read siblings
-	assert.equal(chainLen('POST', '/workspaces/roles'), chainLen('GET', '/workspaces/roles') + 3, 'createRole = listRoles + manager + validate + trail');
+	assert.equal(chainLen('POST', '/workspaces/roles'), chainLen('GET', '/workspaces/roles') + 4, 'createRole = listRoles + active (not archived) + manager + validate + trail');
 	assert.ok(chainLen('DELETE', '/workspaces/members/:userId') > chainLen('GET', '/workspaces/members'), 'removeMember gated beyond list');
 	assert.ok(chainLen('PUT', '/workspaces/settings') > chainLen('GET', '/workspaces/settings'), 'updateSettings gated beyond read');
 });

@@ -15,6 +15,8 @@ import type {
 	IRoleDeleteResult,
 	IInviteResult,
 	IMemberListResult,
+	IListPageInput,
+	IWorkspaceSeatsResult,
 	IRoleListResult,
 	IRoleResult,
 	IWorkspaceListResult,
@@ -26,6 +28,15 @@ import type {
 	IWorkspaceLocationResult,
 } from '../types';
 import { WorkspaceScope } from '../workspace-scope';
+
+// ?limit=&cursor= for a paged list read; '' when neither is given (the whole list).
+function pageQuery(opts?: IListPageInput): string {
+	const params = new URLSearchParams();
+	if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
+	if (opts?.cursor) params.set('cursor', opts.cursor);
+	const qs = params.toString();
+	return qs ? `?${qs}` : '';
+}
 
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
@@ -264,7 +275,19 @@ export class WorkspacesClient {
 		});
 	}
 
-	// The resources the app checks — a role editor's switch grid.
+	// Seats against the plan's limit (any member): used / pendingInvites / limit.
+	getSeats(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceSeatsResult>>({
+			method: 'GET',
+			path: '/workspaces/seats',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	// The resources the app checks — a role editor's switch grid — and what
+	// each system role is granted by config (systemGrants).
 	getPermissionCatalog(opts?: IReadOptions) {
 		return this.http.request<IApiResponse<IPermissionCatalogResult>>({
 			method: 'GET',
@@ -409,10 +432,13 @@ export class WorkspacesClient {
 
 	// ── Members ──────────────────────────────────────────────────────────────────
 
-	listMembers(opts?: IReadOptions) {
+	// Whole list by default; pass `limit` (and then each page's `nextCursor` as
+	// `cursor`) to read it a page at a time.
+	listMembers(opts?: IReadOptions & IListPageInput) {
+		const query = pageQuery(opts);
 		return this.http.request<IApiResponse<IMemberListResult>>({
 			method: 'GET',
-			path: '/workspaces/members',
+			path: `/workspaces/members${query}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -552,10 +578,13 @@ export class WorkspacesClient {
 
 	// ── Invitations ──────────────────────────────────────────────────────────────
 
-	listInvitations(opts?: IReadOptions) {
+	// Whole list by default; pass `limit` (and then each page's `nextCursor` as
+	// `cursor`) to read it a page at a time.
+	listInvitations(opts?: IReadOptions & IListPageInput) {
+		const query = pageQuery(opts);
 		return this.http.request<IApiResponse<IInvitationListResult>>({
 			method: 'GET',
-			path: '/workspaces/invitations',
+			path: `/workspaces/invitations${query}`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,

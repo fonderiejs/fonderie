@@ -315,6 +315,16 @@ function requireWorkspace(ctx: IFonderieContext, next: () => Promise<Response>):
 
 function requireManager(store: IStoreAdapter, config: IWorkspacesConfig): Middleware
 
+function requireActiveWorkspace(): Middleware
+
+function isWorkspaceArchived(ctx: IFonderieContext): boolean
+
+const WORKSPACE_ARCHIVED_META_KEY: "fonderie.workspaces.archived"
+
+function countOccupiedSeats(workspaceId: string, store: IStoreAdapter): Promise<number>
+
+function seatUsage(workspaceId: string, store: IStoreAdapter): Promise<{ used: number; members: number; pendingInvites: number; }>
+
 namespace schemas — exports: BUSINESS_TYPES, DOCUMENT_PREFIX_KINDS_MAX, acceptInvitationSchema, addMemberRoleSchema, addWorkspaceEmailSchema, addWorkspacePhoneSchema, createInvitationsSchema, createRoleSchema, createWorkspaceLocationSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceEmailSchema, updateWorkspaceLocationSchema, updateWorkspacePhoneSchema, updateWorkspaceSchema
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>

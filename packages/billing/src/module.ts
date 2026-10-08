@@ -20,6 +20,10 @@ import {
 	USER_DELETED_EVENT,
 	USER_PURGED_EVENT,
 	USER_RESTORED_EVENT,
+	WORKSPACE_ARCHIVED_EVENT,
+	WORKSPACE_RESTORED_EVENT,
+	handleWorkspaceArchived,
+	handleWorkspaceRestored,
 	handleSubscriberDeleted,
 	handleSubscriberPurged,
 	handleSubscriberRestored,
@@ -62,6 +66,22 @@ export class BillingModule implements IFonderieModule {
 				await handleSubscriberPurged(this.store, this.config, { type: 'user', id: userId });
 			},
 			'billing:user-purged',
+		);
+		// Workspace lifecycle, from @fonderie/workspaces: an archived workspace
+		// stops paying at the period's end; restoring it in time resumes it.
+		bus?.on<{ workspaceId: string }>(
+			WORKSPACE_ARCHIVED_EVENT,
+			async ({ workspaceId }) => {
+				await handleWorkspaceArchived(this.store, this.config, workspaceId);
+			},
+			'billing:workspace-archived',
+		);
+		bus?.on<{ workspaceId: string }>(
+			WORKSPACE_RESTORED_EVENT,
+			async ({ workspaceId }) => {
+				await handleWorkspaceRestored(this.store, this.config, workspaceId);
+			},
+			'billing:workspace-restored',
 		);
 	}
 

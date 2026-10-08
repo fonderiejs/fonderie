@@ -143,7 +143,7 @@ export type WorkspaceRouteId =
 	| 'archive' | 'restore' | 'getSettings' | 'updateSettings'
 	| 'listMembers' | 'removeMember' | 'getMemberRoles' | 'addMemberRole' | 'removeMemberRole'
 	| 'listInvitations' | 'invite' | 'cancelInvitation' | 'resendInvitation' | 'acceptInvitation'
-	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
+	| 'getCurrentWorkspace' | 'getMyPermissions' | 'getPermissionCatalog' | 'getSeats' | 'leaveWorkspace' | 'transferOwnership' | 'setManager' | 'unsetManager'
 	| 'releaseBrake'
 	| 'getOwnershipOffer' | 'acceptOwnership' | 'declineOwnership' | 'withdrawOwnershipOffer'
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'

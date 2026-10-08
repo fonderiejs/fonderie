@@ -1,6 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IMember, IRole } from '../types';
+import { encodeCursor, type IPageRequest } from './paging';
 
 const SELECT_MEMBER = `
 	ruw.user_id           AS "userId",
@@ -52,8 +53,49 @@ export async function listMembers(
 	store: IStoreAdapter,
 	managerRoles: string[] = ['ADMIN'],
 ): Promise<IMember[]> {
-	return store.query<IMember>(
+	return (await queryMembers(workspaceId, store, managerRoles, null)).map(({ cursorAt: _c, ...m }) => m);
+}
+
+/**
+ * One page of listMembers, in the same order (joined first; the user id breaks
+ * ties), and the cursor of the next page — null on the last one.
+ */
+export async function listMembersPage(
+	workspaceId: string,
+	store: IStoreAdapter,
+	managerRoles: string[] = ['ADMIN'],
+	page: IPageRequest,
+): Promise<{ members: IMember[]; nextCursor: string | null }> {
+	const rows = await queryMembers(workspaceId, store, managerRoles, page);
+	const more = rows.length > page.limit;
+	const shown = more ? rows.slice(0, page.limit) : rows;
+	const last = shown[shown.length - 1];
+	return {
+		members: shown.map(({ cursorAt: _c, ...m }) => m),
+		nextCursor: more && last ? encodeCursor(last.cursorAt, last.userId) : null,
+	};
+}
+
+async function queryMembers(
+	workspaceId: string,
+	store: IStoreAdapter,
+	managerRoles: string[],
+	page: IPageRequest | null,
+): Promise<Array<IMember & { cursorAt: string }>> {
+	const params: unknown[] = [workspaceId, managerRoles];
+	let having = '';
+	if (page?.after) {
+		params.push(page.after.at, page.after.id);
+		having = `HAVING (min(ruw.created_at), ruw.user_id) > ($3::timestamptz, $4::uuid)`;
+	}
+	let limit = '';
+	if (page) {
+		params.push(page.limit + 1);
+		limit = `LIMIT $${params.length}`;
+	}
+	return store.query<IMember & { cursorAt: string }>(
 		`SELECT
+		   min(ruw.created_at)::text                     AS "cursorAt",
 		   ruw.user_id                                   AS "userId",
 		   ruw.workspace_id                              AS "workspaceId",
 		   (array_agg(ruw.role_id ORDER BY ruw.created_at, r.name))[1] AS "roleId",
@@ -88,8 +130,10 @@ export async function listMembers(
 		   AND u.id IS NOT NULL AND u.deleted_at IS NULL
 		 GROUP BY ruw.user_id, ruw.workspace_id, w.owner_id,
 		          u.first_name, u.last_name, u.email, u.profile_image_url
-		 ORDER BY min(ruw.created_at) ASC`,
-		[workspaceId, managerRoles],
+		 ${having}
+		 ORDER BY min(ruw.created_at) ASC, ruw.user_id ASC
+		 ${limit}`,
+		params,
 	);
 }
 
@@ -102,7 +146,20 @@ export async function listMembers(
  * accepted.
  */
 export async function countOccupiedSeats(workspaceId: string, store: IStoreAdapter): Promise<number> {
-	const [row] = await store.query<{ seats: string }>(
+	const usage = await seatUsage(workspaceId, store);
+	return usage.used;
+}
+
+/**
+ * countOccupiedSeats, broken down: `used` is the number a plan's seat limit is
+ * checked against, `pendingInvites` how many of those seats are reserved by
+ * invitations not yet accepted.
+ */
+export async function seatUsage(
+	workspaceId: string,
+	store: IStoreAdapter,
+): Promise<{ used: number; members: number; pendingInvites: number }> {
+	const [row] = await store.query<{ members: string; invites: string }>(
 		`WITH members AS (
 		   SELECT DISTINCT ruw.user_id, lower(u.email) AS email
 		   FROM fonderie_role_user_workspaces ruw
@@ -118,18 +175,20 @@ export async function countOccupiedSeats(workspaceId: string, store: IStoreAdapt
 		   FROM fonderie_workspaces w JOIN fonderie_users u ON u.id = w.owner_id
 		   WHERE w.id = $1
 		 )
-		 SELECT (SELECT COUNT(*) FROM members)
-		      + (SELECT COUNT(DISTINCT lower(i.email))
+		 SELECT (SELECT COUNT(*) FROM members) AS members,
+		        (SELECT COUNT(DISTINCT lower(i.email))
 		         FROM fonderie_workspace_invitations i
 		         WHERE i.workspace_id = $1
 		           AND i.status       = 'PENDING'
 		           AND i.expires_at   > now()
 		           AND lower(i.email) NOT IN (SELECT email FROM members WHERE email IS NOT NULL)
 		           AND lower(i.email) NOT IN (SELECT email FROM owner WHERE email IS NOT NULL)
-		        ) AS seats`,
+		        ) AS invites`,
 		[workspaceId],
 	);
-	return parseInt(row?.seats ?? '0', 10);
+	const members = parseInt(row?.members ?? '0', 10);
+	const pendingInvites = parseInt(row?.invites ?? '0', 10);
+	return { used: members + pendingInvites, members, pendingInvites };
 }
 
 /**

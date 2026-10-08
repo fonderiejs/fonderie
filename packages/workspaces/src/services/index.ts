@@ -7,6 +7,8 @@ export {
 	addRoleToMember,
 	removeRoleFromMember,
 	countOccupiedSeats,
+	seatUsage,
+	listMembersPage,
 	setManager,
 	transferOwnership,
 } from './members';
@@ -32,6 +34,7 @@ export type { IRoleDeleteResult } from './roles';
 export {
 	createInvitation,
 	listInvitations,
+	listInvitationsPage,
 	cancelInvitation,
 	resendInvitation,
 	acceptInvitationByPin,

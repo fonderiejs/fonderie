@@ -690,7 +690,9 @@
         "PAYMENT_WEBHOOK_EVENTS",
         "ALL_WEBHOOK_EVENTS",
         "USER_DELETED_EVENT",
-        "USER_PURGED_EVENT"
+        "USER_PURGED_EVENT",
+        "WORKSPACE_ARCHIVED_EVENT",
+        "WORKSPACE_RESTORED_EVENT"
       ],
       "subpaths": [
         "@fonderie/billing/types",
@@ -2368,6 +2370,7 @@
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useWorkspaceSeats",
         "useCan",
         "usePermissionCatalog",
         "usePermissions",
@@ -3002,6 +3005,7 @@
         "useInvitations",
         "useMemberRoles",
         "useMembers",
+        "useWorkspaceSeats",
         "useCan",
         "usePermissionCatalog",
         "usePermissions",
@@ -3149,6 +3153,7 @@
         "EVENT_KEYS",
         "DEFAULT_TEMPLATES",
         "CONTACT_LIMITS",
+        "WORKSPACE_ARCHIVED_META_KEY",
         "ROLE_BIN_RETENTION_DAYS",
         "VELOCITY_BRAKE_DEFAULTS",
         "OWNER_ALERT_EVENTS"
@@ -3172,7 +3177,7 @@
         "fonderie_workspace_phones",
         "fonderie_workspaces"
       ],
-      "routeCount": 51,
+      "routeCount": 52,
       "routes": [
         {
           "method": "GET",
@@ -3187,7 +3192,7 @@
         {
           "method": "PUT",
           "path": "/workspaces",
-          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update"
         },
         {
           "method": "GET",
@@ -3197,7 +3202,7 @@
         {
           "method": "POST",
           "path": "/workspaces/archive",
-          "mw": "requireAuth → wsCtx → owner → T(K.workspaceArchived) → workspace.archive"
+          "mw": "requireAuth → wsCtx → active → owner → T(K.workspaceArchived) → workspace.archive"
         },
         {
           "method": "GET",
@@ -3217,17 +3222,17 @@
         {
           "method": "POST",
           "path": "/workspaces/emails",
-          "mw": "requireAuth → wsCtx → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail"
+          "mw": "requireAuth → wsCtx → active → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/emails/:emailId",
-          "mw": "requireAuth → wsCtx → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail"
         },
         {
           "method": "PATCH",
           "path": "/workspaces/emails/:emailId",
-          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail"
         },
         {
           "method": "GET",
@@ -3237,17 +3242,17 @@
         {
           "method": "POST",
           "path": "/workspaces/invitations",
-          "mw": "requireAuth → wsCtx → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite"
+          "mw": "requireAuth → wsCtx → active → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/invitations/:inviteId",
-          "mw": "requireAuth → wsCtx → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel"
+          "mw": "requireAuth → wsCtx → active → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel"
         },
         {
           "method": "POST",
           "path": "/workspaces/invitations/:inviteId/resend",
-          "mw": "requireAuth → wsCtx → manager → T(K.invitationResent, inviteOf) → invitation.resend"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.invitationResent, inviteOf) → invitation.resend"
         },
         {
           "method": "POST",
@@ -3262,22 +3267,22 @@
         {
           "method": "POST",
           "path": "/workspaces/locations",
-          "mw": "requireAuth → wsCtx → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation"
+          "mw": "requireAuth → wsCtx → active → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation"
         },
         {
           "method": "PATCH",
           "path": "/workspaces/locations/:locationId",
-          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation"
         },
         {
           "method": "POST",
           "path": "/workspaces/locations/:locationId/archive",
-          "mw": "requireAuth → wsCtx → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation"
         },
         {
           "method": "POST",
           "path": "/workspaces/locations/:locationId/restore",
-          "mw": "requireAuth → wsCtx → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation"
         },
         {
           "method": "GET",
@@ -3287,22 +3292,22 @@
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId",
-          "mw": "requireAuth → wsCtx → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove"
+          "mw": "requireAuth → wsCtx → active → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId/brake",
-          "mw": "requireAuth → wsCtx → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }"
+          "mw": "requireAuth → wsCtx → active → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId/manager",
-          "mw": "requireAuth → wsCtx → owner → T(K.managerUnset, target) → member.unsetManager"
+          "mw": "requireAuth → wsCtx → active → owner → T(K.managerUnset, target) → member.unsetManager"
         },
         {
           "method": "POST",
           "path": "/workspaces/members/:userId/manager",
-          "mw": "requireAuth → wsCtx → owner → T(K.managerSet, target) → member.setManager"
+          "mw": "requireAuth → wsCtx → active → owner → T(K.managerSet, target) → member.setManager"
         },
         {
           "method": "GET",
@@ -3312,12 +3317,12 @@
         {
           "method": "POST",
           "path": "/workspaces/members/:userId/roles",
-          "mw": "requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole"
+          "mw": "requireAuth → wsCtx → active → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/members/:userId/roles/:roleId",
-          "mw": "requireAuth → wsCtx → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole"
         },
         {
           "method": "GET",
@@ -3327,22 +3332,22 @@
         {
           "method": "POST",
           "path": "/workspaces/phones",
-          "mw": "requireAuth → wsCtx → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone"
+          "mw": "requireAuth → wsCtx → active → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/phones/:phoneId",
-          "mw": "requireAuth → wsCtx → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone"
         },
         {
           "method": "PATCH",
           "path": "/workspaces/phones/:phoneId",
-          "mw": "requireAuth → wsCtx → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone"
         },
         {
           "method": "POST",
           "path": "/workspaces/restore",
-          "mw": "requireAuth → wsCtx → manager → T(K.workspaceRestored) → workspace.restore"
+          "mw": "requireAuth → wsCtx → owner → T(K.workspaceRestored) → workspace.restore"
         },
         {
           "method": "GET",
@@ -3352,12 +3357,12 @@
         {
           "method": "POST",
           "path": "/workspaces/roles",
-          "mw": "requireAuth → wsCtx → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create"
+          "mw": "requireAuth → wsCtx → active → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create"
         },
         {
           "method": "DELETE",
           "path": "/workspaces/roles/:roleId",
-          "mw": "requireAuth → wsCtx → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove"
+          "mw": "requireAuth → wsCtx → active → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove"
         },
         {
           "method": "GET",
@@ -3367,7 +3372,7 @@
         {
           "method": "PUT",
           "path": "/workspaces/roles/:roleId",
-          "mw": "requireAuth → wsCtx → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update"
         },
         {
           "method": "GET",
@@ -3377,7 +3382,7 @@
         {
           "method": "POST",
           "path": "/workspaces/roles/:roleId/permissions",
-          "mw": "requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions"
+          "mw": "requireAuth → wsCtx → active → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions"
         },
         {
           "method": "GET",
@@ -3387,12 +3392,17 @@
         {
           "method": "DELETE",
           "path": "/workspaces/roles/bin/:roleId",
-          "mw": "requireAuth → wsCtx → owner → T(K.roleBinPurged, roleOf) → role.purge"
+          "mw": "requireAuth → wsCtx → active → owner → T(K.roleBinPurged, roleOf) → role.purge"
         },
         {
           "method": "POST",
           "path": "/workspaces/roles/bin/:roleId/restore",
-          "mw": "requireAuth → wsCtx → manager → T(K.roleRestored, roleOf) → role.restore"
+          "mw": "requireAuth → wsCtx → active → manager → T(K.roleRestored, roleOf) → role.restore"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/seats",
+          "mw": "requireAuth → wsCtx → member.seats"
         },
         {
           "method": "GET",
@@ -3402,7 +3412,7 @@
         {
           "method": "PUT",
           "path": "/workspaces/settings",
-          "mw": "requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings"
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings"
         },
         {
           "method": "DELETE",
@@ -5829,6 +5839,12 @@
     "user_purged_event": [
       "billing"
     ],
+    "workspace_archived_event": [
+      "billing"
+    ],
+    "workspace_restored_event": [
+      "billing"
+    ],
     "fonderieclient": [
       "client"
     ],
@@ -6661,6 +6677,10 @@
       "react-workspaces",
       "vue-workspaces"
     ],
+    "useworkspaceseats": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
     "usecan": [
       "react-workspaces",
       "vue-workspaces"
@@ -6758,6 +6778,9 @@
       "workspaces"
     ],
     "contact_limits": [
+      "workspaces"
+    ],
+    "workspace_archived_meta_key": [
       "workspaces"
     ],
     "role_bin_retention_days": [
