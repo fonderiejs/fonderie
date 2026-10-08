@@ -113,5 +113,5 @@ trail (I1).
 | # | Question | Decision |
 |---|---|---|
 | I1 | Who reads the trail? | `AuditModule(store, { permission: 'audit' })` (Phase 6): reading needs `read` on it; unset keeps any-member reads. Apps should set it and grant it to managers. |
-| I2 | Archive by a manager | **Owner only.** Archiving locks every member out; it is the single most damaging call a manager had. Restore stays a manager action. |
+| I2 | Archive by a manager | **Owner only.** Archiving locks every member out; it is the single most damaging call a manager had. Restore is owner-only too (workspaces 8.0): an archived workspace is read-only until its owner restores it. |
 | I3 | Payload content | Ids only. The audit view resolves names at read time, so an erased person shows as an id, as the deletion design requires. |

@@ -226,6 +226,8 @@ export type {
 	IRoleDeleteResult,
 	PermissionOperation,
 	IMemberListResult,
+	IListPageInput,
+	IWorkspaceSeatsResult,
 	IMeResult,
 	IMfaEnabledResult,
 	IMfaRequiredResult,

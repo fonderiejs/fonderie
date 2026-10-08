@@ -189,50 +189,51 @@ INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_regio
 |---|---|---|
 | GET | `/workspaces` | `requireAuth → workspace.list` |
 | POST | `/workspaces` | `requireAuth → validate(createWorkspaceSchema) → T(K.workspaceCreated, () => ({}), (r) => (r?.['workspace'] as { id?: string } | undefined)?.id) → workspace.create` |
-| PUT | `/workspaces` | `requireAuth → wsCtx → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update` |
+| PUT | `/workspaces` | `requireAuth → wsCtx → active → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
-| POST | `/workspaces/archive` | `requireAuth → wsCtx → owner → T(K.workspaceArchived) → workspace.archive` |
+| POST | `/workspaces/archive` | `requireAuth → wsCtx → active → owner → T(K.workspaceArchived) → workspace.archive` |
 | GET | `/workspaces/contacts` | `requireAuth → wsCtx → contacts.list` |
 | GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
 | GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |
-| POST | `/workspaces/emails` | `requireAuth → wsCtx → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail` |
-| DELETE | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail` |
-| PATCH | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail` |
+| POST | `/workspaces/emails` | `requireAuth → wsCtx → active → manager → validate(addWorkspaceEmailSchema) → T(K.emailAdded, contactOf('email')) → contacts.addEmail` |
+| DELETE | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → active → manager → T(K.emailRemoved, contactOf('email')) → contacts.removeEmail` |
+| PATCH | `/workspaces/emails/:emailId` | `requireAuth → wsCtx → active → manager → validate(updateWorkspaceEmailSchema) → T(K.emailUpdated, contactOf('email')) → contacts.updateEmail` |
 | GET | `/workspaces/invitations` | `requireAuth → wsCtx → invitation.list` |
-| POST | `/workspaces/invitations` | `requireAuth → wsCtx → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite` |
-| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
-| POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → manager → T(K.invitationResent, inviteOf) → invitation.resend` |
+| POST | `/workspaces/invitations` | `requireAuth → wsCtx → active → manager → validate(createInvitationsSchema) → T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })) → invitation.invite` |
+| DELETE | `/workspaces/invitations/:inviteId` | `requireAuth → wsCtx → active → manager → brake('invitation.cancel') → T(K.invitationCancelled, inviteOf) → invitation.cancel` |
+| POST | `/workspaces/invitations/:inviteId/resend` | `requireAuth → wsCtx → active → manager → T(K.invitationResent, inviteOf) → invitation.resend` |
 | POST | `/workspaces/invitations/accept` | `acceptLimit → requireAuth → validate(acceptInvitationSchema) → T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined) → invitation.accept` |
 | POST | `/workspaces/leave` | `requireAuth → wsCtx → T(K.memberLeft) → member.leave` |
-| POST | `/workspaces/locations` | `requireAuth → wsCtx → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation` |
-| PATCH | `/workspaces/locations/:locationId` | `requireAuth → wsCtx → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation` |
-| POST | `/workspaces/locations/:locationId/archive` | `requireAuth → wsCtx → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation` |
-| POST | `/workspaces/locations/:locationId/restore` | `requireAuth → wsCtx → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation` |
+| POST | `/workspaces/locations` | `requireAuth → wsCtx → active → manager → validate(createWorkspaceLocationSchema) → T(K.locationCreated, contactOf('location')) → contacts.createLocation` |
+| PATCH | `/workspaces/locations/:locationId` | `requireAuth → wsCtx → active → manager → validate(updateWorkspaceLocationSchema) → T(K.locationUpdated, contactOf('location')) → contacts.updateLocation` |
+| POST | `/workspaces/locations/:locationId/archive` | `requireAuth → wsCtx → active → manager → T(K.locationArchived, contactOf('location')) → contacts.archiveLocation` |
+| POST | `/workspaces/locations/:locationId/restore` | `requireAuth → wsCtx → active → manager → T(K.locationRestored, contactOf('location')) → contacts.restoreLocation` |
 | GET | `/workspaces/members` | `requireAuth → wsCtx → member.list` |
-| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove` |
-| DELETE | `/workspaces/members/:userId/brake` | `requireAuth → wsCtx → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }` |
-| DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerUnset, target) → member.unsetManager` |
-| POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → owner → T(K.managerSet, target) → member.setManager` |
+| DELETE | `/workspaces/members/:userId` | `requireAuth → wsCtx → active → manager → brake('member.remove') → T(K.memberRemoved, target) → member.remove` |
+| DELETE | `/workspaces/members/:userId/brake` | `requireAuth → wsCtx → active → owner → T(K.managerReleased, target) → async (ctx) => { const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? ''; return (await releaseBrake(store, ctx.workspace!.id, userId)) ? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.') : setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.'); }` |
+| DELETE | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → active → owner → T(K.managerUnset, target) → member.unsetManager` |
+| POST | `/workspaces/members/:userId/manager` | `requireAuth → wsCtx → active → owner → T(K.managerSet, target) → member.setManager` |
 | GET | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → member.getUserRoles` |
-| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole` |
-| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole` |
+| POST | `/workspaces/members/:userId/roles` | `requireAuth → wsCtx → active → manager → validate(addMemberRoleSchema) → T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })) → member.addRole` |
+| DELETE | `/workspaces/members/:userId/roles/:roleId` | `requireAuth → wsCtx → active → manager → T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })) → member.removeRole` |
 | GET | `/workspaces/permissions/catalog` | `requireAuth → wsCtx → access.catalog` |
-| POST | `/workspaces/phones` | `requireAuth → wsCtx → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone` |
-| DELETE | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone` |
-| PATCH | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone` |
-| POST | `/workspaces/restore` | `requireAuth → wsCtx → manager → T(K.workspaceRestored) → workspace.restore` |
+| POST | `/workspaces/phones` | `requireAuth → wsCtx → active → manager → validate(addWorkspacePhoneSchema) → T(K.phoneAdded, contactOf('phone')) → contacts.addPhone` |
+| DELETE | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → active → manager → T(K.phoneRemoved, contactOf('phone')) → contacts.removePhone` |
+| PATCH | `/workspaces/phones/:phoneId` | `requireAuth → wsCtx → active → manager → validate(updateWorkspacePhoneSchema) → T(K.phoneUpdated, contactOf('phone')) → contacts.updatePhone` |
+| POST | `/workspaces/restore` | `requireAuth → wsCtx → owner → T(K.workspaceRestored) → workspace.restore` |
 | GET | `/workspaces/roles` | `requireAuth → wsCtx → role.list` |
-| POST | `/workspaces/roles` | `requireAuth → wsCtx → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create` |
-| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove` |
+| POST | `/workspaces/roles` | `requireAuth → wsCtx → active → manager → validate(createRoleSchema) → T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })) → role.create` |
+| DELETE | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → active → manager → brake('role.delete') → T(K.roleDeleted, roleOf) → role.remove` |
 | GET | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → role.get` |
-| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update` |
+| PUT | `/workspaces/roles/:roleId` | `requireAuth → wsCtx → active → manager → validate(updateRoleSchema) → T(K.roleUpdated, roleOf) → role.update` |
 | GET | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → role.getPermissions` |
-| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions` |
+| POST | `/workspaces/roles/:roleId/permissions` | `requireAuth → wsCtx → active → manager → validate(setRolePermissionsSchema) → T(K.rolePermissionsSet, roleOf) → role.setPermissions` |
 | GET | `/workspaces/roles/bin` | `requireAuth → wsCtx → manager → role.listBin` |
-| DELETE | `/workspaces/roles/bin/:roleId` | `requireAuth → wsCtx → owner → T(K.roleBinPurged, roleOf) → role.purge` |
-| POST | `/workspaces/roles/bin/:roleId/restore` | `requireAuth → wsCtx → manager → T(K.roleRestored, roleOf) → role.restore` |
+| DELETE | `/workspaces/roles/bin/:roleId` | `requireAuth → wsCtx → active → owner → T(K.roleBinPurged, roleOf) → role.purge` |
+| POST | `/workspaces/roles/bin/:roleId/restore` | `requireAuth → wsCtx → active → manager → T(K.roleRestored, roleOf) → role.restore` |
+| GET | `/workspaces/seats` | `requireAuth → wsCtx → member.seats` |
 | GET | `/workspaces/settings` | `requireAuth → wsCtx → workspace.getSettings` |
-| PUT | `/workspaces/settings` | `requireAuth → wsCtx → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings` |
+| PUT | `/workspaces/settings` | `requireAuth → wsCtx → active → manager → validate(updateSettingsSchema) → T(K.settingsUpdated) → workspace.updateSettings` |
 | DELETE | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → T(K.ownershipWithdrawn) → member.withdrawOwnershipOffer` |
 | GET | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → member.getOwnershipOffer` |
 | POST | `/workspaces/transfer-ownership` | `requireAuth → wsCtx → owner → stepUp → validate(transferOwnershipSchema) → T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })) → member.transferOwnership` |

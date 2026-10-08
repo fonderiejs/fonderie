@@ -5,12 +5,16 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { findWorkspaceAccess, findPersonalWorkspace } from '../services/workspaces';
 import { rememberAccess } from './access-snapshot';
+import { WORKSPACE_ARCHIVED_META_KEY } from './require-active-workspace';
 
 // Resolves ctx.workspace from:
 //   1. Route param :workspaceId or :id (path-based admin routes)
 //   2. X-Workspace-ID request header (standard resource routes)
 // Validates the current user is an active member.
 // Must run after withSession.
+//
+// Also says whether that workspace is archived (read-only), on
+// ctx.meta['fonderie.workspaces.archived'], for any brick to honour by shape.
 
 function makeHandler(store: IStoreAdapter): Middleware {
 	return async (ctx, next) => {
@@ -26,7 +30,10 @@ function makeHandler(store: IStoreAdapter): Middleware {
 			// No membership check needed: the user is always the sole owner.
 			if (ctx.user) {
 				const personal = await findPersonalWorkspace(ctx.user.id, store);
-				if (personal) Object.assign(ctx, { workspace: personal });
+				if (personal) {
+					Object.assign(ctx, { workspace: personal });
+					ctx.meta[WORKSPACE_ARCHIVED_META_KEY] = personal.archivedAt !== null && personal.archivedAt !== undefined;
+				}
 			}
 			return next();
 		}
@@ -47,6 +54,7 @@ function makeHandler(store: IStoreAdapter): Middleware {
 		}
 
 		Object.assign(ctx, { workspace });
+		ctx.meta[WORKSPACE_ARCHIVED_META_KEY] = workspace.archivedAt !== null && workspace.archivedAt !== undefined;
 		return next();
 	};
 }

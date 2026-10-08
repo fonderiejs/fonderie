@@ -12,6 +12,9 @@ import {
 	offerOwnership,
 	type IOwnershipOffer,
 } from '../services/ownership-offers';
+import { listMembersPage, seatUsage } from '../services/members';
+import { PageRequestError, pageRequestOf } from '../services/paging';
+import { seatLimitFromMeta } from '../services/seats';
 
 const toOfferDTO = (o: IOwnershipOffer) => ({
 	workspaceId: o.workspaceId,
@@ -35,9 +38,41 @@ export function memberController(store: IStoreAdapter, config: IWorkspacesConfig
 		async list(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
+			// ?limit=&cursor= pages the list; without them it comes whole, as before.
+			let page: ReturnType<typeof pageRequestOf>;
+			try {
+				page = pageRequestOf(ctx.request.url);
+			} catch (err) {
+				if (err instanceof PageRequestError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', err.message);
+				throw err;
+			}
+			if (page) {
+				const { members: rows, nextCursor } = await listMembersPage(ctx.workspace.id, store, managerRoles, page);
+				return setApiResponse(HTTP.OK, 'MEMBERS_FETCHED', 'Members retrieved successfully.', {
+					members: rows.map(toMemberDTO),
+					nextCursor,
+				});
+			}
 			const list = await members.list(ctx.workspace.id, managerRoles);
 			return setApiResponse(HTTP.OK, 'MEMBERS_FETCHED', 'Members retrieved successfully.', {
 				members: list.map(toMemberDTO),
+			});
+		},
+
+		// Seats against the plan, for any member: `used` is what the plan's limit
+		// is checked against when inviting (people on the team other than the
+		// owner, plus pending invitations); `limit` is null when the plan sets
+		// none (or no billing is installed).
+		async seats(ctx: IFonderieContext): Promise<Response> {
+			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
+			const usage = await seatUsage(ctx.workspace.id, store);
+			const limit = seatLimitFromMeta(ctx);
+			return setApiResponse(HTTP.OK, 'SEATS_FETCHED', 'Seats retrieved successfully.', {
+				used: usage.used,
+				members: usage.members,
+				pendingInvites: usage.pendingInvites,
+				limit,
+				available: limit === null ? null : Math.max(0, limit - usage.used),
 			});
 		},
 

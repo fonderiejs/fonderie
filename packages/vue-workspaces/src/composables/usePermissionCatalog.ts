@@ -1,4 +1,4 @@
-import type { FonderieApiError, IPermissionCatalogEntryDTO, WorkspacesClient } from '@fonderie/client';
+import type { FonderieApiError, IPermissionCatalogEntryDTO, PermissionOperation, WorkspacesClient } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery } from '@fonderie/vue';
 import type { ComputedRef, Ref } from 'vue';
 import { computed } from 'vue';
@@ -8,12 +8,15 @@ export interface IUsePermissionCatalogReturn {
 	catalog: ComputedRef<IPermissionCatalogEntryDTO[]>;
 	/** False when the app declared no catalog. */
 	declared: ComputedRef<boolean>;
+	/** What each system role (GUEST, ADMIN…) may do by server config: role → resource → operations. Show these; never hard-code them. */
+	systemGrants: ComputedRef<Record<string, Record<string, PermissionOperation[]>>>;
 	isLoading: Ref<boolean>;
 	error: Ref<FonderieApiError | null>;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
 }
 
 const NONE: IPermissionCatalogEntryDTO[] = [];
+const NO_GRANTS: Record<string, Record<string, PermissionOperation[]>> = {};
 
 // Build a role editor's switches from this, never from a list in the screen:
 // a switch the server never checks tells an owner they restricted something
@@ -26,6 +29,7 @@ export function usePermissionCatalog(client?: WorkspacesClient): IUsePermissionC
 	return {
 		catalog: computed(() => q.data.value?.catalog ?? NONE),
 		declared: computed(() => q.data.value?.declared ?? false),
+		systemGrants: computed(() => q.data.value?.systemGrants ?? NO_GRANTS),
 		isLoading: q.isLoading,
 		error: q.error,
 		refresh: q.refresh,

@@ -15,6 +15,8 @@ export interface IPermissionCatalogEntryLike {
 
 export interface IPermissionsEngineLike {
 	readonly catalog: readonly IPermissionCatalogEntryLike[] | null;
+	/** What each SYSTEM role is granted by config (@fonderie/permissions 5.2+); absent on older versions. */
+	readonly systemGrants?: Readonly<Record<string, Readonly<Record<string, readonly Operation[]>>>>;
 	isKnown(permissionKey: string): boolean;
 	operationsOf(permissionKey: string): Operation[];
 	effective(

@@ -13,22 +13,11 @@ import { emailKey as accountKey } from '../services/email-key';
 import type { InvitationAccountMatch } from '../services/invitations';
 import { MemberModel } from '../models/member.model';
 import { toInvitationDTO } from '../dtos/workspace';
+import { seatLimitFromMeta } from '../services/seats';
+import { PageRequestError, pageRequestOf } from '../services/paging';
+import { listInvitationsPage } from '../services/invitations';
 
-// Seat limits are OPTIONAL and owned by @fonderie/billing. Per Fonderie's
-// architecture law (packages talk only through ctx.meta — no sibling imports),
-// we read billing's cached context directly instead of importing its code, so
-// workspaces has no build- or runtime-dependency on billing. Billing registered
-// → it caches an IBillingContext on ctx.meta['billing'] and seats are enforced;
-// billing absent → fail open (no limit), which is the intended default.
-function seatLimitFromMeta(ctx: IFonderieContext): number | null {
-	const billing = ctx.meta['billing'] as
-		| { statuses?: Record<string, { type?: string; limit?: number }> }
-		| undefined;
-	const status = billing?.statuses?.['seats'];
-	if (!status || status.type === 'feature' || typeof status.limit !== 'number') return null;
-	return status.limit;
-}
-
+// Seat limits: see services/seats.ts (read from billing's ctx.meta, by shape).
 const seatKey = (email: string): string => accountKey(email) ?? email.trim().toLowerCase();
 
 export interface IInvitationControllerOptions {
@@ -95,6 +84,21 @@ export function invitationController(
 		async list(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
+			// ?limit=&cursor= pages the list; without them it comes whole, as before.
+			let page: ReturnType<typeof pageRequestOf>;
+			try {
+				page = pageRequestOf(ctx.request.url);
+			} catch (err) {
+				if (err instanceof PageRequestError) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', err.message);
+				throw err;
+			}
+			if (page) {
+				const { invitations: rows, nextCursor } = await listInvitationsPage(ctx.workspace.id, store, page);
+				return setApiResponse(HTTP.OK, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
+					invitations: rows.map(toInvitationDTO),
+					nextCursor,
+				});
+			}
 			const list = await invitations.list(ctx.workspace.id);
 			return setApiResponse(HTTP.OK, 'INVITATIONS_FETCHED', 'Invitations retrieved successfully.', {
 				invitations: list.map(toInvitationDTO),

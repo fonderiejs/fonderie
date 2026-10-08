@@ -87,6 +87,7 @@ const DEFAULT_TEMPLATES: { "billing.limit-warning": IDefaultTemplate; "billing.l
 interface IBillingConfig {
     provider: IBillingProvider;
     onSubscriberDeleted?: 'cancel' | 'cancel-at-period-end' | 'keep';
+    onWorkspaceArchived?: 'cancel-at-period-end' | 'keep';
     plans: IBillingPlan[];
     successUrl: string;
     cancelUrl: string;
@@ -929,9 +930,17 @@ const USER_DELETED_EVENT: "fonderie.user.deleted"
 
 const USER_PURGED_EVENT: "fonderie.user.purged"
 
-function handleSubscriberDeleted(store: IStoreAdapter, config: Pick<IBillingConfig, "provider" | "onSubscriberDeleted">, subscriber: ISubscriberRef): Promise<...>
+const WORKSPACE_ARCHIVED_EVENT: "fonderie.workspace.archived"
+
+const WORKSPACE_RESTORED_EVENT: "fonderie.workspace.restored"
+
+function handleSubscriberDeleted(store: IStoreAdapter, config: Pick<IBillingConfig, "provider" | "onSubscriberDeleted">, subscriber: ISubscriberRef, opts?: { ...; }): Promise<...>
 
 function handleSubscriberPurged(store: IStoreAdapter, config: Pick<IBillingConfig, "provider">, subscriber: ISubscriberRef): Promise<{ customersDeleted: number; }>
+
+function handleWorkspaceArchived(store: IStoreAdapter, config: Pick<IBillingConfig, "provider" | "onWorkspaceArchived">, workspaceId: string): Promise<ISubscriberDeletedOutcome>
+
+function handleWorkspaceRestored(store: IStoreAdapter, config: Pick<IBillingConfig, "provider">, workspaceId: string): Promise<{ resumed: boolean; }>
 
 interface ISubscriberDeletedOutcome {
     canceled: 'now' | 'at-period-end' | 'none';

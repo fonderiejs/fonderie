@@ -58,6 +58,7 @@ new PermissionsModule(store: IStoreAdapter, config?: IPermissionsConfig): Permis
 
 new PermissionsEngine(store: IStoreAdapter, config?: IPermissionsConfig): PermissionsEngine
   .catalog: readonly IPermissionCatalogEntry[] | null
+  .systemGrants: Record<string, Record<string, Operation[]>>
   .isKnown(permissionKey: string): boolean
   .operationsOf(permissionKey: string): Operation[]
   .effective(userId: string, workspaceId: string): Promise<IEffectivePermissions | null>

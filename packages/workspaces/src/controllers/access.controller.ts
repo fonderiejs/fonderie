@@ -1,5 +1,5 @@
 import { setApiResponse, HTTP } from '@fonderie/core';
-import type { IFonderieContext } from '@fonderie/core';
+import type { IFonderieContext, Operation } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IWorkspacesConfig } from '../config';
@@ -20,9 +20,19 @@ export function accessController(store: IStoreAdapter, config: IWorkspacesConfig
 				label: e.label ?? e.key,
 				description: e.description ?? '',
 			}));
+			// What each system role (GUEST, ADMIN…) may do by CONFIG — those rights
+			// are never stored as rows, so without this a role editor could not
+			// show them and apps hard-coded them.
+			const systemGrants: Record<string, Record<string, Operation[]>> = {};
+			for (const [roleName, grants] of Object.entries(engine?.systemGrants ?? {})) {
+				systemGrants[roleName] = Object.fromEntries(
+					Object.entries(grants ?? {}).map(([key, ops]) => [key, [...(ops ?? [])]]),
+				);
+			}
 			return setApiResponse(HTTP.OK, 'PERMISSION_CATALOG_FETCHED', 'Permission catalog retrieved.', {
 				catalog,
 				declared: !!engine?.catalog,
+				systemGrants,
 			});
 		},
 

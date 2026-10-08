@@ -4,6 +4,7 @@ import { sameEmail } from './email-key';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IInvitation } from '../types';
+import { encodeCursor, type IPageRequest } from './paging';
 
 function generateToken(): string {
 	return randomBytes(32).toString('hex');
@@ -84,9 +85,42 @@ export async function listInvitations(
 		`SELECT ${SELECT_INV}
 		 FROM fonderie_workspace_invitations
 		 WHERE workspace_id = $1 AND status = 'PENDING'
-		 ORDER BY created_at DESC`,
+		 ORDER BY created_at DESC, id DESC`,
 		[workspaceId],
 	);
+}
+
+/**
+ * One page of listInvitations, in the same order (newest first; the id breaks
+ * ties), and the cursor of the next page — null on the last one.
+ */
+export async function listInvitationsPage(
+	workspaceId: string,
+	store: IStoreAdapter,
+	page: IPageRequest,
+): Promise<{ invitations: IInvitation[]; nextCursor: string | null }> {
+	const params: unknown[] = [workspaceId];
+	let after = '';
+	if (page.after) {
+		params.push(page.after.at, page.after.id);
+		after = `AND (created_at, id) < ($2::timestamptz, $3::uuid)`;
+	}
+	params.push(page.limit + 1);
+	const rows = await store.query<IInvitation & { cursorAt: string }>(
+		`SELECT ${SELECT_INV}, created_at::text AS "cursorAt"
+		 FROM fonderie_workspace_invitations
+		 WHERE workspace_id = $1 AND status = 'PENDING' ${after}
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT $${params.length}`,
+		params,
+	);
+	const more = rows.length > page.limit;
+	const shown = more ? rows.slice(0, page.limit) : rows;
+	const last = shown[shown.length - 1];
+	return {
+		invitations: shown.map(({ cursorAt: _c, ...i }) => i),
+		nextCursor: more && last ? encodeCursor(last.cursorAt, last.id) : null,
+	};
 }
 
 /**
@@ -138,7 +172,8 @@ export class InvitationError extends Error {
 			| 'INVITATION_ALREADY_USED'
 			| 'INVITATION_REVOKED'
 			| 'INVITATION_EMAIL_MISMATCH'
-			| 'INVITATION_ROLE_UNAVAILABLE',
+			| 'INVITATION_ROLE_UNAVAILABLE'
+			| 'WORKSPACE_ARCHIVED',
 		readonly status: 403 | 404 | 409 | 410,
 		message: string,
 		readonly details?: Record<string, string>,
@@ -171,9 +206,12 @@ async function redeem(
 		// statement: still pending, not expired, and the credential is still the
 		// one presented (a resend replaces it). It returns the role to grant —
 		// never the one read before.
+		// An archived workspace is read-only: nobody joins it until it is restored.
 		const [claimed] = await tx.query<{ workspaceId: string; roleId: string }>(
 			`UPDATE fonderie_workspace_invitations SET status = 'ACCEPTED'
 			 WHERE id = $1 AND status = 'PENDING' AND expires_at > now()
+			   AND NOT EXISTS (SELECT 1 FROM fonderie_workspaces w
+			                    WHERE w.id = workspace_id AND w.archived_at IS NOT NULL)
 			   AND ${'token' in credential ? 'token = $2' : 'pin = $2'}
 			 RETURNING workspace_id AS "workspaceId", role_id AS "roleId"`,
 			[inv.id, 'token' in credential ? credential.token : credential.pin],
@@ -200,10 +238,15 @@ async function redeem(
 
 /** Why a claim matched nothing — read only on the failure path. */
 async function whyNotClaimed(store: IStoreAdapter, id: string): Promise<InvitationError> {
-	const [row] = await store.query<{ status: string; expired: boolean }>(
-		`SELECT status, expires_at <= now() AS expired FROM fonderie_workspace_invitations WHERE id = $1`,
+	const [row] = await store.query<{ status: string; expired: boolean; archived: boolean }>(
+		`SELECT i.status, i.expires_at <= now() AS expired,
+		        EXISTS (SELECT 1 FROM fonderie_workspaces w WHERE w.id = i.workspace_id AND w.archived_at IS NOT NULL) AS archived
+		   FROM fonderie_workspace_invitations i WHERE i.id = $1`,
 		[id],
 	);
+	if (row?.status === 'PENDING' && !row.expired && row.archived) {
+		return new InvitationError('WORKSPACE_ARCHIVED', 409, 'This workspace is archived. Ask its owner to restore it, then accept again.');
+	}
 	if (row?.status === 'ACCEPTED') return new InvitationError('INVITATION_ALREADY_USED', 409, 'This invitation has already been used.');
 	if (row && row.status !== 'PENDING') return new InvitationError('INVITATION_REVOKED', 410, 'This invitation was cancelled. Ask for a new one.');
 	if (row?.expired) return new InvitationError('INVITATION_EXPIRED', 410, 'This invitation has expired. Ask for a new one.');

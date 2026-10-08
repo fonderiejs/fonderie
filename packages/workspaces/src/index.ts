@@ -48,6 +48,15 @@ export { getWorkspaceSettings } from './services/workspaces';
 export { withWorkspace } from './middlewares/workspace-context';
 export { requireWorkspace } from './middlewares/require-workspace';
 export { requireManager } from './middlewares/require-manager';
+// An archived workspace is read-only: withWorkspace sets
+// ctx.meta['fonderie.workspaces.archived']; put requireActiveWorkspace() on writes.
+export {
+	requireActiveWorkspace,
+	isWorkspaceArchived,
+	WORKSPACE_ARCHIVED_META_KEY,
+} from './middlewares/require-active-workspace';
+// Seats a workspace occupies against a plan's limit, broken down.
+export { countOccupiedSeats, seatUsage } from './services/members';
 
 // Request validation — enforced contract for body-taking routes; exported
 // for docs generation and typed clients.
