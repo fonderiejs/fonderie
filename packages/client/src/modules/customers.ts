@@ -49,6 +49,8 @@ export interface ICreateCustomerInput {
 	companyName?: string | null;
 	avatarUrl?: string | null;
 	locale?: string | null;
+	/** IANA time zone, e.g. 'America/Toronto'. null clears it (the business's zone applies). */
+	timezone?: string | null;
 	referenceCode?: string | null;
 	referralCode?: string | null;
 	referredByCode?: string | null;

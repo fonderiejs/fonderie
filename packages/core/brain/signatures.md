@@ -263,6 +263,8 @@ function canonicalLocale(tag: string | null | undefined): string | null
 
 function defineLocales(config?: ILocaleConfig): ILocaleSettings
 
+function isTimeZone(zone: string): boolean
+
 function localeChain(requested: string | null | undefined, settings: ILocaleSettings): string[]
 
 function localeLanguage(tag: string): string

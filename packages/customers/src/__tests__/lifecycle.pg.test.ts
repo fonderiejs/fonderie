@@ -110,6 +110,38 @@ test('a customer speaks the business\'s language unless told otherwise; tags are
 	assert.equal((await call(o.token, 'POST', '/customers', { firstName: 'X', locale: '!!' }, o.ws)).status, 422);
 });
 
+test('a customer\'s time zone: none by default, set, changed, cleared; a made-up zone is a 422 on the field', { skip }, async () => {
+	const o = await owner();
+	const plain = await create(o, { firstName: 'No', lastName: 'Zone' });
+	assert.equal(plain.timezone, null, 'unset reads as null, not missing');
+	const c = await create(o, { firstName: 'Marie', lastName: 'Tremblay', timezone: 'America/Toronto' });
+	assert.equal(c.timezone, 'America/Toronto');
+
+	const moved = await call(o.token, 'PUT', `/customers/${c.id}`, { timezone: 'America/Vancouver' }, o.ws);
+	assert.equal(moved.status, 200, JSON.stringify(moved));
+	assert.equal(moved.result['customer'].timezone, 'America/Vancouver');
+	// An update that does not name the zone leaves it alone.
+	const renamed = await call(o.token, 'PUT', `/customers/${c.id}`, { firstName: 'Marie-Ève' }, o.ws);
+	assert.equal(renamed.result['customer'].timezone, 'America/Vancouver');
+	const cleared = await call(o.token, 'PUT', `/customers/${c.id}`, { timezone: null }, o.ws);
+	assert.equal(cleared.status, 200, JSON.stringify(cleared));
+	assert.equal(cleared.result['customer'].timezone, null);
+	assert.equal((await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result['timezone'], null, 'the clear was stored');
+
+	for (const [method, path] of [['POST', '/customers'], ['PUT', `/customers/${c.id}`]] as const) {
+		const res = await fetch(`${base}${path}`, {
+			method,
+			headers: { 'content-type': 'application/json', authorization: `Bearer ${o.token}`, 'x-workspace-id': o.ws },
+			body: JSON.stringify({ firstName: 'X', timezone: 'Mars/Olympus_Mons' }),
+		});
+		const body = (await res.json()) as { reason: string; explanation: string };
+		assert.equal(res.status, 422, `${method} ${path}`);
+		assert.equal(body.reason, 'INVALID_PARAMETER');
+		assert.match(body.explanation, /^timezone: /, 'the field is named');
+	}
+	assert.equal((await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result['firstName'], 'Marie-Ève', 'the refused update wrote nothing');
+});
+
 test('names show in the order the customer\'s language writes them', { skip }, async () => {
 	const o = await owner();
 	assert.equal((await create(o, { firstName: '小明', lastName: '王', locale: 'zh-Hans' })).displayName, '王小明');

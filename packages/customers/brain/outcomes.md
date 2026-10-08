@@ -145,6 +145,7 @@ referral_code            TEXT
 referred_by              UUID REFERENCES fonderie_customers(id) ON DELETE SET NULL
 is_archived              BOOLEAN NOT NULL DEFAULT false
 archived_at              TIMESTAMPTZ
+timezone                 TEXT
 ```
 
 Raw SQL ships in `node_modules/@fonderie/customers/dist/migrations/sql/` — read it there if you must; never download tarballs.

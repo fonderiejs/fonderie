@@ -28,6 +28,11 @@ export interface ICustomerDTO {
 	/** Preferred language (BCP 47), e.g. 'fr-CA', 'zh-Hant'. */
 	locale: string;
 	/**
+	 * The customer's time zone (IANA), e.g. 'America/Toronto' — what times on
+	 * documents sent to them are printed in. null: none set; use the business's.
+	 */
+	timezone: string | null;
+	/**
 	 * The name to show, in the order the customer's language writes it:
 	 * family name first, no space, for Chinese, Japanese and Korean ('王小明');
 	 * given name first otherwise ('Marie Tremblay'). A business shows its
@@ -178,6 +183,7 @@ export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 		companyName: stringOrEmpty(c.companyName),
 		avatarUrl: stringOrEmpty(c.avatarUrl),
 		locale: stringOrEmpty(c.locale),
+		timezone: c.timezone ?? null,
 		displayName: displayNameOf(c),
 		referenceCode: stringOrEmpty(c.referenceCode),
 		referralCode: stringOrEmpty(c.referralCode),

@@ -48,6 +48,7 @@ export {
 	MAX_LOCALE_FALLBACKS,
 	canonicalLocale,
 	defineLocales,
+	isTimeZone,
 	localeChain,
 	localeLanguage,
 	localeCopyKeys,

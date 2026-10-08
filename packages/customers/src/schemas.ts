@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { canonicalLocale } from '@fonderie/core';
+import { canonicalLocale, isTimeZone } from '@fonderie/core';
 import { regions } from '@fonderie/core/region';
 
 // Request schemas — the validation contract for every body-taking customers
@@ -32,6 +32,15 @@ const customerFields = {
 			if (!c) ctx.addIssue({ code: 'custom', message: `'${v}' is not a language tag (e.g. en-CA, fr-CA, es-US, zh-Hans, zh-Hant)` });
 			return c ?? v;
 		})
+		.nullable()
+		.optional(),
+	// The customer's time zone (IANA) — what times on documents sent to them
+	// are printed in. Same check as a workspace's settings.timezone. null
+	// clears it; absent on create: none, the business's zone applies.
+	timezone: z
+		.string()
+		.max(64)
+		.refine((v) => isTimeZone(v), "Not an IANA time zone (e.g. 'America/Toronto')")
 		.nullable()
 		.optional(),
 	referenceCode: z.string().max(100).nullable().optional(),

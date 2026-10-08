@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { canonicalLocale } from '@fonderie/core';
+import { canonicalLocale, isTimeZone } from '@fonderie/core';
 import { regions } from '@fonderie/core/region';
 
 // Request schemas — the validation contract for every body-taking workspaces
@@ -10,15 +10,6 @@ import { regions } from '@fonderie/core/region';
 
 const name = z.string().trim().min(1, 'name is required').max(200);
 const email = z.string().trim().pipe(z.email());
-
-function isTimeZone(v: string): boolean {
-	try {
-		new Intl.DateTimeFormat('en', { timeZone: v });
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 const CURRENCIES = new Set(
 	(Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('currency') ?? ['CAD', 'USD', 'EUR', 'MXN'],

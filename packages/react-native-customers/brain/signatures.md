@@ -120,6 +120,7 @@ interface ICreateCustomerInput {
     companyName?: string | null;
     avatarUrl?: string | null;
     locale?: string | null;
+    timezone?: string | null;
     referenceCode?: string | null;
     referralCode?: string | null;
     referredByCode?: string | null;
@@ -142,6 +143,7 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    timezone: string | null;
     displayName: string;
     referenceCode: string;
     referralCode: string;

@@ -112,3 +112,9 @@ test('a Chinese reader gets the script they read, from any tag', async () => {
 	assert.deepEqual(localeChain('zh-HK', defineLocales()), ['zh-HK', 'zh-Hant']);
 	assert.deepEqual(localeChain('fr-CA', defineLocales()), ['fr-CA']);
 });
+
+test('isTimeZone accepts IANA zones and refuses the rest', async () => {
+	const { isTimeZone } = await import('../locale');
+	for (const z of ['America/Toronto', 'Europe/Paris', 'Asia/Shanghai', 'UTC']) assert.equal(isTimeZone(z), true, z);
+	for (const z of ['', 'Mars/Olympus_Mons', 'Toronto', 'not a zone']) assert.equal(isTimeZone(z), false, z);
+});

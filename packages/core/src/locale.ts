@@ -46,6 +46,22 @@ export function canonicalLocale(tag: string | null | undefined): string | null {
 	}
 }
 
+/**
+ * Whether `zone` is a time zone this runtime can print times in — an IANA name
+ * ('America/Toronto', 'UTC'). The one check every brick that stores a zone uses
+ * (a workspace's settings.timezone, a customer's timezone), so both accept the
+ * same values.
+ */
+export function isTimeZone(zone: string): boolean {
+	if (!zone || typeof zone !== 'string') return false;
+	try {
+		new Intl.DateTimeFormat('en', { timeZone: zone });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** The language subtag: 'fr-CA' → 'fr'. */
 export function localeLanguage(tag: string): string {
 	return tag.split('-')[0]?.toLowerCase() ?? tag;

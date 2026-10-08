@@ -52,6 +52,7 @@ const SELECT_CUSTOMER = `
 	company_name   AS "companyName",
 	avatar_url     AS "avatarUrl",
 	locale,
+	timezone,
 	reference_code AS "referenceCode",
 	referral_code  AS "referralCode",
 	referred_by    AS "referredBy",
@@ -75,6 +76,7 @@ const SELECT_CUSTOMER_C = `
 	c.company_name   AS "companyName",
 	c.avatar_url     AS "avatarUrl",
 	c.locale,
+	c.timezone,
 	c.reference_code AS "referenceCode",
 	c.referral_code  AS "referralCode",
 	c.referred_by    AS "referredBy",
@@ -106,6 +108,8 @@ export interface CreateCustomerOpts {
 	companyName?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
+	/** IANA time zone (e.g. 'America/Toronto'). Omit or null: none — the business's zone applies. */
+	timezone?: string | null;
 	/** Explicit code to assign. Omit to auto-generate ({prefix}-0001, …). */
 	referenceCode?: string;
 	/** Prefix used when auto-generating. Defaults to 'CLT'. */
@@ -125,6 +129,8 @@ export interface UpdateCustomerOpts {
 	companyName?: string | null;
 	avatarUrl?: string | null;
 	locale?: string;
+	/** IANA time zone; null clears it. */
+	timezone?: string | null;
 	/** Explicit code to assign. Omit to keep existing or auto-generate if none. */
 	referenceCode?: string;
 }
@@ -600,8 +606,8 @@ export class CustomerModel {
 			try {
 				const [row] = await this.store.query<ICustomer>(
 					`INSERT INTO fonderie_customers
-					   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by)
-					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+					   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by, timezone)
+					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 					 RETURNING ${SELECT_CUSTOMER}`,
 					[
 						opts.workspaceId,
@@ -616,6 +622,7 @@ export class CustomerModel {
 						referralCode,
 						referredBy,
 						opts.createdBy ?? null,
+						opts.timezone ?? null,
 					],
 				);
 				if (!row) throw new Error('Failed to create customer');
@@ -680,6 +687,10 @@ export class CustomerModel {
 		if (opts.locale !== undefined) {
 			params.push(opts.locale);
 			sets.push(`locale = $${params.length}`);
+		}
+		if (opts.timezone !== undefined) {
+			params.push(opts.timezone);
+			sets.push(`timezone = $${params.length}`);
 		}
 		const resolvedCode = opts.referenceCode ?? autoCode;
 		if (resolvedCode !== undefined) {
