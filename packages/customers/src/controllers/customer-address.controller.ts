@@ -83,6 +83,11 @@ export function customerAddressController(store: IStoreAdapter) {
 					unit: typeof body?.['unit'] === 'string' ? body['unit'] : null,
 					line1: typeof body?.['line1'] === 'string' ? body['line1'] : null,
 					line2: typeof body?.['line2'] === 'string' ? body['line2'] : null,
+					// '' (a cleared field in a form) stores as NULL, like an absent one.
+					city: typeof body?.['city'] === 'string' && body['city'].trim() ? body['city'].trim() : null,
+					accessCode: typeof body?.['accessCode'] === 'string' && body['accessCode'].trim() ? body['accessCode'].trim() : null,
+					latitude: typeof body?.['latitude'] === 'number' ? body['latitude'] : null,
+					longitude: typeof body?.['longitude'] === 'number' ? body['longitude'] : null,
 					labelId,
 					isPrimary: body?.['isPrimary'] === true,
 				});

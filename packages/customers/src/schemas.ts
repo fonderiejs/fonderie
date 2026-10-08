@@ -85,6 +85,13 @@ const addressFields = {
 	countryIso: z.string().max(60).nullable().optional(),
 	subdivision1Iso: z.string().max(60).nullable().optional(),
 	subdivision2Iso: z.string().max(10).nullable().optional(),
+	city: z.string().trim().max(100).nullable().optional(),
+	// A door / buzzer / gate code for whoever comes to the address. The unit
+	// (suite, apartment) stays `unit`.
+	accessCode: z.string().trim().max(20).nullable().optional(),
+	// Where the address is, e.g. from the places search it was picked in.
+	latitude: z.number().min(-90).max(90).nullable().optional(),
+	longitude: z.number().min(-180).max(180).nullable().optional(),
 };
 // Checked and normalized by the address's country rules (@fonderie/core/region):
 // 'Canada' → 'CA', 'Québec' → 'QC', 'h2x1y4' → 'H2X 1Y4'. A country without a

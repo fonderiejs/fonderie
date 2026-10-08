@@ -16,7 +16,11 @@ const SELECT_CUSTOMER_ADDRESS = `
 		'zipPostalCode',   a.zip_postal_code,
 		'unit',            a.unit,
 		'line1',           a.line1,
-		'line2',           a.line2
+		'line2',           a.line2,
+		'city',            a.city,
+		'accessCode',      a.access_code,
+		'latitude',        a.latitude,
+		'longitude',       a.longitude
 	) AS address
 `;
 
@@ -43,6 +47,10 @@ export class CustomerAddressModel {
 		unit?: string | null;
 		line1?: string | null;
 		line2?: string | null;
+		city?: string | null;
+		accessCode?: string | null;
+		latitude?: number | null;
+		longitude?: number | null;
 		labelId: string;
 		isPrimary?: boolean;
 	}): Promise<ICustomerAddress> {
@@ -58,6 +66,7 @@ export class CustomerAddressModel {
 			   AND a.unit             IS NOT DISTINCT FROM $6
 			   AND a.line1            IS NOT DISTINCT FROM $7
 			   AND a.line2            IS NOT DISTINCT FROM $8
+			   AND a.city             IS NOT DISTINCT FROM $9
 			 LIMIT 1`,
 			[
 				opts.customerId,
@@ -68,6 +77,7 @@ export class CustomerAddressModel {
 				opts.unit ?? null,
 				opts.line1 ?? null,
 				opts.line2 ?? null,
+				opts.city ?? null,
 			],
 		);
 		if (existing) {
@@ -86,8 +96,9 @@ export class CustomerAddressModel {
 
 			const [addr] = await tx.query<{ id: string }>(
 				`INSERT INTO fonderie_addresses
-				   (id, country_iso, subdivision1_iso, subdivision2_iso, zip_postal_code, unit, line1, line2)
-				 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
+				   (id, country_iso, subdivision1_iso, subdivision2_iso, zip_postal_code, unit, line1, line2,
+				    city, access_code, latitude, longitude)
+				 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 				 RETURNING id`,
 				[
 					opts.countryIso,
@@ -97,6 +108,10 @@ export class CustomerAddressModel {
 					opts.unit ?? null,
 					opts.line1 ?? null,
 					opts.line2 ?? null,
+					opts.city ?? null,
+					opts.accessCode ?? null,
+					opts.latitude ?? null,
+					opts.longitude ?? null,
 				],
 			);
 			if (!addr) throw new Error('Failed to create address');

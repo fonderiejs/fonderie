@@ -329,7 +329,11 @@ export class CustomerModel {
 				          'zipPostalCode',   a.zip_postal_code,
 				          'unit',            a.unit,
 				          'line1',           a.line1,
-				          'line2',           a.line2
+				          'line2',           a.line2,
+				          'city',            a.city,
+				          'accessCode',      a.access_code,
+				          'latitude',        a.latitude,
+				          'longitude',       a.longitude
 				        ) AS address
 				 FROM fonderie_customer_addresses ca
 				 JOIN fonderie_addresses a ON a.id = ca.addr_id
@@ -413,7 +417,11 @@ export class CustomerModel {
 					          'zipPostalCode',   a.zip_postal_code,
 					          'unit',            a.unit,
 					          'line1',           a.line1,
-					          'line2',           a.line2
+					          'line2',           a.line2,
+					          'city',            a.city,
+					          'accessCode',      a.access_code,
+					          'latitude',        a.latitude,
+					          'longitude',       a.longitude
 					        ) AS address
 					 FROM fonderie_customer_addresses ca
 					 JOIN fonderie_addresses a ON a.id = ca.addr_id
