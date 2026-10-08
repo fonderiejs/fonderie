@@ -1,5 +1,13 @@
 # @fonderie/vue-customers-screens
 
+## 0.3.3
+
+### Patch Changes
+
+- Updated dependencies [3991686]
+  - @fonderie/client@3.23.0
+  - @fonderie/vue-customers@0.9.0
+
 ## 0.3.2
 
 ### Patch Changes

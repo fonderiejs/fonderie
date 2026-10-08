@@ -1,5 +1,13 @@
 # @fonderie/react-native-customers-screens
 
+## 0.3.2
+
+### Patch Changes
+
+- Updated dependencies [3991686]
+  - @fonderie/client@3.23.0
+  - @fonderie/react-native-customers@0.2.0
+
 ## 0.3.1
 
 ### Patch Changes
