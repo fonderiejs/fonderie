@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/logger",
-	"version": "0.3.9",
+	"version": "0.3.10",
 	"fonderie": { "stability": "maturing" },
 	"description": "Structured logger with pluggable transports, child loggers, and a request-logging middleware. The observability foundation for every @fonderiejs app.",
 	"keywords": [
@@ -37,7 +37,7 @@
 		"check": "biome check --write src"
 	},
 	"dependencies": {
-		"@fonderie/core": "^0.32.0"
+		"@fonderie/core": "^0.33.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.4",
