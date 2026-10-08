@@ -19,6 +19,8 @@ export interface ICustomer {
 	companyName: string | null;
 	avatarUrl: string | null;
 	locale: string;
+	/** IANA time zone, e.g. 'America/Toronto'; null when unset. */
+	timezone?: string | null;
 	referenceCode: string | null;
 	referralCode: string | null;
 	referredBy: string | null;

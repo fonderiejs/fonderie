@@ -1262,6 +1262,12 @@ export interface ICustomerDTO {
 	/** Preferred language (BCP 47), e.g. 'fr-CA', 'zh-Hant'. Defaults to the business's. */
 	locale: string;
 	/**
+	 * The customer's time zone (IANA), e.g. 'America/Toronto' — what times on
+	 * documents sent to them are printed in. null: none set; use the business's
+	 * (workspace settings.timezone).
+	 */
+	timezone: string | null;
+	/**
 	 * The name to show, in the order the customer's language writes it: family
 	 * name first for Chinese, Japanese, Korean ('王小明'); given name first
 	 * otherwise. A business shows its company name.

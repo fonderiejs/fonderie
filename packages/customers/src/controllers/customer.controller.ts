@@ -143,6 +143,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			const avatarUrl = body?.['avatarUrl'];
 			const locale = body?.['locale'];
+			const timezone = body?.['timezone'];
 			const referenceCode = body?.['referenceCode'];
 			const referralCode = body?.['referralCode'];
 			const referredByCode = body?.['referredByCode'];
@@ -176,6 +177,8 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 					avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
 					// No language given: the business's own (workspace settings).
 					locale: typeof locale === 'string' ? locale : (await getWorkspaceSettings(workspaceId, store)).locale,
+					// No time zone given: none — documents fall back to the business's.
+					timezone: typeof timezone === 'string' ? timezone : null,
 					// exactOptionalPropertyTypes: omit the key entirely when absent
 					...(typeof referenceCode === 'string' ? { referenceCode: referenceCode.toUpperCase() } : {}),
 					referenceCodePrefix: prefix,
@@ -262,6 +265,10 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			if (body?.['locale'] !== undefined && typeof body['locale'] === 'string') {
 				opts.locale = body['locale'];
+			}
+
+			if (body?.['timezone'] !== undefined) {
+				opts.timezone = typeof body['timezone'] === 'string' ? body['timezone'] : null;
 			}
 
 			if (body?.['referenceCode'] !== undefined && typeof body['referenceCode'] === 'string') {
