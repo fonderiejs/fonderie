@@ -220,6 +220,63 @@ test('a Canadian address on a customer is normalized; a wrong postal code is ref
 	assert.equal((await call(o.token, 'POST', `/customers/${c.id}/addresses`, { countryIso: 'CA', zipPostalCode: '90210' }, o.ws)).status, 422);
 });
 
+test('an address keeps its city, door code and coordinates; an address without them reads back empty', { skip }, async () => {
+	const o = await owner();
+	const c = await create(o, { firstName: 'City', lastName: 'Kept' });
+	const ok = await call(o.token, 'POST', `/customers/${c.id}/addresses`, {
+		line1: '123 rue Saint-Denis', unit: '4', city: ' Montréal ', accessCode: ' 1234# ',
+		countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'H2X 1Y4', latitude: 45.515234, longitude: -73.561201,
+	}, o.ws);
+	assert.equal(ok.status, 201, JSON.stringify(ok));
+	const listed = (await call(o.token, 'GET', `/customers/${c.id}/addresses`, undefined, o.ws)).result['addresses'] as Array<{ id: string; address: Record<string, unknown> }>;
+	assert.equal(listed.length, 1);
+	const a = listed[0]!.address;
+	assert.deepEqual([a['city'], a['accessCode'], a['latitude'], a['longitude'], a['unit'], a['line2']], ['Montréal', '1234#', 45.515234, -73.561201, '4', '']);
+	const detail = (await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result['addresses'][0].address;
+	assert.deepEqual(detail, a, 'the customer detail reads the same fields');
+
+	// Same street in another city is another address, not a duplicate.
+	const other = await call(o.token, 'POST', `/customers/${c.id}/addresses`, { line1: '123 rue Saint-Denis', unit: '4', city: 'Laval', countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'H2X 1Y4' }, o.ws);
+	assert.equal(other.status, 201, JSON.stringify(other));
+
+	// A row written before the columns existed (all four NULL) reads back empty.
+	const bare = await call(o.token, 'POST', `/customers/${c.id}/addresses`, { line1: '1 rue Principale', countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'G1R 4P3' }, o.ws);
+	assert.equal(bare.status, 201, JSON.stringify(bare));
+	const [raw] = await store.query<Record<string, unknown>>('SELECT city, access_code, latitude, longitude FROM fonderie_addresses WHERE id = $1', [bare.result['address'].id]);
+	assert.deepEqual(raw, { city: null, access_code: null, latitude: null, longitude: null });
+	const b = bare.result['address'].address;
+	assert.deepEqual([b.city, b.accessCode, b.latitude, b.longitude], ['', '', null, null]);
+});
+
+test('an address with a city or door code too long, or coordinates off the globe, is a 422 on the field', { skip }, async () => {
+	const o = await owner();
+	const c = await create(o, { firstName: 'Bad', lastName: 'Coords' });
+	const address = { line1: '1 rue Principale', countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'G1R 4P3' };
+	for (const [extra, field] of [
+		[{ city: 'x'.repeat(101) }, 'city'],
+		[{ accessCode: '1'.repeat(21) }, 'accessCode'],
+		[{ latitude: 90.5 }, 'latitude'],
+		[{ latitude: -91 }, 'latitude'],
+		[{ longitude: 180.1 }, 'longitude'],
+		[{ longitude: -181 }, 'longitude'],
+		[{ latitude: '45.5' }, 'latitude'],
+	] as const) {
+		const res = await fetch(`${base}/customers/${c.id}/addresses`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', authorization: `Bearer ${o.token}`, 'x-workspace-id': o.ws },
+			body: JSON.stringify({ ...address, ...extra }),
+		});
+		const body = (await res.json()) as { reason: string; explanation: string };
+		assert.equal(res.status, 422, `${field}: ${JSON.stringify(body)}`);
+		assert.equal(body.reason, 'INVALID_PARAMETER');
+		assert.match(body.explanation, new RegExp(`^${field}: `), `the 422 names ${field}`);
+	}
+	assert.deepEqual((await call(o.token, 'GET', `/customers/${c.id}/addresses`, undefined, o.ws)).result['addresses'], [], 'nothing stored');
+	// The table refuses them too, whoever writes it.
+	await assert.rejects(store.query(`INSERT INTO fonderie_addresses (country_iso, zip_postal_code, latitude) VALUES ('CA', 'G1R 4P3', 91)`));
+	await assert.rejects(store.query(`INSERT INTO fonderie_addresses (country_iso, zip_postal_code, access_code) VALUES ('CA', 'G1R 4P3', $1)`, ['1'.repeat(21)]));
+});
+
 test('a relationship names the related customer unambiguously', { skip }, async () => {
 	const o = await owner();
 	const parent = await create(o, { firstName: 'Parent', lastName: 'One' });
@@ -241,9 +298,10 @@ test('a deleted customer waits in the bin and comes back whole — same id, emai
 	await call(o.token, 'POST', `/customers/${c.id}/phones`, { phone: '+15145550123' }, o.ws);
 	await call(o.token, 'POST', `/customers/${c.id}/notes`, { body: 'Gate code 1234' }, o.ws);
 	await call(o.token, 'POST', `/customers/${c.id}/tags`, { tag: 'vip' }, o.ws);
-	await call(o.token, 'POST', `/customers/${c.id}/addresses`, { line1: '1 rue Principale', countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'G1R 4P3' }, o.ws);
+	await call(o.token, 'POST', `/customers/${c.id}/addresses`, { line1: '1 rue Principale', city: 'Québec', accessCode: '4321', latitude: 46.8139, longitude: -71.208, countryIso: 'CA', subdivision1Iso: 'QC', zipPostalCode: 'G1R 4P3' }, o.ws);
 	await call(o.token, 'POST', `/customers/${c.id}/relationships`, { relatedId: friend.id, relationship: 'spouse' }, o.ws);
 	const before = (await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).result;
+	assert.equal(before['addresses'][0].address.city, 'Québec', 'the city is part of what must come back');
 
 	assert.equal((await call(o.token, 'DELETE', `/customers/${c.id}`, undefined, o.ws)).status, 200);
 	assert.equal((await call(o.token, 'GET', `/customers/${c.id}`, undefined, o.ws)).status, 404, 'gone from the customers');

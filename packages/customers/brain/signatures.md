@@ -29,6 +29,10 @@ interface IAddressDTO {
     unit: string;
     line1: string;
     line2: string;
+    city: string;
+    accessCode: string;
+    latitude: number | null;
+    longitude: number | null;
 }
 
 interface ICustomerAddressDTO {
@@ -126,7 +130,7 @@ function toCustomerLabelDTO(l: ICustomerLabel): ICustomerLabelDTO
 
 new CustomerAddressModel(store: IStoreAdapter): CustomerAddressModel
   .list(customerId: string): Promise<ICustomerAddress[]>
-  .add(opts: { customerId: string; countryIso: string; subdivision1Iso?: string | null; subdivision2Iso?: string | null; zipPostalCode: string; unit?: string | null; line1?: string | null; line2?: string | null; labelId: string; isPrimary?: boolean; }): Promise<...>
+  .add(opts: { customerId: string; countryIso: string; subdivision1Iso?: string | null; subdivision2Iso?: string | null; zipPostalCode: string; unit?: string | null; line1?: string | null; line2?: string | null; ... 5 more ...; isPrimary?: boolean; }): Promise<...>
   .updateLabel(addrId: string, customerId: string, labelId: string): Promise<ICustomerAddress>
   .setPrimary(addrId: string, customerId: string): Promise<boolean>
   .remove(addrId: string, customerId: string): Promise<boolean>
@@ -188,6 +192,10 @@ interface IAddress {
     unit: string | null;
     line1: string | null;
     line2: string | null;
+    city: string | null;
+    accessCode: string | null;
+    latitude: number | null;
+    longitude: number | null;
 }
 
 interface ICustomer {

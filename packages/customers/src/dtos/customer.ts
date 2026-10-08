@@ -131,6 +131,11 @@ export interface IAddressDTO {
 	unit: string;
 	line1: string;
 	line2: string;
+	city: string;
+	/** Door / buzzer / gate code; '' when not set. The unit is `unit`. */
+	accessCode: string;
+	latitude: number | null;
+	longitude: number | null;
 }
 
 export interface ICustomerAddressDTO {
@@ -279,8 +284,19 @@ export function toAddressDTO(a: IAddress): IAddressDTO {
 		unit: stringOrEmpty(a.unit),
 		line1: stringOrEmpty(a.line1),
 		line2: stringOrEmpty(a.line2),
+		city: stringOrEmpty(a.city),
+		accessCode: stringOrEmpty(a.accessCode),
+		latitude: numberOrNull(a.latitude),
+		longitude: numberOrNull(a.longitude),
 	};
 }
+
+// NUMERIC reads back as a string outside jsonb; accept either.
+const numberOrNull = (v: unknown): number | null => {
+	if (v === null || v === undefined || v === '') return null;
+	const n = Number(v);
+	return Number.isFinite(n) ? n : null;
+};
 
 export function toCustomerEmailDTO(e: ICustomerEmail): ICustomerEmailDTO {
 	return {

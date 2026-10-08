@@ -20,6 +20,10 @@ zip_postal_code          TEXT NOT NULL
 line1                    TEXT
 line2                    TEXT
 unit                     TEXT
+city                     TEXT CHECK (city IS NULL OR length(city) <= 100)
+access_code              TEXT CHECK (access_code IS NULL OR length(access_code) <= 20)
+latitude                 NUMERIC(9,6) CHECK (latitude IS NULL OR latitude BETWEEN -90 AND 90)
+longitude                NUMERIC(9,6) CHECK (longitude IS NULL OR longitude BETWEEN -180 AND 180)
 ```
 
 ### `fonderie_customer_addresses`

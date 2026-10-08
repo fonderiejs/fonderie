@@ -62,6 +62,10 @@ export interface IAddress {
 	unit: string | null;
 	line1: string | null;
 	line2: string | null;
+	city: string | null;
+	accessCode: string | null;
+	latitude: number | null;
+	longitude: number | null;
 }
 
 export interface ICustomerAddress {
