@@ -1345,6 +1345,13 @@ export interface IAddressDTO {
 	unit: string;
 	line1: string;
 	line2: string;
+	/** '' when not set (and absent from older servers). */
+	city?: string;
+	/** Door / buzzer / gate code; '' when not set (absent from older servers). The unit is `unit`. */
+	accessCode?: string;
+	/** null when not set (absent from older servers). */
+	latitude?: number | null;
+	longitude?: number | null;
 }
 
 export interface ICustomerAddressDTO {

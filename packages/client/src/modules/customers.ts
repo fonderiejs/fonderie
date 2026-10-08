@@ -85,6 +85,13 @@ export interface IAddAddressInput {
 	unit?: string | null;
 	line1?: string | null;
 	line2?: string | null;
+	/** ≤100 characters. */
+	city?: string | null;
+	/** Door / buzzer / gate code, ≤20 characters. The unit (suite, apartment) is `unit`. */
+	accessCode?: string | null;
+	/** Decimal degrees, -90..90 / -180..180 — e.g. from the places search the address was picked in. */
+	latitude?: number | null;
+	longitude?: number | null;
 	label?: string;
 	isPrimary?: boolean;
 }

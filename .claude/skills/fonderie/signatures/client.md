@@ -556,6 +556,10 @@ interface IAddAddressInput {
     unit?: string | null;
     line1?: string | null;
     line2?: string | null;
+    city?: string | null;
+    accessCode?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     label?: string;
     isPrimary?: boolean;
 }
@@ -901,6 +905,10 @@ interface IAddressDTO {
     unit: string;
     line1: string;
     line2: string;
+    city?: string;
+    accessCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 interface IApiError {
