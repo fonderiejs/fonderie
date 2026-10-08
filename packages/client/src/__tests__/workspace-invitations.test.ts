@@ -57,3 +57,27 @@ test('the ownership and invitation actions reach their routes', async () => {
 	);
 	assert.deepEqual(calls[3]!.body, { userId: 'u2' });
 });
+
+test('seats, and the members / invitations lists whole by default or a page at a time', async () => {
+	const calls = capture();
+	const { workspaces } = new FonderieClient({ baseUrl: 'http://api.test', workspaceId: 'ws-1' });
+	await workspaces.getSeats();
+	await workspaces.listMembers();
+	await workspaces.listMembers({ bust: true });
+	await workspaces.listMembers({ limit: 20 });
+	await workspaces.listMembers({ limit: 20, cursor: 'abc=' });
+	await workspaces.listInvitations();
+	await workspaces.listInvitations({ cursor: 'xyz' });
+	assert.deepEqual(
+		calls.map((c) => `${c.method} ${c.url.replace('http://api.test', '')}`),
+		[
+			'GET /workspaces/seats',
+			'GET /workspaces/members',
+			'GET /workspaces/members',
+			'GET /workspaces/members?limit=20',
+			'GET /workspaces/members?limit=20&cursor=abc%3D',
+			'GET /workspaces/invitations',
+			'GET /workspaces/invitations?cursor=xyz',
+		],
+	);
+});

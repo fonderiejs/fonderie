@@ -1,5 +1,5 @@
 import type { FonderieApiError, IMemberDTO, WorkspacesClient } from '@fonderie/client';
-import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
+import { useFonderieSubClient, usePagedQuery, useScopedQuery, useWrite } from '@fonderie/react';
 import { useCallback } from 'react';
 
 export interface IUseMembersReturn {
@@ -7,6 +7,11 @@ export interface IUseMembersReturn {
 	isLoading: boolean;
 	error: FonderieApiError | null;
 	refresh: (opts?: { force?: boolean }) => Promise<void>;
+	/** More rows to load (paged mode only — always false for the whole list). */
+	hasMore: boolean;
+	/** Append the next page (paged mode only; a no-op otherwise). */
+	loadMore: () => Promise<void>;
+	isLoadingMore: boolean;
 	removeMember: (userId: string) => Promise<void>;
 	/** Owner only: make a member a manager. */
 	setManager: (userId: string) => Promise<void>;
@@ -20,10 +25,37 @@ export interface IUseMembersReturn {
 
 const NONE: IMemberDTO[] = [];
 
+export interface IUseListPageOptions {
+	/** Read the list `pageSize` rows at a time (loadMore appends). Omit for the whole list, as before. */
+	pageSize?: number;
+}
+
 // The selected workspace's members — re-read on a workspace switch.
-export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
+// `opts.pageSize` reads it a page at a time (cursor paging, loadMore appends).
+export function useMembers(client?: WorkspacesClient, opts: IUseListPageOptions = {}): IUseMembersReturn {
 	const workspaces = useFonderieSubClient(client, (c) => c.workspaces, 'useMembers');
-	const q = useScopedQuery(workspaces, '/workspaces/members', async (bust) => (await workspaces.listMembers({ bust })).result.members);
+	const limit = opts.pageSize;
+	const paged = limit !== undefined;
+	// Both reads are always declared (hooks run unconditionally); only one is enabled.
+	const whole = useScopedQuery(workspaces, '/workspaces/members', async (bust) => (await workspaces.listMembers({ bust })).result.members, {
+		enabled: !paged,
+	});
+	const pages = usePagedQuery<IMemberDTO, string>(
+		workspaces,
+		`/workspaces/members?limit=${limit ?? 0}`,
+		async (bust) => {
+			const { result } = await workspaces.listMembers({ bust, ...(limit !== undefined ? { limit } : {}) });
+			return { rows: result.members, next: result.nextCursor ?? null };
+		},
+		async (cursor) => {
+			const { result } = await workspaces.listMembers({ cursor, ...(limit !== undefined ? { limit } : {}) });
+			return { rows: result.members, next: result.nextCursor ?? null };
+		},
+		{ enabled: paged, rethrowLoadMore: false },
+	);
+	const q = paged
+		? { data: pages.rows, isLoading: pages.isLoading, error: pages.error, refresh: pages.refresh }
+		: whole;
 	const w = useWrite(q.refresh);
 	const removeMember = useCallback(
 		(userId: string) =>
@@ -65,6 +97,9 @@ export function useMembers(client?: WorkspacesClient): IUseMembersReturn {
 		isLoading: q.isLoading,
 		error: w.error ?? q.error,
 		refresh: q.refresh,
+		hasMore: paged && pages.hasMore,
+		loadMore: pages.loadMore,
+		isLoadingMore: paged && pages.isLoadingMore,
 		removeMember,
 		setManager,
 		unsetManager,

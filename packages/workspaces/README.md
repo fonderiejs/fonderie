@@ -60,6 +60,42 @@ E.164 (`+15145550100`, optional `extension`); a location's `taxRegion`
 50 locations. Frontend: `useWorkspaceContacts()` and `useWorkspaceLocations()`
 in the React, React Native and Vue workspaces packages.
 
+### Archiving: read-only until restored
+
+`POST /workspaces/archive` and `POST /workspaces/restore` are the owner's
+alone. An archived workspace is **read-only**: every write route of this brick
+answers `409 WORKSPACE_ARCHIVED`, invitations cannot be accepted, while reads
+keep working so its data can be exported. Leaving it and handing it over
+(`/workspaces/transfer-ownership…`) still work. `isArchived` / `archivedAt` are
+on every workspace DTO (`GET /workspaces`, `GET /workspaces/current`).
+
+Other bricks and your own routes honour it too: `withWorkspace` sets
+`ctx.meta['fonderie.workspaces.archived']` (`true` / `false`) on every request
+it resolves — read it by shape with no dependency — or put the exported
+`requireActiveWorkspace()` after `withWorkspace` on your write routes.
+
+Archiving and restoring emit `fonderie.workspace.archived` /
+`fonderie.workspace.restored` (`{ workspaceId, userId }`). `@fonderie/billing`
+can follow them — opt in with `onWorkspaceArchived: 'cancel-at-period-end'`:
+an archived workspace's subscription then ends at the period's end, and
+restoring it before then resumes it. By default billing is left as it was.
+
+### Seats, system-role grants, paging
+
+- `GET /workspaces/seats` (any member) → `{ used, members, pendingInvites,
+  limit, available }`: `used` is what the plan's seat limit is checked against
+  when inviting (the team without the owner, plus pending invitations);
+  `limit` is `null` without one. Frontend: `useWorkspaceSeats()`.
+- `GET /workspaces/permissions/catalog` also returns `systemGrants` — what
+  each system role (`GUEST`, …) may do by `@fonderie/permissions`'
+  `systemGrants` config (role → resource → operations) — so a role editor
+  shows them instead of hard-coding them.
+- `GET /workspaces/members` and `GET /workspaces/invitations` take optional
+  `?limit=&cursor=` and then answer a page plus `nextCursor` (null on the last
+  page); without them they return the whole list, as before. Hooks:
+  `useMembers(client, { pageSize })` / `useInvitations(client, { pageSize })`
+  with `loadMore` / `hasMore`.
+
 ## Why this exists
 
 You've shipped this plumbing before — auth, teams, billing, messaging —

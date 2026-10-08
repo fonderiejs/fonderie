@@ -149,6 +149,17 @@ test('the catalog lists what the app checks, with each resource\'s operations', 
 		{ key: 'jobs', operations: ['create', 'read', 'update', 'delete'], label: 'Jobs', description: '' },
 		{ key: 'reports', operations: ['read'], label: 'reports', description: '' },
 	]);
+	// The configured system-role grants — never stored as rows — come with it,
+	// so a role editor shows what GUEST may do instead of hard-coding it.
+	assert.deepEqual(r.result['systemGrants'], { GUEST: { jobs: ['read'] } });
+});
+
+test('the catalog is readable by any member, systemGrants included', { skip }, async () => {
+	const { owner, ws } = await team();
+	const guest = await join(owner, ws);
+	const r = await call(guest.token, 'GET', '/workspaces/permissions/catalog', undefined, ws);
+	assert.equal(r.status, 200);
+	assert.deepEqual(r.result['systemGrants'], { GUEST: { jobs: ['read'] } });
 });
 
 // ── owner / super role ───────────────────────────────────────────────────────

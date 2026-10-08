@@ -829,6 +829,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getWorkspace(id: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getCurrentWorkspace(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceResult>>
   .getMyPermissions(opts?: IReadOptions | undefined): Promise<IApiResponse<IMyPermissionsResult>>
+  .getSeats(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSeatsResult>>
   .getPermissionCatalog(opts?: IReadOptions | undefined): Promise<IApiResponse<IPermissionCatalogResult>>
   .updateWorkspace(input: IUpdateWorkspaceInput): Promise<IApiResponse<IWorkspaceResult>>
   .archiveWorkspace(): Promise<IApiResponse<undefined>>
@@ -843,7 +844,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .purgeDeletedRole(id: string): Promise<undefined>
   .getRolePermissions(roleId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRolePermissionsResult>>
   .setRolePermissions(roleId: string, permissions: IRolePermissionInput[]): Promise<IApiResponse<undefined>>
-  .listMembers(opts?: IReadOptions | undefined): Promise<IApiResponse<IMemberListResult>>
+  .listMembers(opts?: (IReadOptions & IListPageInput) | undefined): Promise<IApiResponse<IMemberListResult>>
   .removeMember(userId: string): Promise<IApiResponse<undefined>>
   .getMemberRoles(userId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IRoleListResult>>
   .addMemberRole(userId: string, roleId: string): Promise<IApiResponse<undefined>>
@@ -857,7 +858,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .declineOwnership(): Promise<IApiResponse<undefined>>
   .withdrawOwnershipOffer(): Promise<IApiResponse<undefined>>
   .leaveWorkspace(): Promise<IApiResponse<void>>
-  .listInvitations(opts?: IReadOptions | undefined): Promise<IApiResponse<IInvitationListResult>>
+  .listInvitations(opts?: (IReadOptions & IListPageInput) | undefined): Promise<IApiResponse<IInvitationListResult>>
   .invite(entries: IInviteEntry | IInviteEntry[]): Promise<IApiResponse<IInviteResult>>
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
@@ -1592,6 +1593,7 @@ interface IInvitationDTO {
 
 interface IInvitationListResult {
     invitations: IInvitationDTO[];
+    nextCursor?: string | null;
 }
 
 interface IInviteResult {
@@ -1684,6 +1686,7 @@ interface IPermissionCatalogEntryDTO {
 interface IPermissionCatalogResult {
     catalog: IPermissionCatalogEntryDTO[];
     declared: boolean;
+    systemGrants?: Record<string, Record<string, PermissionOperation[]>>;
 }
 
 interface IRoleDeleteResult {
@@ -1695,6 +1698,20 @@ type PermissionOperation = 'create' | 'read' | 'update' | 'delete';
 
 interface IMemberListResult {
     members: IMemberDTO[];
+    nextCursor?: string | null;
+}
+
+interface IListPageInput {
+    limit?: number;
+    cursor?: string;
+}
+
+interface IWorkspaceSeatsResult {
+    used: number;
+    members: number;
+    pendingInvites: number;
+    limit: number | null;
+    available: number | null;
 }
 
 interface IMeResult {

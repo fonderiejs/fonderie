@@ -73,6 +73,22 @@ With workspace billing, the frontend billing hooks re-read when the client's
 workspace changes (`client.setWorkspaceId(...)`), so an open billing screen
 never shows the previous workspace's subscription.
 
+### Archived workspaces (opt-in)
+
+`@fonderie/workspaces` makes an archived workspace read-only and emits
+`fonderie.workspace.archived` / `.restored`. By default billing ignores both:
+the subscription runs on as before. Opt in to stop charging a read-only
+workspace:
+
+```ts
+new BillingModule(store, { ...config, onWorkspaceArchived: 'cancel-at-period-end' }, bus);
+```
+
+Archiving then sets the workspace's subscription to end at the period's end
+(the stored card is kept), and restoring the workspace before then resumes it.
+A cancellation the owner chose is never undone, and a subscription whose
+period already ended stays canceled. Needs the event bus.
+
 ## Stored-value wallet (opt-in)
 
 Setting `wallet` on the billing config turns on a ledger-backed credit

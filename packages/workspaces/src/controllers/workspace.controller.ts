@@ -9,6 +9,7 @@ import { MemberModel } from '../models/member.model';
 import { RoleModel } from '../models/role.model';
 import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
 import { fromProfile } from '../services/contacts';
+import { isWorkspaceArchived } from '../middlewares/require-active-workspace';
 
 export function workspaceController(store: IStoreAdapter, config: IWorkspacesConfig) {
 	const workspaces = new WorkspaceModel(store);
@@ -145,6 +146,9 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 		async restore(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
+			if (!isWorkspaceArchived(ctx)) {
+				return setApiResponse(HTTP.CONFLICT, 'WORKSPACE_NOT_ARCHIVED', 'This workspace is not archived.');
+			}
 			await workspaces.restore(ctx.workspace.id);
 			return setApiResponse(HTTP.OK, 'WORKSPACE_RESTORED', 'Workspace restored successfully.');
 		},

@@ -28,6 +28,7 @@ import { EVENT_KEYS, type IWorkspacesConfig, type WorkspaceRouteId } from './con
 import { withWorkspace } from './middlewares/workspace-context';
 import { requireManager } from './middlewares/require-manager';
 import { requireOwner } from './middlewares/require-owner';
+import { requireActiveWorkspace } from './middlewares/require-active-workspace';
 import { contactOf, inviteOf, roleOf, target, trail } from './middlewares/trail';
 import { requireStepUp } from './middlewares/require-step-up';
 import { releaseBrake, velocityBrake } from './middlewares/velocity-brake';
@@ -65,6 +66,9 @@ export function buildWorkspaceRoutes(
 
 	const workspace = workspaceController(store, config);
 	const owner = requireOwner();
+	// An archived workspace is read-only (409 WORKSPACE_ARCHIVED) — every write
+	// below carries this, except restoring it, leaving it and handing it over.
+	const active = requireActiveWorkspace();
 	// Big moves need a fresh proof it's the person (Phase 4); stepUp: false opts out.
 	const stepUp: Middleware = config.stepUp === false ? (_c, next) => next() : requireStepUp();
 	const member = memberController(store, config);
@@ -99,20 +103,20 @@ export function buildWorkspaceRoutes(
 
 		// ── Members (workspace resolved from X-Workspace-ID header)
 		R('listMembers', 'GET', '/workspaces/members', requireAuth, wsCtx, member.list),
-		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, manager, brake('member.remove'), T(K.memberRemoved, target), member.remove),
+		R('removeMember', 'DELETE', '/workspaces/members/:userId', requireAuth, wsCtx, active, manager, brake('member.remove'), T(K.memberRemoved, target), member.remove),
 		R('getMemberRoles', 'GET', '/workspaces/members/:userId/roles', requireAuth, wsCtx, member.getUserRoles),
-		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, manager, validate(addMemberRoleSchema), T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })), member.addRole),
-		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, manager, T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })), member.removeRole),
+		R('addMemberRole', 'POST', '/workspaces/members/:userId/roles', requireAuth, wsCtx, active, manager, validate(addMemberRoleSchema), T(K.memberRoleAdded, (c) => ({ ...target(c), ...roleOf(c) })), member.addRole),
+		R('removeMemberRole', 'DELETE', '/workspaces/members/:userId/roles/:roleId', requireAuth, wsCtx, active, manager, T(K.memberRoleRemoved, (c) => ({ ...target(c), ...roleOf(c) })), member.removeRole),
 		// Ownership decisions — the owner alone (requireOwner), not any manager.
 		// The owner lets someone the velocity brake paused delete again.
-		R('releaseBrake', 'DELETE', '/workspaces/members/:userId/brake', requireAuth, wsCtx, owner, T(K.managerReleased, target), async (ctx) => {
+		R('releaseBrake', 'DELETE', '/workspaces/members/:userId/brake', requireAuth, wsCtx, active, owner, T(K.managerReleased, target), async (ctx) => {
 			const userId = (ctx.meta['params'] as Record<string, string> | undefined)?.['userId'] ?? '';
 			return (await releaseBrake(store, ctx.workspace!.id, userId))
 				? setApiResponse(HTTP.OK, 'MANAGER_RELEASED', 'They can delete again.')
 				: setApiResponse(HTTP.NOT_FOUND, 'NOT_PAUSED', 'That person is not paused.');
 		}),
-		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerSet, target), member.setManager),
-		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, owner, T(K.managerUnset, target), member.unsetManager),
+		R('setManager', 'POST', '/workspaces/members/:userId/manager', requireAuth, wsCtx, active, owner, T(K.managerSet, target), member.setManager),
+		R('unsetManager', 'DELETE', '/workspaces/members/:userId/manager', requireAuth, wsCtx, active, owner, T(K.managerUnset, target), member.unsetManager),
 		// Handing the team over (Phase 4): the owner OFFERS, after confirming it's
 		// them; the member accepts. Static paths before /workspaces/:id.
 		R('transferOwnership', 'POST', '/workspaces/transfer-ownership', requireAuth, wsCtx, owner, stepUp, validate(transferOwnershipSchema), T(K.ownershipOffered, (c) => ({ targetUserId: (c.meta['body'] as { userId?: string } | undefined)?.userId })), member.transferOwnership),
@@ -125,45 +129,46 @@ export function buildWorkspaceRoutes(
 
 		// ── Invitations
 		R('listInvitations', 'GET', '/workspaces/invitations', requireAuth, wsCtx, invitation.list),
-		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, manager, validate(createInvitationsSchema), T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })), invitation.invite),
-		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, manager, brake('invitation.cancel'), T(K.invitationCancelled, inviteOf), invitation.cancel),
-		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, manager, T(K.invitationResent, inviteOf), invitation.resend),
+		R('invite', 'POST', '/workspaces/invitations', requireAuth, wsCtx, active, manager, validate(createInvitationsSchema), T(K.invitationCreated, (_c, r) => ({ inviteIds: ((r?.['invitations'] as Array<{ invitationId: string }> | undefined) ?? []).map((i) => i.invitationId) })), invitation.invite),
+		R('cancelInvitation', 'DELETE', '/workspaces/invitations/:inviteId', requireAuth, wsCtx, active, manager, brake('invitation.cancel'), T(K.invitationCancelled, inviteOf), invitation.cancel),
+		R('resendInvitation', 'POST', '/workspaces/invitations/:inviteId/resend', requireAuth, wsCtx, active, manager, T(K.invitationResent, inviteOf), invitation.resend),
 		R('acceptInvitation', 'POST', '/workspaces/invitations/accept', acceptLimit, requireAuth, validate(acceptInvitationSchema), T(K.invitationAccepted, () => ({}), (r) => r?.['workspaceId'] as string | undefined), invitation.accept),
 
 		// ── Roles
 		// The undo bin — BEFORE /workspaces/roles/:roleId (the router is first-match).
 		R('listRoleBin', 'GET', '/workspaces/roles/bin', requireAuth, wsCtx, manager, role.listBin),
-		R('restoreRole', 'POST', '/workspaces/roles/bin/:roleId/restore', requireAuth, wsCtx, manager, T(K.roleRestored, roleOf), role.restore),
-		R('purgeRoleFromBin', 'DELETE', '/workspaces/roles/bin/:roleId', requireAuth, wsCtx, owner, T(K.roleBinPurged, roleOf), role.purge),
-		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, manager, validate(createRoleSchema), T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })), role.create),
+		R('restoreRole', 'POST', '/workspaces/roles/bin/:roleId/restore', requireAuth, wsCtx, active, manager, T(K.roleRestored, roleOf), role.restore),
+		R('purgeRoleFromBin', 'DELETE', '/workspaces/roles/bin/:roleId', requireAuth, wsCtx, active, owner, T(K.roleBinPurged, roleOf), role.purge),
+		R('createRole', 'POST', '/workspaces/roles', requireAuth, wsCtx, active, manager, validate(createRoleSchema), T(K.roleCreated, (_c, r) => ({ roleId: (r?.['role'] as { id?: string } | undefined)?.id })), role.create),
 		R('listRoles', 'GET', '/workspaces/roles', requireAuth, wsCtx, role.list),
 		R('getRole', 'GET', '/workspaces/roles/:roleId', requireAuth, wsCtx, role.get),
-		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, validate(updateRoleSchema), T(K.roleUpdated, roleOf), role.update),
-		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, manager, brake('role.delete'), T(K.roleDeleted, roleOf), role.remove),
+		R('updateRole', 'PUT', '/workspaces/roles/:roleId', requireAuth, wsCtx, active, manager, validate(updateRoleSchema), T(K.roleUpdated, roleOf), role.update),
+		R('removeRole', 'DELETE', '/workspaces/roles/:roleId', requireAuth, wsCtx, active, manager, brake('role.delete'), T(K.roleDeleted, roleOf), role.remove),
 		R('getRolePermissions', 'GET', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, role.getPermissions),
-		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, manager, validate(setRolePermissionsSchema), T(K.rolePermissionsSet, roleOf), role.setPermissions),
+		R('setRolePermissions', 'POST', '/workspaces/roles/:roleId/permissions', requireAuth, wsCtx, active, manager, validate(setRolePermissionsSchema), T(K.rolePermissionsSet, roleOf), role.setPermissions),
 
 		// ── Workspace lifecycle
 		// Owner only: archiving locks every member out (docs/INSIDER-THREAT-DESIGN.md, I2).
-		R('archive', 'POST', '/workspaces/archive', requireAuth, wsCtx, owner, T(K.workspaceArchived), workspace.archive),
-		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, manager, T(K.workspaceRestored), workspace.restore),
+		R('archive', 'POST', '/workspaces/archive', requireAuth, wsCtx, active, owner, T(K.workspaceArchived), workspace.archive),
+		// Owner only, like archiving: restoring is the owner's decision as well.
+		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, owner, T(K.workspaceRestored), workspace.restore),
 		R('getSettings', 'GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings),
-		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, manager, validate(updateSettingsSchema), T(K.settingsUpdated), workspace.updateSettings),
+		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, active, manager, validate(updateSettingsSchema), T(K.settingsUpdated), workspace.updateSettings),
 
 		// ── Contacts & locations (X-Workspace-ID). Members read; managers write.
 		// Params are :emailId / :phoneId / :locationId — never :id, which
 		// withWorkspace would read as the workspace. Before /workspaces/:id.
 		R('getContacts', 'GET', '/workspaces/contacts', requireAuth, wsCtx, contacts.list),
-		R('addEmail', 'POST', '/workspaces/emails', requireAuth, wsCtx, manager, validate(addWorkspaceEmailSchema), T(K.emailAdded, contactOf('email')), contacts.addEmail),
-		R('updateEmail', 'PATCH', '/workspaces/emails/:emailId', requireAuth, wsCtx, manager, validate(updateWorkspaceEmailSchema), T(K.emailUpdated, contactOf('email')), contacts.updateEmail),
-		R('removeEmail', 'DELETE', '/workspaces/emails/:emailId', requireAuth, wsCtx, manager, T(K.emailRemoved, contactOf('email')), contacts.removeEmail),
-		R('addPhone', 'POST', '/workspaces/phones', requireAuth, wsCtx, manager, validate(addWorkspacePhoneSchema), T(K.phoneAdded, contactOf('phone')), contacts.addPhone),
-		R('updatePhone', 'PATCH', '/workspaces/phones/:phoneId', requireAuth, wsCtx, manager, validate(updateWorkspacePhoneSchema), T(K.phoneUpdated, contactOf('phone')), contacts.updatePhone),
-		R('removePhone', 'DELETE', '/workspaces/phones/:phoneId', requireAuth, wsCtx, manager, T(K.phoneRemoved, contactOf('phone')), contacts.removePhone),
-		R('createLocation', 'POST', '/workspaces/locations', requireAuth, wsCtx, manager, validate(createWorkspaceLocationSchema), T(K.locationCreated, contactOf('location')), contacts.createLocation),
-		R('updateLocation', 'PATCH', '/workspaces/locations/:locationId', requireAuth, wsCtx, manager, validate(updateWorkspaceLocationSchema), T(K.locationUpdated, contactOf('location')), contacts.updateLocation),
-		R('archiveLocation', 'POST', '/workspaces/locations/:locationId/archive', requireAuth, wsCtx, manager, T(K.locationArchived, contactOf('location')), contacts.archiveLocation),
-		R('restoreLocation', 'POST', '/workspaces/locations/:locationId/restore', requireAuth, wsCtx, manager, T(K.locationRestored, contactOf('location')), contacts.restoreLocation),
+		R('addEmail', 'POST', '/workspaces/emails', requireAuth, wsCtx, active, manager, validate(addWorkspaceEmailSchema), T(K.emailAdded, contactOf('email')), contacts.addEmail),
+		R('updateEmail', 'PATCH', '/workspaces/emails/:emailId', requireAuth, wsCtx, active, manager, validate(updateWorkspaceEmailSchema), T(K.emailUpdated, contactOf('email')), contacts.updateEmail),
+		R('removeEmail', 'DELETE', '/workspaces/emails/:emailId', requireAuth, wsCtx, active, manager, T(K.emailRemoved, contactOf('email')), contacts.removeEmail),
+		R('addPhone', 'POST', '/workspaces/phones', requireAuth, wsCtx, active, manager, validate(addWorkspacePhoneSchema), T(K.phoneAdded, contactOf('phone')), contacts.addPhone),
+		R('updatePhone', 'PATCH', '/workspaces/phones/:phoneId', requireAuth, wsCtx, active, manager, validate(updateWorkspacePhoneSchema), T(K.phoneUpdated, contactOf('phone')), contacts.updatePhone),
+		R('removePhone', 'DELETE', '/workspaces/phones/:phoneId', requireAuth, wsCtx, active, manager, T(K.phoneRemoved, contactOf('phone')), contacts.removePhone),
+		R('createLocation', 'POST', '/workspaces/locations', requireAuth, wsCtx, active, manager, validate(createWorkspaceLocationSchema), T(K.locationCreated, contactOf('location')), contacts.createLocation),
+		R('updateLocation', 'PATCH', '/workspaces/locations/:locationId', requireAuth, wsCtx, active, manager, validate(updateWorkspaceLocationSchema), T(K.locationUpdated, contactOf('location')), contacts.updateLocation),
+		R('archiveLocation', 'POST', '/workspaces/locations/:locationId/archive', requireAuth, wsCtx, active, manager, T(K.locationArchived, contactOf('location')), contacts.archiveLocation),
+		R('restoreLocation', 'POST', '/workspaces/locations/:locationId/restore', requireAuth, wsCtx, active, manager, T(K.locationRestored, contactOf('location')), contacts.restoreLocation),
 
 		// ── The workspace this request is scoped to (X-Workspace-ID, or the
 		// personal workspace). Before /workspaces/:id so 'current' is not an id.
@@ -172,6 +177,8 @@ export function buildWorkspaceRoutes(
 		// app checks (the role editor's grid).
 		R('getMyPermissions', 'GET', '/workspaces/current/permissions', requireAuth, wsCtx, access.mine),
 		R('getPermissionCatalog', 'GET', '/workspaces/permissions/catalog', requireAuth, wsCtx, access.catalog),
+		// Seats against the plan (any member): { used, members, pendingInvites, limit, available }.
+		R('getSeats', 'GET', '/workspaces/seats', requireAuth, wsCtx, member.seats),
 
 		// ── Path-based lookup by ID (admin / cross-workspace use)
 		R('getWorkspace', 'GET', '/workspaces/:id', requireAuth, wsCtx, workspace.get),
@@ -179,6 +186,6 @@ export function buildWorkspaceRoutes(
 		// ── Update current workspace — ID from :id path param (wsCtx) or the
 		// X-Workspace-ID header (or personal-workspace fallback when absent). Set
 		// routes.updateWorkspace = '/workspaces/:id' to match a path-id frontend.
-		R('updateWorkspace', 'PUT', '/workspaces', requireAuth, wsCtx, manager, validate(updateWorkspaceSchema), T(K.workspaceUpdated), workspace.update),
+		R('updateWorkspace', 'PUT', '/workspaces', requireAuth, wsCtx, active, manager, validate(updateWorkspaceSchema), T(K.workspaceUpdated), workspace.update),
 	];
 }
