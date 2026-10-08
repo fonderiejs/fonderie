@@ -182,6 +182,22 @@ console.log('  ✓ migrate guards (DATABASE_URL required, --dry-run offered, unr
   if (!/DROP TABLE demo CASCADE/.test(outDry)) fail('dry-run should print the statement that earned the label');
   if (!/1 of the migrations found delete data/.test(outDry)) fail('dry-run summary wrong: ' + outDry);
   console.log('  ✓ migrate --dry-run (ESM-only exports discovered, drop flagged with its statement)');
+
+  // An app directory shipping a filename the brick already ships: the second
+  // would be skipped forever (fonderie_migrations is keyed by filename only).
+  const appMig = join(mp, 'db', 'migrations');
+  mkdirSync(appMig, { recursive: true });
+  writeFileSync(join(appMig, '001_create.sql'), 'CREATE TABLE app_things (id int);');
+  let clashErr = '';
+  try {
+    run(['migrate', '--dry-run', '--project', mp, '--app', 'db/migrations'], {
+      env: { ...process.env, DATABASE_URL: '' }, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    fail('migrate accepted two modules shipping the same migration filename');
+  } catch (e) { clashErr = String(e.stderr ?? ''); }
+  if (!/filename collision/.test(clashErr)) fail('collision not reported: ' + clashErr);
+  if (!/"001_create\.sql" is in both demo .* and app /.test(clashErr)) fail('collision must name the file and both modules: ' + clashErr);
+  console.log('  ✓ migrate refuses a migration filename shipped by two modules');
 }
 
 // ── config/secret management commands (thin client over the admin API) ──────

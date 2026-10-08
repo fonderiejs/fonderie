@@ -724,6 +724,23 @@ const classify = (store, sql) =>
     ? store.classifyMigration(sql)
     : { impact: 'unknown', destructive: [] };
 
+// Same rule as @fonderie/store's assertUniqueMigrationNames, inlined because the
+// CLI stays zero-dep and must work against an older installed store.
+function migrationNameClashes(dirs) {
+  const seen = new Map();
+  const out = [];
+  for (const [name, dir] of dirs) {
+    let files = [];
+    try { files = readdirSync(dir).filter((f) => f.endsWith('.sql')); } catch { continue; }
+    for (const file of files) {
+      const first = seen.get(file);
+      if (first === undefined) seen.set(file, `${name} (${dir})`);
+      else if (first !== `${name} (${dir})`) out.push(`"${file}" is in both ${first} and ${name} (${dir})`);
+    }
+  }
+  return out;
+}
+
 async function doMigrate() {
   const cwd = arg('--project', process.cwd());
   const appDir = arg('--app', null);
@@ -780,6 +797,18 @@ async function doMigrate() {
   if (appDir) dirs.push(['app', join(cwd, appDir)]);
   if (dirs.length === 0) {
     console.error('migrate: found no migrations. Pass --app <dir> for the app’s own.');
+    process.exit(1);
+  }
+
+  // fonderie_migrations keys an applied migration by FILENAME alone, shared by
+  // every brick and the app. Two modules shipping the same name means the second
+  // is skipped as "already applied", forever. Refuse before reading anything else.
+  const clash = migrationNameClashes(dirs);
+  if (clash.length > 0) {
+    console.error('migrate: migration filename collision —');
+    for (const c of clash) console.error(`  ${c}`);
+    console.error('fonderie_migrations records migrations by filename only, so the second one');
+    console.error('would never run. Rename one of them (e.g. prefix it with its module).');
     process.exit(1);
   }
 
