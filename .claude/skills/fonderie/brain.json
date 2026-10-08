@@ -55,7 +55,7 @@
     "risk": "0.3.10",
     "sse": "0.2.9",
     "storage": "0.1.31",
-    "store": "0.7.2",
+    "store": "0.7.3",
     "vue": "0.11.0",
     "vue-admin": "1.3.0",
     "vue-admin-screens": "1.7.2",
@@ -2488,7 +2488,7 @@
       "hasOutcomes": true
     },
     "store": {
-      "version": "0.7.2",
+      "version": "0.7.3",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
