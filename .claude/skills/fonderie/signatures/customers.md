@@ -57,6 +57,7 @@ interface ICustomerDTO {
     companyName: string;
     avatarUrl: string;
     locale: string;
+    timezone: string | null;
     displayName: string;
     referenceCode: string;
     referralCode: string;
@@ -199,6 +200,7 @@ interface ICustomer {
     companyName: string | null;
     avatarUrl: string | null;
     locale: string;
+    timezone?: string | null;
     referenceCode: string | null;
     referralCode: string | null;
     referredBy: string | null;
