@@ -1,5 +1,12 @@
 # @fonderie/webhooks
 
+## 7.2.3
+
+### Patch Changes
+
+- Updated dependencies [0423614]
+  - @fonderie/workspaces@8.0.0
+
 ## 7.2.2
 
 ### Patch Changes

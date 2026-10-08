@@ -1,5 +1,13 @@
 # @fonderie/react-native-workspaces-screens
 
+## 0.5.3
+
+### Patch Changes
+
+- Updated dependencies [0423614]
+  - @fonderie/client@3.22.0
+  - @fonderie/react-native-workspaces@0.3.0
+
 ## 0.5.2
 
 ### Patch Changes
