@@ -7,8 +7,14 @@ export {
 	InternalMigrationRunner,
 	createMigrationsPath,
 	classifyMigration,
+	assertUniqueMigrationNames,
+	runMigrationSets,
 } from './migrations';
-export type { IMigrationClassification, MigrationImpact } from './migrations';
+export type {
+	IMigrationClassification,
+	MigrationImpact,
+	MigrationSetInput,
+} from './migrations';
 export { PGAdapter, assertProductionDbConfig } from './adapters/pg';
 
 // Versioned-resource control-plane primitive — version index + optimistic
