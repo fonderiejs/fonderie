@@ -67,8 +67,10 @@ export class BillingModule implements IFonderieModule {
 			},
 			'billing:user-purged',
 		);
-		// Workspace lifecycle, from @fonderie/workspaces: an archived workspace
+		// Workspace lifecycle, from @fonderie/workspaces. Opt-in
+		// (onWorkspaceArchived: 'cancel-at-period-end'): an archived workspace
 		// stops paying at the period's end; restoring it in time resumes it.
+		// By default both handlers change nothing.
 		bus?.on<{ workspaceId: string }>(
 			WORKSPACE_ARCHIVED_EVENT,
 			async ({ workspaceId }) => {

@@ -76,9 +76,9 @@ it resolves — read it by shape with no dependency — or put the exported
 
 Archiving and restoring emit `fonderie.workspace.archived` /
 `fonderie.workspace.restored` (`{ workspaceId, userId }`). `@fonderie/billing`
-listens: an archived workspace's subscription ends at the period's end
-(`onWorkspaceArchived: 'keep'` opts out), and restoring it before then resumes
-it.
+can follow them — opt in with `onWorkspaceArchived: 'cancel-at-period-end'`:
+an archived workspace's subscription then ends at the period's end, and
+restoring it before then resumes it. By default billing is left as it was.
 
 ### Seats, system-role grants, paging
 

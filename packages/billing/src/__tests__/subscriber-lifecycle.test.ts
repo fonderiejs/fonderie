@@ -262,7 +262,7 @@ test('BillingModule subscribes to both account events on the bus, and routes the
 	const { provider } = fakeProvider();
 	new BillingModule(
 		store as never,
-		{ provider, plans: [], successUrl: 'x', cancelUrl: 'y' } as never,
+		{ provider, plans: [], successUrl: 'x', cancelUrl: 'y', onWorkspaceArchived: 'cancel-at-period-end' } as never,
 		bus as never,
 	);
 	assert.deepEqual(
@@ -287,7 +287,29 @@ test('BillingModule subscribes to both account events on the bus, and routes the
 
 // ── workspace archived / restored (fonderie.workspace.archived / .restored) ───
 
-test('archived workspace: its subscription ends at the period end, the stored card is kept; restoring in time resumes it', {
+test('archived workspace, by default: billing is left as it was — nothing canceled, nothing to resume', {
+	skip,
+}, async () => {
+	const store = await connect();
+	try {
+		await seed(store);
+		const arch = fakeProvider();
+		assert.deepEqual(await handleWorkspaceArchived(store, { provider: arch.provider }, WORKSPACE), { canceled: 'none', chargingDisarmed: false });
+		assert.equal(arch.calls.length, 0, 'the provider is not called');
+		const [sub] = await store.query<{ status: string; ending: boolean; marked: boolean }>(
+			`SELECT status, cancel_at_period_end AS ending, ended_by_account_deletion AS marked FROM fonderie_subscriptions WHERE subscriber_id = $1`,
+			[WORKSPACE],
+		);
+		assert.deepEqual(sub, { status: 'active', ending: false, marked: false });
+		const res = fakeProvider();
+		assert.deepEqual(await handleWorkspaceRestored(store, { provider: res.provider }, WORKSPACE), { resumed: false });
+		assert.equal(res.calls.length, 0);
+	} finally {
+		await close(store);
+	}
+});
+
+test('archived workspace, opted in: its subscription ends at the period end, the stored card is kept; restoring in time resumes it', {
 	skip,
 }, async () => {
 	const store = await connect();
@@ -299,7 +321,7 @@ test('archived workspace: its subscription ends at the period end, the stored ca
 			[WORKSPACE],
 		);
 		const arch = fakeProvider();
-		const out = await handleWorkspaceArchived(store, { provider: arch.provider }, WORKSPACE);
+		const out = await handleWorkspaceArchived(store, { provider: arch.provider, onWorkspaceArchived: 'cancel-at-period-end' }, WORKSPACE);
 		assert.deepEqual(out, { canceled: 'at-period-end', chargingDisarmed: false });
 		assert.deepEqual(arch.calls, [{ op: 'cancel', arg: { subscriptionId: 'sub_ws_1', atPeriodEnd: true } }]);
 		const [card] = await store.query<{ pm: string | null; d: boolean }>(
@@ -326,13 +348,13 @@ test('archived workspace: its subscription ends at the period end, the stored ca
 	}
 });
 
-test('archived workspace: restored after the period ended stays canceled; a cancel the owner chose is never undone; keep opts out', {
+test('archived workspace, opted in: restored after the period ended stays canceled; a cancel the owner chose is never undone; keep opts out', {
 	skip,
 }, async () => {
 	const store = await connect();
 	try {
 		await seed(store);
-		await handleWorkspaceArchived(store, { provider: fakeProvider().provider }, WORKSPACE);
+		await handleWorkspaceArchived(store, { provider: fakeProvider().provider, onWorkspaceArchived: 'cancel-at-period-end' }, WORKSPACE);
 		// The period ran out: the provider's webhook ended it.
 		await store.query(`UPDATE fonderie_subscriptions SET status = 'canceled' WHERE subscriber_id = $1`, [WORKSPACE]);
 		const late = fakeProvider();
@@ -344,7 +366,7 @@ test('archived workspace: restored after the period ended stays canceled; a canc
 			[WORKSPACE],
 		);
 		const chosen = fakeProvider();
-		await handleWorkspaceArchived(store, { provider: chosen.provider }, WORKSPACE);
+		await handleWorkspaceArchived(store, { provider: chosen.provider, onWorkspaceArchived: 'cancel-at-period-end' }, WORKSPACE);
 		assert.equal(chosen.calls.length, 0, 'already ending by the owner: not touched');
 		const res = fakeProvider();
 		assert.deepEqual(await handleWorkspaceRestored(store, { provider: res.provider }, WORKSPACE), { resumed: false });

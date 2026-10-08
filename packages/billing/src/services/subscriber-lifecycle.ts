@@ -202,18 +202,20 @@ export async function handleSubscriberRestored(
 }
 
 /**
- * A workspace was archived (fonderie.workspace.archived): its subscription
- * ends at the period's end — nothing more is charged for a read-only
- * workspace — unless `onWorkspaceArchived: 'keep'`. Marked the way deletion
- * marks it, so restoring resumes it and never undoes a cancellation the
- * owner chose. The stored card is kept: the workspace may well come back.
+ * A workspace was archived (fonderie.workspace.archived). OPT-IN: by default
+ * (`onWorkspaceArchived` unset or 'keep') billing goes on untouched. With
+ * `onWorkspaceArchived: 'cancel-at-period-end'` its subscription ends at the
+ * period's end — nothing more is charged for a read-only workspace. Marked the
+ * way deletion marks it, so restoring resumes it and never undoes a
+ * cancellation the owner chose. The stored card is kept: the workspace may
+ * well come back.
  */
 export async function handleWorkspaceArchived(
 	store: IStoreAdapter,
 	config: Pick<IBillingConfig, 'provider' | 'onWorkspaceArchived'>,
 	workspaceId: string,
 ): Promise<ISubscriberDeletedOutcome> {
-	if (config.onWorkspaceArchived === 'keep') return { canceled: 'none', chargingDisarmed: false };
+	if (config.onWorkspaceArchived !== 'cancel-at-period-end') return { canceled: 'none', chargingDisarmed: false };
 	return handleSubscriberDeleted(
 		store,
 		{ provider: config.provider, onSubscriberDeleted: 'cancel-at-period-end' },
@@ -226,7 +228,8 @@ export async function handleWorkspaceArchived(
  * The workspace was restored (fonderie.workspace.restored): resume the
  * subscription its archiving set to end — while the paid period still runs (a
  * subscription already canceled at the provider stays canceled; the owner
- * subscribes again).
+ * subscribes again). Only ever acts on archiving's own mark, so with the
+ * default 'keep' there is never anything to resume.
  */
 export async function handleWorkspaceRestored(
 	store: IStoreAdapter,

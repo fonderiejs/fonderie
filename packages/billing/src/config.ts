@@ -251,10 +251,11 @@ export interface IBillingConfig {
 	 * When a workspace is archived (`fonderie.workspace.archived`, emitted by
 	 * @fonderie/workspaces — the workspace is read-only until its owner restores
 	 * it), what happens to the workspace's subscription. Needs the event bus.
-	 *   'cancel-at-period-end' (default) — let the paid-through period run out;
+	 *   'keep' (default) — nothing: billing goes on as before (the app decides).
+	 *   'cancel-at-period-end' — opt in: let the paid-through period run out;
 	 *     restoring the workspace before it ends resumes the subscription.
-	 *   'keep' — do nothing (the app handles it).
-	 * The stored card stays: unlike a deleted account, the workspace may return.
+	 * The stored card stays either way: unlike a deleted account, the workspace
+	 * may return.
 	 */
 	onWorkspaceArchived?: 'cancel-at-period-end' | 'keep';
 	plans: IBillingPlan[];
