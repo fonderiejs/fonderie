@@ -2384,7 +2384,9 @@
         "useDeletedRoles",
         "useOwnershipOffer",
         "useWorkspaceContacts",
-        "useWorkspaceLocations"
+        "useWorkspaceLocations",
+        "useWorkspaceBranches",
+        "useWorkspaceBranch"
       ],
       "subpaths": [],
       "tables": [],
@@ -3019,7 +3021,9 @@
         "useDeletedRoles",
         "useOwnershipOffer",
         "useWorkspaceContacts",
-        "useWorkspaceLocations"
+        "useWorkspaceLocations",
+        "useWorkspaceBranches",
+        "useWorkspaceBranch"
       ],
       "subpaths": [],
       "tables": [],
@@ -3153,6 +3157,7 @@
         "EVENT_KEYS",
         "DEFAULT_TEMPLATES",
         "CONTACT_LIMITS",
+        "BRANCH_LIMIT",
         "WORKSPACE_ARCHIVED_META_KEY",
         "ROLE_BIN_RETENTION_DAYS",
         "VELOCITY_BRAKE_DEFAULTS",
@@ -3169,6 +3174,7 @@
         "fonderie_role_user_workspaces",
         "fonderie_roles",
         "fonderie_workspace_brakes",
+        "fonderie_workspace_branches",
         "fonderie_workspace_destructive_actions",
         "fonderie_workspace_emails",
         "fonderie_workspace_invitations",
@@ -3177,7 +3183,7 @@
         "fonderie_workspace_phones",
         "fonderie_workspaces"
       ],
-      "routeCount": 52,
+      "routeCount": 59,
       "routes": [
         {
           "method": "GET",
@@ -3203,6 +3209,41 @@
           "method": "POST",
           "path": "/workspaces/archive",
           "mw": "requireAuth → wsCtx → active → owner → T(K.workspaceArchived) → workspace.archive"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/branches",
+          "mw": "requireAuth → wsCtx → branches.list"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/branches",
+          "mw": "requireAuth → wsCtx → active → manager → validate(createWorkspaceBranchSchema) → T(K.branchCreated, contactOf('branch')) → branches.create"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/branches/:branchId",
+          "mw": "requireAuth → wsCtx → branches.get"
+        },
+        {
+          "method": "PATCH",
+          "path": "/workspaces/branches/:branchId",
+          "mw": "requireAuth → wsCtx → active → manager → validate(updateWorkspaceBranchSchema) → T(K.branchUpdated, contactOf('branch')) → branches.update"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/branches/:branchId/archive",
+          "mw": "requireAuth → wsCtx → active → manager → T(K.branchArchived, contactOf('branch')) → branches.archive"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/branches/:branchId/default",
+          "mw": "requireAuth → wsCtx → active → manager → T(K.branchDefaultSet, contactOf('branch')) → branches.setDefault"
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/branches/:branchId/restore",
+          "mw": "requireAuth → wsCtx → active → manager → T(K.branchRestored, contactOf('branch')) → branches.restore"
         },
         {
           "method": "GET",
@@ -6729,6 +6770,14 @@
       "react-workspaces",
       "vue-workspaces"
     ],
+    "useworkspacebranches": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
+    "useworkspacebranch": [
+      "react-workspaces",
+      "vue-workspaces"
+    ],
     "riskengine": [
       "risk"
     ],
@@ -6778,6 +6827,9 @@
       "workspaces"
     ],
     "contact_limits": [
+      "workspaces"
+    ],
+    "branch_limit": [
       "workspaces"
     ],
     "workspace_archived_meta_key": [

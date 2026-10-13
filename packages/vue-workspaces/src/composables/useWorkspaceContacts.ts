@@ -38,13 +38,18 @@ export const fetchWorkspaceContacts = async (api: WorkspacesClient, bust?: boole
 
 // The selected workspace's emails and phones — re-read on a workspace switch
 // and after every change. Writes are for owners / managers.
-export function useWorkspaceContacts(client?: WorkspacesClient): IUseWorkspaceContactsReturn {
+/** Narrow to one branch's contacts; the read stays shared (one request serves every branch). */
+export interface IWorkspaceContactsOptions {
+	branchId?: string;
+}
+
+export function useWorkspaceContacts(client?: WorkspacesClient, opts?: IWorkspaceContactsOptions): IUseWorkspaceContactsReturn {
 	const api = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceContacts');
 	const q = useScopedQuery(api, WORKSPACE_CONTACTS_KEY, (bust) => fetchWorkspaceContacts(api, bust));
 	const w = useWrite(() => q.refresh());
 	return {
-		emails: computed(() => q.data.value?.emails ?? []),
-		phones: computed(() => q.data.value?.phones ?? []),
+		emails: computed(() => (q.data.value?.emails ?? []).filter((e) => !opts?.branchId || e.branchId === opts.branchId)),
+		phones: computed(() => (q.data.value?.phones ?? []).filter((p) => !opts?.branchId || p.branchId === opts.branchId)),
 		isLoading: q.isLoading,
 		error: computed(() => w.error.value ?? q.error.value),
 		refresh: q.refresh,

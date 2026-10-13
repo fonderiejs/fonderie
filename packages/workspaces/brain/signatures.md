@@ -35,7 +35,7 @@ type WorkspacesEventKey = (typeof EVENT_KEYS)[keyof typeof EVENT_KEYS];
 
 const MESSAGE_KEYS: { readonly workspaceInvitation: "workspace-invitation"; readonly memberRemoved: "workspace-member-removed"; readonly memberRemovedAlert: "workspace-member-removed-alert"; readonly managerRemoved: "workspace-manager-removed"; readonly ownershipOffered: "workspace-ownership-offered"; readonly ownershipAccepted: "workspace-ownership-accepted"; readonly managerPaused: "workspace-manager-paused"; readonly webhookCreatedAlert: "workspace-webhook-created-alert"; readonly planCancelAlert: "workspace-plan-cancel-alert"; }
 
-const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; readonly workspaceCreated: "fonderie.workspace.created"; readonly workspaceUpdated: "fonderie.workspace.updated"; readonly workspaceArchived: "fonderie.workspace.archived"; readonly workspaceRestored: "fonderie.workspace.restored"; readonly settingsUpdated: "fonderie.workspace.settings.updated"; readonly memberRemoved: "fonderie.workspace.member.removed"; readonly memberLeft: "fonderie.workspace.member.left"; readonly memberRoleAdded: "fonderie.workspace.member.role.added"; readonly memberRoleRemoved: "fonderie.workspace.member.role.removed"; readonly managerSet: "fonderie.workspace.manager.set"; readonly managerUnset: "fonderie.workspace.manager.unset"; readonly ownershipOffered: "fonderie.workspace.ownership.offered"; readonly ownershipTransferred: "fonderie.workspace.ownership.transferred"; readonly ownershipDeclined: "fonderie.workspace.ownership.declined"; readonly ownershipWithdrawn: "fonderie.workspace.ownership.withdrawn"; readonly managerPaused: "fonderie.workspace.manager.paused"; readonly managerReleased: "fonderie.workspace.manager.released"; readonly invitationCreated: "fonderie.workspace.invitation.created"; readonly invitationCancelled: "fonderie.workspace.invitation.cancelled"; readonly invitationResent: "fonderie.workspace.invitation.resent"; readonly invitationAccepted: "fonderie.workspace.invitation.accepted"; readonly roleCreated: "fonderie.workspace.role.created"; readonly roleUpdated: "fonderie.workspace.role.updated"; readonly roleDeleted: "fonderie.workspace.role.deleted"; readonly roleRestored: "fonderie.workspace.role.restored"; readonly roleBinPurged: "fonderie.workspace.role.bin.purged"; readonly rolePermissionsSet: "fonderie.workspace.role.permissions.set"; readonly emailAdded: "fonderie.workspace.email.added"; readonly emailUpdated: "fonderie.workspace.email.updated"; readonly emailRemoved: "fonderie.workspace.email.removed"; readonly phoneAdded: "fonderie.workspace.phone.added"; readonly phoneUpdated: "fonderie.workspace.phone.updated"; readonly phoneRemoved: "fonderie.workspace.phone.removed"; readonly locationCreated: "fonderie.workspace.location.created"; readonly locationUpdated: "fonderie.workspace.location.updated"; readonly locationArchived: "fonderie.workspace.location.archived"; readonly locationRestored: "fonderie.workspace.location.restored"; }
+const EVENT_KEYS: { readonly personalWorkspaceCreated: "fonderie.workspace.personal.created"; readonly workspaceCreated: "fonderie.workspace.created"; readonly workspaceUpdated: "fonderie.workspace.updated"; readonly workspaceArchived: "fonderie.workspace.archived"; readonly workspaceRestored: "fonderie.workspace.restored"; readonly settingsUpdated: "fonderie.workspace.settings.updated"; readonly memberRemoved: "fonderie.workspace.member.removed"; readonly memberLeft: "fonderie.workspace.member.left"; readonly memberRoleAdded: "fonderie.workspace.member.role.added"; readonly memberRoleRemoved: "fonderie.workspace.member.role.removed"; readonly managerSet: "fonderie.workspace.manager.set"; readonly managerUnset: "fonderie.workspace.manager.unset"; readonly ownershipOffered: "fonderie.workspace.ownership.offered"; readonly ownershipTransferred: "fonderie.workspace.ownership.transferred"; readonly ownershipDeclined: "fonderie.workspace.ownership.declined"; readonly ownershipWithdrawn: "fonderie.workspace.ownership.withdrawn"; readonly managerPaused: "fonderie.workspace.manager.paused"; readonly managerReleased: "fonderie.workspace.manager.released"; readonly invitationCreated: "fonderie.workspace.invitation.created"; readonly invitationCancelled: "fonderie.workspace.invitation.cancelled"; readonly invitationResent: "fonderie.workspace.invitation.resent"; readonly invitationAccepted: "fonderie.workspace.invitation.accepted"; readonly roleCreated: "fonderie.workspace.role.created"; readonly roleUpdated: "fonderie.workspace.role.updated"; readonly roleDeleted: "fonderie.workspace.role.deleted"; readonly roleRestored: "fonderie.workspace.role.restored"; readonly roleBinPurged: "fonderie.workspace.role.bin.purged"; readonly rolePermissionsSet: "fonderie.workspace.role.permissions.set"; readonly emailAdded: "fonderie.workspace.email.added"; readonly emailUpdated: "fonderie.workspace.email.updated"; readonly emailRemoved: "fonderie.workspace.email.removed"; readonly phoneAdded: "fonderie.workspace.phone.added"; readonly phoneUpdated: "fonderie.workspace.phone.updated"; readonly phoneRemoved: "fonderie.workspace.phone.removed"; readonly locationCreated: "fonderie.workspace.location.created"; readonly locationUpdated: "fonderie.workspace.location.updated"; readonly locationArchived: "fonderie.workspace.location.archived"; readonly locationRestored: "fonderie.workspace.location.restored"; readonly branchCreated: "fonderie.workspace.branch.created"; readonly branchUpdated: "fonderie.workspace.branch.updated"; readonly branchDefaultSet: "fonderie.workspace.branch.default.set"; readonly branchArchived: "fonderie.workspace.branch.archived"; readonly branchRestored: "fonderie.workspace.branch.restored"; }
 
 const DEFAULT_TEMPLATES: { "workspace-invitation": IDefaultTemplate; "workspace-member-removed": IDefaultTemplate; "workspace-member-removed-alert": IDefaultTemplate; "workspace-manager-removed": IDefaultTemplate; "workspace-ownership-offered": IDefaultTemplate; "workspace-ownership-accepted": IDefaultTemplate; "workspace-manager-paused": IDefaultTemplate; "workspace-webhook-created-alert": IDefaultTemplate; "workspace-plan-cancel-alert": IDefaultTemplate; }
 
@@ -119,6 +119,7 @@ interface IWorkspaceSettings {
 interface IWorkspaceEmail {
     id: string;
     workspaceId: string;
+    branchId: string;
     email: string;
     label: string | null;
     isPrimary: boolean;
@@ -130,6 +131,7 @@ interface IWorkspaceEmail {
 interface IWorkspacePhone {
     id: string;
     workspaceId: string;
+    branchId: string;
     phone: string;
     extension: string | null;
     label: string | null;
@@ -142,6 +144,7 @@ interface IWorkspacePhone {
 interface IWorkspaceLocation {
     id: string;
     workspaceId: string;
+    branchId: string;
     name: string;
     address: IWorkspaceAddress;
     country: string | null;
@@ -162,6 +165,25 @@ interface IWorkspaceContacts {
     emails: IWorkspaceEmail[];
     phones: IWorkspacePhone[];
     locations: IWorkspaceLocation[];
+}
+
+interface IWorkspaceBranch {
+    id: string;
+    workspaceId: string;
+    name: string;
+    domain: string | null;
+    motto: string | null;
+    industry: string | null;
+    website: string | null;
+    logoUrl: string | null;
+    locale: string | null;
+    taxRegistrations: ITaxRegistration[] | null;
+    isDefault: boolean;
+    position: number;
+    archivedAt: string | null;
+    archivedBy: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface IWorkspaceDTO {
@@ -240,6 +262,7 @@ interface IWorkspaceSettingsDTO {
 
 interface IWorkspaceEmailDTO {
     id: string;
+    branchId: string;
     email: string;
     label: string;
     isPrimary: boolean;
@@ -250,6 +273,7 @@ interface IWorkspaceEmailDTO {
 
 interface IWorkspacePhoneDTO {
     id: string;
+    branchId: string;
     phone: string;
     extension: string;
     label: string;
@@ -261,6 +285,7 @@ interface IWorkspacePhoneDTO {
 
 interface IWorkspaceLocationDTO {
     id: string;
+    branchId: string;
     name: string;
     address: IWorkspaceAddressDTO;
     taxRegion: string;
@@ -283,6 +308,25 @@ interface IWorkspaceContactsDTO {
     locations: IWorkspaceLocationDTO[];
 }
 
+interface IWorkspaceBranchDTO {
+    id: string;
+    name: string;
+    domain: string;
+    motto: string;
+    industry: string;
+    website: string;
+    logoUrl: string;
+    locale: string;
+    taxRegistrations: IWorkspaceDTO['taxRegistrations'];
+    isDefault: boolean;
+    position: number;
+    isArchived: boolean;
+    archivedAt: string;
+    archivedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 function toWorkspaceDTO(ws: IWorkspace): IWorkspaceDTO
 
 function toRoleDTO(role: IRole): IRoleDTO
@@ -301,11 +345,21 @@ function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocationDTO
 
 function toWorkspaceContactsDTO(c: IWorkspaceContacts): IWorkspaceContactsDTO
 
+function toWorkspaceBranchDTO(b: IWorkspaceBranch): IWorkspaceBranchDTO
+
 const CONTACT_LIMITS: { readonly emails: 10; readonly phones: 10; readonly locations: 50; }
 
-function listContacts(workspaceId: string, store: IStoreAdapter): Promise<IWorkspaceContacts>
+function listContacts(workspaceId: string, store: IStoreAdapter, branchId?: string | null | undefined): Promise<IWorkspaceContacts>
 
 function taxRegionOf(address: IWorkspaceAddress | null | undefined): string | null
+
+const BRANCH_LIMIT: 20
+
+function listBranches(workspaceId: string, store: IStoreAdapter): Promise<IWorkspaceBranch[]>
+
+function findBranch(workspaceId: string, id: string, store: IStoreAdapter): Promise<IWorkspaceBranch | null>
+
+function findBranchByDomain(domain: string, store: IStoreAdapter): Promise<IWorkspaceBranch | null>
 
 function getWorkspaceSettings(id: string, store: IStoreAdapter): Promise<IWorkspaceSettings>
 
@@ -325,7 +379,7 @@ function countOccupiedSeats(workspaceId: string, store: IStoreAdapter): Promise<
 
 function seatUsage(workspaceId: string, store: IStoreAdapter): Promise<{ used: number; members: number; pendingInvites: number; }>
 
-namespace schemas — exports: BUSINESS_TYPES, DOCUMENT_PREFIX_KINDS_MAX, acceptInvitationSchema, addMemberRoleSchema, addWorkspaceEmailSchema, addWorkspacePhoneSchema, createInvitationsSchema, createRoleSchema, createWorkspaceLocationSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceEmailSchema, updateWorkspaceLocationSchema, updateWorkspacePhoneSchema, updateWorkspaceSchema
+namespace schemas — exports: BUSINESS_TYPES, DOCUMENT_PREFIX_KINDS_MAX, acceptInvitationSchema, addMemberRoleSchema, addWorkspaceEmailSchema, addWorkspacePhoneSchema, createInvitationsSchema, createRoleSchema, createWorkspaceBranchSchema, createWorkspaceLocationSchema, createWorkspaceSchema, setRolePermissionsSchema, transferOwnershipSchema, updateRoleSchema, updateSettingsSchema, updateWorkspaceBranchSchema, updateWorkspaceEmailSchema, updateWorkspaceLocationSchema, updateWorkspacePhoneSchema, updateWorkspaceSchema
 
 function importWorkspace(store: IStoreAdapter, ws: IImportWorkspace): Promise<{ id: string; }>
 

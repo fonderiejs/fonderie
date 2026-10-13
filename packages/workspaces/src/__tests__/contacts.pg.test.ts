@@ -312,8 +312,9 @@ test('limits: 50 locations', { skip }, async () => {
 	const { token, ws } = await owner();
 	// 50 seeded directly — the limit is under test here, not the route.
 	await store.query(
-		`INSERT INTO fonderie_workspace_locations (workspace_id, name, address, position)
-		 SELECT $1, 'Branch ' || g, '{"country":"CA"}'::jsonb, g FROM generate_series(1, 50) g`,
+		`INSERT INTO fonderie_workspace_locations (workspace_id, branch_id, name, address, position)
+		 SELECT $1, (SELECT id FROM fonderie_workspace_branches WHERE workspace_id = $1 AND is_default), 'Site ' || g, '{"country":"CA"}'::jsonb, g
+		   FROM generate_series(1, 50) g`,
 		[ws],
 	);
 	const r = await call(token, 'POST', '/workspaces/locations', { name: 'One more', address: { country: 'CA' } }, ws);
@@ -354,16 +355,38 @@ test('a member reads the contacts but cannot change them; another workspace’s 
 
 // ── the migration's backfill ─────────────────────────────────────────────────
 
+// Migration 010's rows predate branches: relax the 011 constraint for the
+// replay (DDL rolls back with the transaction), then run 011's assignment.
+async function preBranches(tx: IStoreAdapter): Promise<void> {
+	for (const t of ['fonderie_workspace_emails', 'fonderie_workspace_phones', 'fonderie_workspace_locations']) {
+		await tx.query(`ALTER TABLE ${t} ALTER COLUMN branch_id DROP NOT NULL`);
+	}
+}
+async function assignBranches(tx: IStoreAdapter, ws: string): Promise<void> {
+	// 011's assignment, scoped to this workspace: the replayed 010 backfill
+	// ran over the whole (shared) table, and those other rows roll back.
+	for (const t of ['fonderie_workspace_emails', 'fonderie_workspace_phones', 'fonderie_workspace_locations']) {
+		await tx.query(
+			`UPDATE ${t} r SET branch_id = b.id FROM fonderie_workspace_branches b
+			 WHERE r.workspace_id = $1 AND r.branch_id IS NULL AND b.workspace_id = r.workspace_id AND b.is_default`,
+			[ws],
+		);
+	}
+}
+
 test('backfill: a workspace from before migration 010 gets its email, phone and address as entries', { skip }, async () => {
 	const { ws } = await owner();
 	const sql = readFileSync(join(getMigrationsPath(), '010_workspace_contacts.sql'), 'utf8');
 	const backfill = sql.slice(sql.indexOf('-- Backfill'));
 	// Inside a transaction that is rolled back: the backfill runs over the whole
 	// table, and this suite shares its database — nobody else's rows may change.
+	// Migration 010 ran before branches existed: its rows have no branch until
+	// 011 assigns them to the default branch — replayed here in that order.
 	const rolledBack = new Error('rollback');
 	let seen: { emails: unknown[]; phones: unknown[]; locations: Array<Record<string, unknown>> } | null = null;
 	await store
 		.transaction(async (tx) => {
+			await preBranches(tx);
 			await tx.query(`DELETE FROM fonderie_workspace_emails WHERE workspace_id = $1`, [ws]);
 			await tx.query(
 				`UPDATE fonderie_workspaces SET email = 'Bureau@acme.example', phone = '+15145550100',
@@ -372,6 +395,8 @@ test('backfill: a workspace from before migration 010 gets its email, phone and 
 				[ws],
 			);
 			await tx.query(backfill);
+			await assignBranches(tx, ws);
+			assert.deepEqual(await tx.query(`SELECT count(*)::int AS n FROM fonderie_workspace_emails WHERE workspace_id = $1 AND branch_id IS NULL`, [ws]), [{ n: 0 }]);
 			seen = {
 				emails: await tx.query(`SELECT email, is_primary FROM fonderie_workspace_emails WHERE workspace_id = $1`, [ws]),
 				phones: await tx.query(`SELECT phone, is_primary FROM fonderie_workspace_phones WHERE workspace_id = $1`, [ws]),
@@ -397,8 +422,10 @@ test('backfill: an address stored before normalization (a state name, not a code
 	let rows: Array<Record<string, unknown>> = [];
 	await store
 		.transaction(async (tx) => {
+			await preBranches(tx);
 			await tx.query(`UPDATE fonderie_workspaces SET address = '{"city":"Montréal","state":"Québec","country":"CA"}'::jsonb WHERE id = $1`, [ws]);
 			await tx.query(backfill);
+			await assignBranches(tx, ws);
 			rows = await tx.query(`SELECT tax_region, is_head_office FROM fonderie_workspace_locations WHERE workspace_id = $1`, [ws]);
 			throw rolledBack;
 		})

@@ -17,7 +17,9 @@ import {
 	updateWorkspaceEmailSchema,
 	addWorkspacePhoneSchema,
 	updateWorkspacePhoneSchema,
+	createWorkspaceBranchSchema,
 	createWorkspaceLocationSchema,
+	updateWorkspaceBranchSchema,
 	updateWorkspaceLocationSchema,
 	acceptInvitationSchema,
 	createInvitationsSchema,
@@ -39,6 +41,7 @@ import { roleController } from './controllers/role.controller';
 import { invitationController } from './controllers/invitation.controller';
 import { accessController } from './controllers/access.controller';
 import { contactsController } from './controllers/contacts.controller';
+import { branchesController } from './controllers/branches.controller';
 
 type RouteDefinition = [string, string, ...Middleware[]];
 
@@ -75,6 +78,7 @@ export function buildWorkspaceRoutes(
 	const role = roleController(store);
 	const access = accessController(store, config);
 	const contacts = contactsController(store);
+	const branches = branchesController(store);
 	const invitation = invitationController(store, ttl, bus, {
 		...(config.invitationUrl ? { invitationUrl: config.invitationUrl } : {}),
 		...(config.invitationAccountMatch ? { invitationAccountMatch: config.invitationAccountMatch } : {}),
@@ -154,6 +158,16 @@ export function buildWorkspaceRoutes(
 		R('restore', 'POST', '/workspaces/restore', requireAuth, wsCtx, owner, T(K.workspaceRestored), workspace.restore),
 		R('getSettings', 'GET', '/workspaces/settings', requireAuth, wsCtx, workspace.getSettings),
 		R('updateSettings', 'PUT', '/workspaces/settings', requireAuth, wsCtx, active, manager, validate(updateSettingsSchema), T(K.settingsUpdated), workspace.updateSettings),
+
+		// ── Branches (X-Workspace-ID). Members read; managers write. Params are
+		// :branchId — never :id, which withWorkspace would read as the workspace.
+		R('listBranches', 'GET', '/workspaces/branches', requireAuth, wsCtx, branches.list),
+		R('createBranch', 'POST', '/workspaces/branches', requireAuth, wsCtx, active, manager, validate(createWorkspaceBranchSchema), T(K.branchCreated, contactOf('branch')), branches.create),
+		R('getBranch', 'GET', '/workspaces/branches/:branchId', requireAuth, wsCtx, branches.get),
+		R('updateBranch', 'PATCH', '/workspaces/branches/:branchId', requireAuth, wsCtx, active, manager, validate(updateWorkspaceBranchSchema), T(K.branchUpdated, contactOf('branch')), branches.update),
+		R('setDefaultBranch', 'POST', '/workspaces/branches/:branchId/default', requireAuth, wsCtx, active, manager, T(K.branchDefaultSet, contactOf('branch')), branches.setDefault),
+		R('archiveBranch', 'POST', '/workspaces/branches/:branchId/archive', requireAuth, wsCtx, active, manager, T(K.branchArchived, contactOf('branch')), branches.archive),
+		R('restoreBranch', 'POST', '/workspaces/branches/:branchId/restore', requireAuth, wsCtx, active, manager, T(K.branchRestored, contactOf('branch')), branches.restore),
 
 		// ── Contacts & locations (X-Workspace-ID). Members read; managers write.
 		// Params are :emailId / :phoneId / :locationId — never :id, which

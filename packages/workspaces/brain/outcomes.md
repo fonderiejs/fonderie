@@ -54,6 +54,31 @@ braked_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 -- PRIMARY KEY (workspace_id, user_id)
 ```
 
+### `fonderie_workspace_branches`
+
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
+name                     TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100)
+domain                   TEXT CHECK (domain IS NULL OR (domain = lower(domain) AND length(domain) <= 253))
+motto                    TEXT CHECK (motto IS NULL OR length(motto) <= 300)
+industry                 TEXT
+website                  TEXT
+logo_url                 TEXT
+locale                   TEXT
+tax_registrations        JSONB NOT NULL DEFAULT '[]'::jsonb
+is_default               BOOLEAN NOT NULL DEFAULT false
+position                 SMALLINT NOT NULL DEFAULT 0
+archived_at              TIMESTAMPTZ
+archived_by              UUID
+created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+-- CHECK (NOT (is_default AND archived_at IS NOT NULL))
+-- UNIQUE INDEX ux_fwb_default (workspace_id)
+-- UNIQUE INDEX ux_fwb_domain (domain)
+-- INDEX idx_fwb_workspace (workspace_id)
+```
+
 ### `fonderie_workspace_destructive_actions`
 
 ```sql
@@ -75,8 +100,10 @@ is_primary               BOOLEAN NOT NULL DEFAULT false
 position                 SMALLINT NOT NULL DEFAULT 0
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+branch_id                UUID REFERENCES fonderie_workspace_branches(id) ON DELETE CASCADE NOT NULL
+CONSTRAINT               fonderie_workspace_emails_branch_id_email_key UNIQUE (branch_id, email)
 -- UNIQUE (workspace_id, email)
--- UNIQUE INDEX ux_fwe_primary (workspace_id)
+-- UNIQUE INDEX ux_fwe_primary (branch_id)
 ```
 
 ### `fonderie_workspace_invitations`
@@ -112,9 +139,11 @@ archived_at              TIMESTAMPTZ
 archived_by              UUID
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+branch_id                UUID REFERENCES fonderie_workspace_branches(id) ON DELETE CASCADE NOT NULL
 -- CHECK (NOT (is_head_office AND archived_at IS NOT NULL))
--- UNIQUE INDEX ux_fwl_head_office (workspace_id)
 -- INDEX idx_fwl_workspace (workspace_id)
+-- UNIQUE INDEX ux_fwl_head_office (branch_id)
+-- INDEX idx_fwl_branch (branch_id)
 ```
 
 ### `fonderie_workspace_ownership_offers`
@@ -139,8 +168,10 @@ is_primary               BOOLEAN NOT NULL DEFAULT false
 position                 SMALLINT NOT NULL DEFAULT 0
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+branch_id                UUID REFERENCES fonderie_workspace_branches(id) ON DELETE CASCADE NOT NULL
+CONSTRAINT               fonderie_workspace_phones_branch_id_phone_extension_key UNIQUE (branch_id, phone, extension)
 -- UNIQUE (workspace_id, phone, extension)
--- UNIQUE INDEX ux_fwp_primary (workspace_id)
+-- UNIQUE INDEX ux_fwp_primary (branch_id)
 ```
 
 ### `fonderie_workspaces`
@@ -181,6 +212,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 INSERT INTO fonderie_workspace_emails (workspace_id, email, is_primary) SELECT id, lower(email), true FROM fonderie_workspaces WHERE email IS NOT NULL AND email <> '' ON CONFLICT DO NOTHING;
 INSERT INTO fonderie_workspace_phones (workspace_id, phone, is_primary) SELECT id, phone, true FROM fonderie_workspaces WHERE phone ~ '^\+[1-9][0-9]{6,14}$' ON CONFLICT DO NOTHING;
 INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_region, is_head_office) SELECT id, 'Head office', address, CASE WHEN address->>'country' IN ('CA','US') AND upper(coalesce(address->>'state','')) ~ '^[A-Z0-9]{1,3}$' THEN (address->>'country') || '-' || upper(address->>'state') END, true FROM fonderie_workspaces WHERE address IS NOT NULL AND address <> '{}'::jsonb ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, is_default) SELECT w.id, w.name, w.motto, w.industry, w.website, w.logo_url, NULLIF(w.settings->>'locale', ''), COALESCE(w.tax_registrations, '[]'::jsonb), true FROM fonderie_workspaces w WHERE NOT EXISTS (SELECT 1 FROM fonderie_workspace_branches b WHERE b.workspace_id = w.id AND b.is_default);
 ```
 
 ## HTTP routes registered
@@ -192,6 +224,13 @@ INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_regio
 | PUT | `/workspaces` | `requireAuth → wsCtx → active → manager → validate(updateWorkspaceSchema) → T(K.workspaceUpdated) → workspace.update` |
 | GET | `/workspaces/:id` | `requireAuth → wsCtx → workspace.get` |
 | POST | `/workspaces/archive` | `requireAuth → wsCtx → active → owner → T(K.workspaceArchived) → workspace.archive` |
+| GET | `/workspaces/branches` | `requireAuth → wsCtx → branches.list` |
+| POST | `/workspaces/branches` | `requireAuth → wsCtx → active → manager → validate(createWorkspaceBranchSchema) → T(K.branchCreated, contactOf('branch')) → branches.create` |
+| GET | `/workspaces/branches/:branchId` | `requireAuth → wsCtx → branches.get` |
+| PATCH | `/workspaces/branches/:branchId` | `requireAuth → wsCtx → active → manager → validate(updateWorkspaceBranchSchema) → T(K.branchUpdated, contactOf('branch')) → branches.update` |
+| POST | `/workspaces/branches/:branchId/archive` | `requireAuth → wsCtx → active → manager → T(K.branchArchived, contactOf('branch')) → branches.archive` |
+| POST | `/workspaces/branches/:branchId/default` | `requireAuth → wsCtx → active → manager → T(K.branchDefaultSet, contactOf('branch')) → branches.setDefault` |
+| POST | `/workspaces/branches/:branchId/restore` | `requireAuth → wsCtx → active → manager → T(K.branchRestored, contactOf('branch')) → branches.restore` |
 | GET | `/workspaces/contacts` | `requireAuth → wsCtx → contacts.list` |
 | GET | `/workspaces/current` | `requireAuth → wsCtx → workspace.get` |
 | GET | `/workspaces/current/permissions` | `requireAuth → wsCtx → access.mine` |

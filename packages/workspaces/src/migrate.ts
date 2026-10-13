@@ -1,4 +1,5 @@
 import type { IStoreAdapter } from '@fonderie/store';
+import { ensureDefaultBranch } from './services/branches';
 
 // Migrating existing teams/orgs onto Fonderie workspaces. Like `importUser` in
 // @fonderie/auth, the runtime `create*` paths are for fresh workspaces (new id,
@@ -76,6 +77,8 @@ export async function importWorkspace(
 		vals,
 	);
 	if (!row) throw new Error('[workspaces] importWorkspace: insert returned no row');
+	// An imported workspace gets its default branch like any other (migration 011).
+	await ensureDefaultBranch(store, row.id);
 	return row;
 }
 

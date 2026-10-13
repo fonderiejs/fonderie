@@ -26,12 +26,12 @@ export interface IUseWorkspaceLocationsReturn {
 
 // The selected workspace's locations (the head office's address is the
 // workspace's address). Shares its read with useWorkspaceContacts.
-export function useWorkspaceLocations(client?: WorkspacesClient): IUseWorkspaceLocationsReturn {
+export function useWorkspaceLocations(client?: WorkspacesClient, opts?: { branchId?: string }): IUseWorkspaceLocationsReturn {
 	const api = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceLocations');
 	const q = useScopedQuery(api, WORKSPACE_CONTACTS_KEY, (bust) => fetchWorkspaceContacts(api, bust));
 	const w = useWrite(() => q.refresh());
 	return {
-		locations: computed(() => q.data.value?.locations ?? []),
+		locations: computed(() => (q.data.value?.locations ?? []).filter((l) => !opts?.branchId || l.branchId === opts.branchId)),
 		isLoading: q.isLoading,
 		error: computed(() => w.error.value ?? q.error.value),
 		refresh: q.refresh,

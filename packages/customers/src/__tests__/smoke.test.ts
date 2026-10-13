@@ -18,6 +18,7 @@ const WS_ID   = '00000000-0000-0000-0000-000000000002';
 const CUSTOMER: ICustomer = {
 	id: CUST_ID,
 	workspaceId: WS_ID,
+	branchId: null,
 	type: 'individual',
 	sex: 'UNKNOWN',
 	firstName: 'Jane',
