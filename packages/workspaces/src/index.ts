@@ -16,6 +16,7 @@ export type {
 	IWorkspacePhone,
 	IWorkspaceLocation,
 	IWorkspaceContacts,
+	IWorkspaceBranch,
 } from './types';
 export type {
 	IWorkspaceDTO,
@@ -27,6 +28,7 @@ export type {
 	IWorkspacePhoneDTO,
 	IWorkspaceLocationDTO,
 	IWorkspaceContactsDTO,
+	IWorkspaceBranchDTO,
 } from './dtos/workspace';
 export {
 	toWorkspaceDTO,
@@ -38,10 +40,17 @@ export {
 	toWorkspacePhoneDTO,
 	toWorkspaceLocationDTO,
 	toWorkspaceContactsDTO,
+	toWorkspaceBranchDTO,
 } from './dtos/workspace';
 // The workspace's emails, phones and locations — the primary email / phone and
 // the head office's address are mirrored onto the workspace's own columns.
 export { CONTACT_LIMITS, listContacts, taxRegionOf } from './services/contacts';
+// The workspace's branches — one customer-facing identity each (name, logo,
+// language, tax registrations, and its own contacts); one is the default,
+// whose identity and primary contacts the workspace's own columns mirror.
+// `findBranchByDomain` is what a funnel on a branch's host calls to know
+// which branch a sign-up belongs to.
+export { BRANCH_LIMIT, listBranches, findBranch, findBranchByDomain } from './services/branches';
 // The workspace's settings (locale, timezone, currency…) with defaults applied —
 // what another brick reads to default a customer's language or a document's currency.
 export { getWorkspaceSettings } from './services/workspaces';

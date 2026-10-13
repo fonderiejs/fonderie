@@ -9,6 +9,7 @@ import { toCustomerDetailD2DTO, toCustomerDetailDTO, toCustomerDTO } from '../dt
 import type { ICustomerDetailD2 } from '../types';
 import { CustomerInUseError, CustomerModel, duplicateCode } from '../models/customer.model';
 import { isUuid } from '../utils';
+import { isWorkspaceBranch } from '../models/customer.model';
 
 // A code the caller chose that another customer in the workspace holds: theirs
 // to change, so a 409 that says which code — not a 500 from the unique index.
@@ -78,6 +79,11 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			}
 			if (archivedParam === 'all') listOpts.archived = 'all';
 			else if (archivedParam === 'true' || archivedParam === '1') listOpts.archived = true;
+			const branchId = query?.get('branchId');
+			if (branchId) {
+				if (!isUuid(branchId)) return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'branchId must be a valid UUID');
+				listOpts.branchId = branchId;
+			}
 
 			const { limit: _limit, offset: _offset, ...countOpts } = listOpts;
 			const [list, total] = await Promise.all([
@@ -144,6 +150,7 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 			const avatarUrl = body?.['avatarUrl'];
 			const locale = body?.['locale'];
 			const timezone = body?.['timezone'];
+			const branchId = body?.['branchId'];
 			const referenceCode = body?.['referenceCode'];
 			const referralCode = body?.['referralCode'];
 			const referredByCode = body?.['referredByCode'];
@@ -164,10 +171,15 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 				);
 			}
 
+			if (typeof branchId === 'string' && !(await isWorkspaceBranch(store, workspaceId, branchId))) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'branchId is not a live branch of this workspace');
+			}
+
 			let customer: Awaited<ReturnType<typeof customers.create>>;
 			try {
 				customer = await customers.create({
 					workspaceId,
+					branchId: typeof branchId === 'string' ? branchId : null,
 					type: typeof type === 'string' ? type : 'individual',
 					sex: typeof sex === 'string' ? sex : 'UNKNOWN',
 					firstName: typeof firstName === 'string' ? firstName : null,
@@ -261,6 +273,14 @@ export function customerController(store: IStoreAdapter, config: ICustomersConfi
 
 			if (body?.['avatarUrl'] !== undefined) {
 				opts.avatarUrl = typeof body['avatarUrl'] === 'string' ? body['avatarUrl'] : null;
+			}
+
+			if (body?.['branchId'] !== undefined) {
+				const b = body['branchId'];
+				if (typeof b === 'string' && !(await isWorkspaceBranch(store, workspaceId, b))) {
+					return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'branchId is not a live branch of this workspace');
+				}
+				opts.branchId = typeof b === 'string' ? b : null;
 			}
 
 			if (body?.['locale'] !== undefined && typeof body['locale'] === 'string') {

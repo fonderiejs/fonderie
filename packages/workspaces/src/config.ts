@@ -65,6 +65,12 @@ export const EVENT_KEYS = {
 	locationUpdated: 'fonderie.workspace.location.updated',
 	locationArchived: 'fonderie.workspace.location.archived',
 	locationRestored: 'fonderie.workspace.location.restored',
+	// Branches (migration 011). Payload adds branchId.
+	branchCreated: 'fonderie.workspace.branch.created',
+	branchUpdated: 'fonderie.workspace.branch.updated',
+	branchDefaultSet: 'fonderie.workspace.branch.default.set',
+	branchArchived: 'fonderie.workspace.branch.archived',
+	branchRestored: 'fonderie.workspace.branch.restored',
 } as const;
 
 // Events of OTHER bricks the owner is alerted to (Phase 6) — mirrored here so
@@ -149,6 +155,7 @@ export type WorkspaceRouteId =
 	| 'createRole' | 'listRoles' | 'getRole' | 'updateRole' | 'removeRole' | 'getRolePermissions' | 'setRolePermissions'
 	| 'listRoleBin' | 'restoreRole' | 'purgeRoleFromBin'
 	| 'getContacts' | 'addEmail' | 'updateEmail' | 'removeEmail' | 'addPhone' | 'updatePhone' | 'removePhone'
-	| 'createLocation' | 'updateLocation' | 'archiveLocation' | 'restoreLocation';
+	| 'createLocation' | 'updateLocation' | 'archiveLocation' | 'restoreLocation'
+	| 'listBranches' | 'createBranch' | 'getBranch' | 'updateBranch' | 'setDefaultBranch' | 'archiveBranch' | 'restoreBranch';
 
 export type WorkspaceRouteOverride = string | { method?: string; path?: string };

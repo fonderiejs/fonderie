@@ -150,6 +150,8 @@ referred_by              UUID REFERENCES fonderie_customers(id) ON DELETE SET NU
 is_archived              BOOLEAN NOT NULL DEFAULT false
 archived_at              TIMESTAMPTZ
 timezone                 TEXT
+branch_id                UUID
+-- INDEX idx_fc_workspace_branch (workspace_id, branch_id)
 ```
 
 Raw SQL ships in `node_modules/@fonderie/customers/dist/migrations/sql/` — read it there if you must; never download tarballs.

@@ -29,6 +29,8 @@ import { WorkspaceScope } from '../workspace-scope';
 // ── Input shapes ─────────────────────────────────────────────────────────────
 
 export interface IListCustomersInput {
+	/** Only this branch's customers. */
+	branchId?: string;
 	search?: string;
 	blacklisted?: boolean;
 	/** false (default): active customers only; true: archived only; 'all': both. */
@@ -42,6 +44,8 @@ export interface IGetCustomerInput {
 }
 
 export interface ICreateCustomerInput {
+	/** The branch they deal with — one of the workspace's live branches; null / omitted = the default. */
+	branchId?: string | null;
 	type?: CustomerType;
 	sex?: CustomerSex;
 	firstName?: string | null;
@@ -147,6 +151,7 @@ export class CustomersClient {
 
 	listCustomers(input: IListCustomersInput = {}, opts?: IReadOptions) {
 		const params = new URLSearchParams();
+		if (input.branchId !== undefined) params.set('branchId', input.branchId);
 		if (input.search !== undefined) params.set('search', input.search);
 		if (input.blacklisted !== undefined) params.set('blacklisted', String(input.blacklisted));
 		if (input.archived !== undefined) params.set('archived', String(input.archived));

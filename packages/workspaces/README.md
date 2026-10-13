@@ -57,8 +57,29 @@ email, the primary phone and the head office's address — a `PUT /workspaces`
 with any of them updates the entries too, in the same transaction. Phones are
 E.164 (`+15145550100`, optional `extension`); a location's `taxRegion`
 (`CA-QC`) comes from its address unless given. Limits: 10 emails, 10 phones,
-50 locations. Frontend: `useWorkspaceContacts()` and `useWorkspaceLocations()`
-in the React, React Native and Vue workspaces packages.
+50 locations — per branch. Frontend: `useWorkspaceContacts()` and
+`useWorkspaceLocations()` in the React, React Native and Vue workspaces
+packages, with `{ branchId }` to narrow to one branch.
+
+### Branches
+
+A business can have more than one face: the branches its customers deal with.
+Each branch is one customer-facing identity — name, logo, slogan, sector,
+website, `domain`, language and tax registrations — and owns its emails,
+phones and locations (one primary email / phone and one head office per
+branch). The workspace keeps the legal identity (legal name, legal form,
+business number) and its name as the team's name. `GET /workspaces/branches`
+(any member) lists them, the default first; owners and managers create and
+change them under `/workspaces/branches` and `POST …/:branchId/default`,
+`…/archive`, `…/restore`. Every workspace has a default branch from the
+start (built from its profile by the migration); the workspace's own
+profile fields and primary contacts mirror it, both ways, so nothing that
+reads `IWorkspaceDTO` changes. The default cannot be archived — make another
+the default first. A branch's `domain` is a host name (`quebecmover.com`),
+one live branch per host across every workspace: a sign-up funnel on that
+host calls `findBranchByDomain` to know which branch (and so which language,
+address and taxes) a new customer belongs to. Limit: 20 branches. Frontend:
+`useWorkspaceBranches()` and `useWorkspaceBranch(id)`.
 
 ### Archiving: read-only until restored
 

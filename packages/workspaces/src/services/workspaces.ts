@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
+import { ensureDefaultBranch } from './branches';
+
 import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
 
 const SELECT_WS = `
@@ -157,7 +159,11 @@ export async function createWorkspace(
 				opts.plan ?? 'free',
 			],
 		);
-		if (workspace) return workspace;
+		if (workspace) {
+			// Every workspace has a default branch from the start (migration 011).
+			await ensureDefaultBranch(store, workspace.id);
+			return workspace;
+		}
 	}
 	throw new Error('Failed to create workspace: no free slug');
 }
@@ -174,6 +180,7 @@ export async function createPersonalWorkspace(
 		 RETURNING ${SELECT_WS}`,
 		[opts.name, opts.slug, opts.ownerId],
 	);
+	if (workspace) await ensureDefaultBranch(store, workspace.id);
 	return workspace ?? null;
 }
 

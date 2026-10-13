@@ -215,6 +215,7 @@ interface IWorkspaceSettingsDTO {
 
 interface IWorkspaceEmailDTO {
     id: string;
+    branchId: string;
     email: string;
     label: string;
     isPrimary: boolean;
@@ -225,6 +226,7 @@ interface IWorkspaceEmailDTO {
 
 interface IWorkspacePhoneDTO {
     id: string;
+    branchId: string;
     phone: string;
     extension: string;
     label: string;
@@ -236,6 +238,7 @@ interface IWorkspacePhoneDTO {
 
 interface IWorkspaceLocationDTO {
     id: string;
+    branchId: string;
     name: string;
     address: IWorkspaceAddressDTO;
     taxRegion: string;
@@ -258,7 +261,42 @@ interface IWorkspaceContactsResult {
     locations: IWorkspaceLocationDTO[];
 }
 
+interface IWorkspaceBranchDTO {
+    id: string;
+    name: string;
+    domain: string;
+    motto: string;
+    industry: string;
+    website: string;
+    logoUrl: string;
+    locale: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    isDefault: boolean;
+    position: number;
+    isArchived: boolean;
+    archivedAt: string;
+    archivedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface ICreateWorkspaceBranchInput {
+    name: string;
+    domain?: string | null;
+    motto?: string | null;
+    industry?: string | null;
+    website?: string | null;
+    logoUrl?: string | null;
+    locale?: string | null;
+    taxRegistrations?: IUpdateWorkspaceInput['taxRegistrations'];
+    isDefault?: boolean;
+    position?: number;
+}
+
+type IUpdateWorkspaceBranchInput = Partial<ICreateWorkspaceBranchInput>;
+
 interface IAddWorkspaceEmailInput {
+    branchId?: string;
     email: string;
     label?: string | null;
     isPrimary?: boolean;
@@ -271,6 +309,7 @@ interface IUpdateWorkspaceEmailInput {
 }
 
 interface IAddWorkspacePhoneInput {
+    branchId?: string;
     phone: string;
     extension?: string | null;
     label?: string | null;
@@ -285,6 +324,7 @@ interface IUpdateWorkspacePhoneInput {
 }
 
 interface IWorkspaceLocationInput {
+    branchId?: string;
     name: string;
     address: NonNullable<IUpdateWorkspaceInput['address']>;
     taxRegion?: string | null;
@@ -342,7 +382,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
   .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
-  .getContacts(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceContactsResult>>
+  .getContacts(opts?: IWorkspaceContactsReadOptions | undefined): Promise<IApiResponse<IWorkspaceContactsResult>>
   .addEmail(input: IAddWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
   .updateEmail(emailId: string, input: IUpdateWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
   .removeEmail(emailId: string): Promise<IApiResponse<{ deleted: boolean; }>>
@@ -353,6 +393,13 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .updateLocation(locationId: string, input: Partial<IWorkspaceLocationInput>): Promise<IApiResponse<IWorkspaceLocationResult>>
   .archiveLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
   .restoreLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
+  .listBranches(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceBranchListResult>>
+  .createBranch(input: ICreateWorkspaceBranchInput): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .getBranch(branchId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .updateBranch(branchId: string, input: Partial<ICreateWorkspaceBranchInput>): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .setDefaultBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .archiveBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .restoreBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
@@ -577,6 +624,30 @@ interface IUseWorkspaceLocationsReturn {
     restoreLocation: (locationId: string) => Promise<void>;
 }
 
+interface IUseWorkspaceBranchesReturn {
+    branches: Ref<IWorkspaceBranchDTO[]>;
+    defaultBranch: Ref<IWorkspaceBranchDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+    createBranch: (input: ICreateWorkspaceBranchInput) => Promise<IWorkspaceBranchDTO>;
+    updateBranch: (branchId: string, input: IUpdateWorkspaceBranchInput) => Promise<IWorkspaceBranchDTO>;
+    setDefaultBranch: (branchId: string) => Promise<IWorkspaceBranchDTO>;
+    archiveBranch: (branchId: string) => Promise<IWorkspaceBranchDTO>;
+    restoreBranch: (branchId: string) => Promise<IWorkspaceBranchDTO>;
+}
+
+interface IUseWorkspaceBranchReturn {
+    branch: Ref<IWorkspaceBranchDTO | null>;
+    isLoading: Ref<boolean>;
+    error: Ref<FonderieApiError | null>;
+    refresh: (opts?: {
+        force?: boolean;
+    }) => Promise<void>;
+}
+
 function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
 
 function useInvitations(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions): IUseInvitationsReturn
@@ -611,7 +682,11 @@ function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRole
 
 function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
 
-function useWorkspaceContacts(client?: WorkspacesClient | undefined): IUseWorkspaceContactsReturn
+function useWorkspaceContacts(client?: WorkspacesClient | undefined, opts?: IWorkspaceContactsOptions | undefined): IUseWorkspaceContactsReturn
 
-function useWorkspaceLocations(client?: WorkspacesClient | undefined): IUseWorkspaceLocationsReturn
+function useWorkspaceLocations(client?: WorkspacesClient | undefined, opts?: { branchId?: string; } | undefined): IUseWorkspaceLocationsReturn
+
+function useWorkspaceBranches(client?: WorkspacesClient | undefined): IUseWorkspaceBranchesReturn
+
+function useWorkspaceBranch(id: MaybeRefOrGetter<string>): IUseWorkspaceBranchReturn
 ```
