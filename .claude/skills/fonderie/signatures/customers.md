@@ -54,6 +54,7 @@ interface ICustomerDetailDTO extends ICustomerDTO {
 
 interface ICustomerDTO {
     id: string;
+    branchId: string;
     type: string;
     sex: CustomerSex;
     firstName: string;
@@ -201,6 +202,7 @@ interface IAddress {
 interface ICustomer {
     id: string;
     workspaceId: string;
+    branchId: string | null;
     type: CustomerType;
     sex: CustomerSex;
     firstName: string | null;

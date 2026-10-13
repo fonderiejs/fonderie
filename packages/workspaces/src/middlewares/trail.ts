@@ -48,7 +48,7 @@ export const roleOf = (ctx: IFonderieContext): Facts => ({
 });
 /** The workspace email / phone / location a route acts on (`:emailId`…), or the one it created. */
 export const contactOf =
-	(kind: 'email' | 'phone' | 'location') =>
+	(kind: 'email' | 'phone' | 'location' | 'branch') =>
 	(ctx: IFonderieContext, result: Record<string, unknown> | undefined): Facts => ({
 		[`${kind}Id`]: params(ctx)[`${kind}Id`] ?? ((result?.[kind] as { id?: string } | undefined)?.id),
 	});

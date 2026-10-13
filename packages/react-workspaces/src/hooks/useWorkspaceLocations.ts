@@ -6,7 +6,7 @@ import type {
 	WorkspacesClient,
 } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { WORKSPACE_CONTACTS_KEY, fetchWorkspaceContacts } from './useWorkspaceContacts';
 
@@ -27,7 +27,7 @@ const NONE: IWorkspaceLocationDTO[] = [];
 
 // The selected workspace's locations (the head office's address is the
 // workspace's address). Shares its read with useWorkspaceContacts.
-export function useWorkspaceLocations(client?: WorkspacesClient): IUseWorkspaceLocationsReturn {
+export function useWorkspaceLocations(client?: WorkspacesClient, opts?: { branchId?: string }): IUseWorkspaceLocationsReturn {
 	const api = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceLocations');
 	const q = useScopedQuery(api, WORKSPACE_CONTACTS_KEY, (bust) => fetchWorkspaceContacts(api, bust));
 	const w = useWrite(q.refresh);
@@ -41,8 +41,10 @@ export function useWorkspaceLocations(client?: WorkspacesClient): IUseWorkspaceL
 	);
 	const archiveLocation = useCallback((locationId: string) => w.run(async () => void (await api.archiveLocation(locationId))), [api, w.run]);
 	const restoreLocation = useCallback((locationId: string) => w.run(async () => void (await api.restoreLocation(locationId))), [api, w.run]);
+	const branchId = opts?.branchId;
+	const locations = useMemo(() => (branchId ? (q.data?.locations ?? NONE).filter((l) => l.branchId === branchId) : (q.data?.locations ?? NONE)), [q.data, branchId]);
 	return {
-		locations: q.data?.locations ?? NONE,
+		locations,
 		isLoading: q.isLoading,
 		error: w.error ?? q.error,
 		refresh: q.refresh,

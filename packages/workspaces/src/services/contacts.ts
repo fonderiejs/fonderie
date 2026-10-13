@@ -8,16 +8,20 @@ import type {
 	IWorkspaceLocation,
 	IWorkspacePhone,
 } from '../types';
+import { BranchError, defaultBranchId, lockWorkspace, mirrorContacts, resolveBranch } from './branches';
 
-// A workspace's emails, phones and locations (migration 010).
+// A workspace's emails, phones and locations (migration 010), each owned by a
+// BRANCH (migration 011): one primary email, one primary phone and one head
+// office per branch, and the limits per branch.
 //
-// fonderie_workspaces.email / phone / address are the MIRROR of the primary
-// email, the primary phone and the head office's address. This service keeps
-// them in step, in the same transaction as the change, both ways:
+// fonderie_workspaces.email / phone / address are the MIRROR of the DEFAULT
+// branch's primary email, primary phone and head office's address. This
+// service keeps them in step, in the same transaction as the change, both ways:
 //
-//   - a write here (add, flag moved, delete…) re-derives the mirror column;
+//   - a write here (add, flag moved, delete…) re-derives the mirror columns;
 //   - PUT /workspaces with email / phone / address (fromProfile) updates the
-//     primary entry or the head office — creating it when there is none.
+//     default branch's primary entry or head office — creating it when there
+//     is none.
 //
 // Every write locks the workspace row first (FOR UPDATE), so two requests at
 // once cannot both become "the first entry", both pass a limit, or race a
@@ -38,17 +42,21 @@ export class ContactError extends Error {
 	}
 }
 
+export { BranchError };
+
 const notFound = (what: string) => new ContactError(404, 'NOT_FOUND', `${what} not found`);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const EMAIL_COLS = `id, workspace_id AS "workspaceId", email, label, is_primary AS "isPrimary", position,
+const EMAIL_COLS = `id, workspace_id AS "workspaceId", branch_id AS "branchId", email, label, is_primary AS "isPrimary", position,
 	created_at AS "createdAt", updated_at AS "updatedAt"`;
-const PHONE_COLS = `id, workspace_id AS "workspaceId", phone, extension, label, is_primary AS "isPrimary", position,
+const PHONE_COLS = `id, workspace_id AS "workspaceId", branch_id AS "branchId", phone, extension, label, is_primary AS "isPrimary", position,
 	created_at AS "createdAt", updated_at AS "updatedAt"`;
-const LOCATION_COLS = `id, workspace_id AS "workspaceId", name, address, country, tax_region AS "taxRegion",
+const LOCATION_COLS = `id, workspace_id AS "workspaceId", branch_id AS "branchId", name, address, country, tax_region AS "taxRegion",
 	latitude, longitude, phone, email, is_head_office AS "isHeadOffice", position,
 	archived_at AS "archivedAt", archived_by AS "archivedBy", created_at AS "createdAt", updated_at AS "updatedAt"`;
+
+type ListTable = 'fonderie_workspace_emails' | 'fonderie_workspace_phones';
 
 /** 'CA' + 'QC' → 'CA-QC' when the country has subdivisions and this is one of them; else null. */
 export function taxRegionOf(address: IWorkspaceAddress | null | undefined): string | null {
@@ -63,77 +71,42 @@ export function taxRegionOf(address: IWorkspaceAddress | null | undefined): stri
 const isEmpty = (a: IWorkspaceAddress | null | undefined) =>
 	!a || Object.values(a).every((v) => v === undefined || v === null || String(v).trim() === '');
 
-async function lock(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(`SELECT 1 FROM fonderie_workspaces WHERE id = $1 FOR UPDATE`, [workspaceId]);
-}
+const lock = lockWorkspace;
 
-async function count(tx: IStoreAdapter, table: string, workspaceId: string): Promise<number> {
-	const [row] = await tx.query<{ n: string }>(`SELECT count(*) AS n FROM ${table} WHERE workspace_id = $1`, [workspaceId]);
+async function count(tx: IStoreAdapter, table: string, branchId: string): Promise<number> {
+	const [row] = await tx.query<{ n: string }>(`SELECT count(*) AS n FROM ${table} WHERE branch_id = $1`, [branchId]);
 	return Number(row?.n ?? 0);
 }
 
-// ── Mirrors ──────────────────────────────────────────────────────────────────
-
-async function mirrorEmail(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(
-		`UPDATE fonderie_workspaces
-		 SET email = (SELECT email FROM fonderie_workspace_emails WHERE workspace_id = $1 AND is_primary), updated_at = now()
-		 WHERE id = $1`,
-		[workspaceId],
-	);
+/** Clear the flag on every other row of the branch, then set it on this one (the partial unique index allows one per branch). */
+async function moveFlag(tx: IStoreAdapter, table: string, flag: string, branchId: string, id: string): Promise<void> {
+	await tx.query(`UPDATE ${table} SET ${flag} = false, updated_at = now() WHERE branch_id = $1 AND ${flag} AND id <> $2`, [branchId, id]);
+	await tx.query(`UPDATE ${table} SET ${flag} = true, updated_at = now() WHERE branch_id = $1 AND id = $2`, [branchId, id]);
 }
 
-async function mirrorPhone(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(
-		`UPDATE fonderie_workspaces
-		 SET phone = (SELECT phone FROM fonderie_workspace_phones WHERE workspace_id = $1 AND is_primary), updated_at = now()
-		 WHERE id = $1`,
-		[workspaceId],
-	);
-}
-
-async function mirrorAddress(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(
-		`UPDATE fonderie_workspaces
-		 SET address = COALESCE((SELECT address FROM fonderie_workspace_locations WHERE workspace_id = $1 AND is_head_office), '{}'::jsonb),
-		     updated_at = now()
-		 WHERE id = $1`,
-		[workspaceId],
-	);
-}
-
-/** Clear the flag on every other row, then set it on this one (the partial unique index allows one). */
-async function moveFlag(tx: IStoreAdapter, table: string, flag: string, workspaceId: string, id: string): Promise<void> {
-	await tx.query(`UPDATE ${table} SET ${flag} = false, updated_at = now() WHERE workspace_id = $1 AND ${flag} AND id <> $2`, [workspaceId, id]);
-	await tx.query(`UPDATE ${table} SET ${flag} = true, updated_at = now() WHERE workspace_id = $1 AND id = $2`, [workspaceId, id]);
-}
-
-/** After the primary left: the next one (by position, then age) becomes primary. */
-async function promoteNext(tx: IStoreAdapter, table: 'fonderie_workspace_emails' | 'fonderie_workspace_phones', workspaceId: string): Promise<void> {
+/** After the primary left: the branch's next one (by position, then age) becomes primary. */
+async function promoteNext(tx: IStoreAdapter, table: ListTable, branchId: string): Promise<void> {
 	await tx.query(
 		`UPDATE ${table} SET is_primary = true, updated_at = now()
-		 WHERE id = (SELECT id FROM ${table} WHERE workspace_id = $1 ORDER BY position, created_at, id LIMIT 1)
-		   AND NOT EXISTS (SELECT 1 FROM ${table} WHERE workspace_id = $1 AND is_primary)`,
-		[workspaceId],
+		 WHERE id = (SELECT id FROM ${table} WHERE branch_id = $1 ORDER BY position, created_at, id LIMIT 1)
+		   AND NOT EXISTS (SELECT 1 FROM ${table} WHERE branch_id = $1 AND is_primary)`,
+		[branchId],
 	);
 }
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
-export async function listContacts(workspaceId: string, store: IStoreAdapter): Promise<IWorkspaceContacts> {
+/** Every contact of the workspace (each row says its branch), or one branch's. */
+export async function listContacts(workspaceId: string, store: IStoreAdapter, branchId?: string | null): Promise<IWorkspaceContacts> {
+	const scope = branchId ? `workspace_id = $1 AND branch_id = $2` : `workspace_id = $1`;
+	const params = branchId ? [workspaceId, branchId] : [workspaceId];
 	const [emails, phones, locations] = await Promise.all([
-		store.query<IWorkspaceEmail>(
-			`SELECT ${EMAIL_COLS} FROM fonderie_workspace_emails WHERE workspace_id = $1 ORDER BY is_primary DESC, position, created_at, id`,
-			[workspaceId],
-		),
-		store.query<IWorkspacePhone>(
-			`SELECT ${PHONE_COLS} FROM fonderie_workspace_phones WHERE workspace_id = $1 ORDER BY is_primary DESC, position, created_at, id`,
-			[workspaceId],
-		),
+		store.query<IWorkspaceEmail>(`SELECT ${EMAIL_COLS} FROM fonderie_workspace_emails WHERE ${scope} ORDER BY is_primary DESC, position, created_at, id`, params),
+		store.query<IWorkspacePhone>(`SELECT ${PHONE_COLS} FROM fonderie_workspace_phones WHERE ${scope} ORDER BY is_primary DESC, position, created_at, id`, params),
 		store.query<IWorkspaceLocation>(
-			`SELECT ${LOCATION_COLS} FROM fonderie_workspace_locations WHERE workspace_id = $1
+			`SELECT ${LOCATION_COLS} FROM fonderie_workspace_locations WHERE ${scope}
 			 ORDER BY is_head_office DESC, (archived_at IS NOT NULL), position, created_at, id`,
-			[workspaceId],
+			params,
 		),
 	]);
 	return { emails, phones, locations };
@@ -144,22 +117,23 @@ export async function listContacts(workspaceId: string, store: IStoreAdapter): P
 export async function addEmail(
 	store: IStoreAdapter,
 	workspaceId: string,
-	input: { email: string; label?: string | null; isPrimary?: boolean },
+	input: { branchId?: string | null; email: string; label?: string | null; isPrimary?: boolean },
 ): Promise<IWorkspaceEmail> {
 	return store.transaction(async (tx) => {
 		await lock(tx, workspaceId);
-		const n = await count(tx, 'fonderie_workspace_emails', workspaceId);
-		if (n >= CONTACT_LIMITS.emails) throw new ContactError(422, 'LIMIT_REACHED', `A workspace holds at most ${CONTACT_LIMITS.emails} emails`);
+		const branchId = await resolveBranch(tx, workspaceId, input.branchId);
+		const n = await count(tx, 'fonderie_workspace_emails', branchId);
+		if (n >= CONTACT_LIMITS.emails) throw new ContactError(422, 'LIMIT_REACHED', `A branch holds at most ${CONTACT_LIMITS.emails} emails`);
 		const email = input.email.trim().toLowerCase();
-		const [dup] = await tx.query(`SELECT 1 FROM fonderie_workspace_emails WHERE workspace_id = $1 AND email = $2`, [workspaceId, email]);
-		if (dup) throw new ContactError(409, 'DUPLICATE', 'This email is already on the workspace');
+		const [dup] = await tx.query(`SELECT 1 FROM fonderie_workspace_emails WHERE branch_id = $1 AND email = $2`, [branchId, email]);
+		if (dup) throw new ContactError(409, 'DUPLICATE', 'This email is already on the branch');
 		const [row] = await tx.query<IWorkspaceEmail>(
-			`INSERT INTO fonderie_workspace_emails (workspace_id, email, label, position)
-			 VALUES ($1, $2, $3, $4) RETURNING id`,
-			[workspaceId, email, input.label ?? null, n],
+			`INSERT INTO fonderie_workspace_emails (workspace_id, branch_id, email, label, position)
+			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			[workspaceId, branchId, email, input.label ?? null, n],
 		);
-		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_emails', 'is_primary', workspaceId, row!.id);
-		await mirrorEmail(tx, workspaceId);
+		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_emails', 'is_primary', branchId, row!.id);
+		await mirrorContacts(tx, workspaceId);
 		return (await getOne<IWorkspaceEmail>(tx, 'fonderie_workspace_emails', EMAIL_COLS, workspaceId, row!.id))!;
 	});
 }
@@ -170,11 +144,11 @@ export async function updateEmail(
 	id: string,
 	input: { label?: string | null; isPrimary?: boolean; position?: number },
 ): Promise<IWorkspaceEmail> {
-	return updateListEntry(store, 'fonderie_workspace_emails', EMAIL_COLS, 'Email', workspaceId, id, input, mirrorEmail);
+	return updateListEntry(store, 'fonderie_workspace_emails', EMAIL_COLS, 'Email', workspaceId, id, input);
 }
 
 export async function removeEmail(store: IStoreAdapter, workspaceId: string, id: string): Promise<void> {
-	return removeListEntry(store, 'fonderie_workspace_emails', 'Email', workspaceId, id, mirrorEmail);
+	return removeListEntry(store, 'fonderie_workspace_emails', 'Email', workspaceId, id);
 }
 
 // ── Phones ───────────────────────────────────────────────────────────────────
@@ -182,25 +156,26 @@ export async function removeEmail(store: IStoreAdapter, workspaceId: string, id:
 export async function addPhone(
 	store: IStoreAdapter,
 	workspaceId: string,
-	input: { phone: string; extension?: string | null; label?: string | null; isPrimary?: boolean },
+	input: { branchId?: string | null; phone: string; extension?: string | null; label?: string | null; isPrimary?: boolean },
 ): Promise<IWorkspacePhone> {
 	return store.transaction(async (tx) => {
 		await lock(tx, workspaceId);
-		const n = await count(tx, 'fonderie_workspace_phones', workspaceId);
-		if (n >= CONTACT_LIMITS.phones) throw new ContactError(422, 'LIMIT_REACHED', `A workspace holds at most ${CONTACT_LIMITS.phones} phones`);
+		const branchId = await resolveBranch(tx, workspaceId, input.branchId);
+		const n = await count(tx, 'fonderie_workspace_phones', branchId);
+		if (n >= CONTACT_LIMITS.phones) throw new ContactError(422, 'LIMIT_REACHED', `A branch holds at most ${CONTACT_LIMITS.phones} phones`);
 		const extension = input.extension || null;
 		const [dup] = await tx.query(
-			`SELECT 1 FROM fonderie_workspace_phones WHERE workspace_id = $1 AND phone = $2 AND extension IS NOT DISTINCT FROM $3`,
-			[workspaceId, input.phone, extension],
+			`SELECT 1 FROM fonderie_workspace_phones WHERE branch_id = $1 AND phone = $2 AND extension IS NOT DISTINCT FROM $3`,
+			[branchId, input.phone, extension],
 		);
-		if (dup) throw new ContactError(409, 'DUPLICATE', 'This phone number is already on the workspace');
+		if (dup) throw new ContactError(409, 'DUPLICATE', 'This phone number is already on the branch');
 		const [row] = await tx.query<IWorkspacePhone>(
-			`INSERT INTO fonderie_workspace_phones (workspace_id, phone, extension, label, position)
-			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			[workspaceId, input.phone, extension, input.label ?? null, n],
+			`INSERT INTO fonderie_workspace_phones (workspace_id, branch_id, phone, extension, label, position)
+			 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			[workspaceId, branchId, input.phone, extension, input.label ?? null, n],
 		);
-		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_phones', 'is_primary', workspaceId, row!.id);
-		await mirrorPhone(tx, workspaceId);
+		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_phones', 'is_primary', branchId, row!.id);
+		await mirrorContacts(tx, workspaceId);
 		return (await getOne<IWorkspacePhone>(tx, 'fonderie_workspace_phones', PHONE_COLS, workspaceId, row!.id))!;
 	});
 }
@@ -211,11 +186,11 @@ export async function updatePhone(
 	id: string,
 	input: { extension?: string | null; label?: string | null; isPrimary?: boolean; position?: number },
 ): Promise<IWorkspacePhone> {
-	return updateListEntry(store, 'fonderie_workspace_phones', PHONE_COLS, 'Phone', workspaceId, id, input, mirrorPhone);
+	return updateListEntry(store, 'fonderie_workspace_phones', PHONE_COLS, 'Phone', workspaceId, id, input);
 }
 
 export async function removePhone(store: IStoreAdapter, workspaceId: string, id: string): Promise<void> {
-	return removeListEntry(store, 'fonderie_workspace_phones', 'Phone', workspaceId, id, mirrorPhone);
+	return removeListEntry(store, 'fonderie_workspace_phones', 'Phone', workspaceId, id);
 }
 
 // ── Shared list-entry rules (emails, phones) ─────────────────────────────────
@@ -226,15 +201,14 @@ async function getOne<T>(tx: IStoreAdapter, table: string, cols: string, workspa
 	return row ?? null;
 }
 
-async function updateListEntry<T extends { isPrimary: boolean }>(
+async function updateListEntry<T extends { isPrimary: boolean; branchId: string }>(
 	store: IStoreAdapter,
-	table: 'fonderie_workspace_emails' | 'fonderie_workspace_phones',
+	table: ListTable,
 	cols: string,
 	what: string,
 	workspaceId: string,
 	id: string,
 	input: { label?: string | null; isPrimary?: boolean; position?: number; extension?: string | null },
-	mirror: (tx: IStoreAdapter, workspaceId: string) => Promise<void>,
 ): Promise<T> {
 	return store.transaction(async (tx) => {
 		await lock(tx, workspaceId);
@@ -257,46 +231,40 @@ async function updateListEntry<T extends { isPrimary: boolean }>(
 			const phone = current as unknown as IWorkspacePhone;
 			const extension = input.extension || null;
 			const [dup] = await tx.query(
-				`SELECT 1 FROM fonderie_workspace_phones WHERE workspace_id = $1 AND phone = $2 AND extension IS NOT DISTINCT FROM $3 AND id <> $4`,
-				[workspaceId, phone.phone, extension, id],
+				`SELECT 1 FROM fonderie_workspace_phones WHERE branch_id = $1 AND phone = $2 AND extension IS NOT DISTINCT FROM $3 AND id <> $4`,
+				[current.branchId, phone.phone, extension, id],
 			);
-			if (dup) throw new ContactError(409, 'DUPLICATE', 'This phone number is already on the workspace');
+			if (dup) throw new ContactError(409, 'DUPLICATE', 'This phone number is already on the branch');
 			params.push(extension);
 			sets.push(`extension = $${params.length}`);
 		}
 		await tx.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE workspace_id = $1 AND id = $2`, params);
 		if (input.isPrimary === true && !current.isPrimary) {
-			await moveFlag(tx, table, 'is_primary', workspaceId, id);
-			await mirror(tx, workspaceId);
+			await moveFlag(tx, table, 'is_primary', current.branchId, id);
+			await mirrorContacts(tx, workspaceId);
 		}
 		return (await getOne<T>(tx, table, cols, workspaceId, id))!;
 	});
 }
 
-async function removeListEntry(
-	store: IStoreAdapter,
-	table: 'fonderie_workspace_emails' | 'fonderie_workspace_phones',
-	what: string,
-	workspaceId: string,
-	id: string,
-	mirror: (tx: IStoreAdapter, workspaceId: string) => Promise<void>,
-): Promise<void> {
+async function removeListEntry(store: IStoreAdapter, table: ListTable, what: string, workspaceId: string, id: string): Promise<void> {
 	return store.transaction(async (tx) => {
 		await lock(tx, workspaceId);
-		const current = await getOne<{ isPrimary: boolean }>(tx, table, 'is_primary AS "isPrimary"', workspaceId, id);
+		const current = await getOne<{ isPrimary: boolean; branchId: string }>(tx, table, 'is_primary AS "isPrimary", branch_id AS "branchId"', workspaceId, id);
 		if (!current) throw notFound(what);
-		if (current.isPrimary && (await count(tx, table, workspaceId)) > 1) {
+		if (current.isPrimary && (await count(tx, table, current.branchId)) > 1) {
 			throw new ContactError(409, 'PRIMARY_REQUIRED', `Make another ${what.toLowerCase()} primary before removing this one`);
 		}
 		await tx.query(`DELETE FROM ${table} WHERE workspace_id = $1 AND id = $2`, [workspaceId, id]);
 		// The last one gone: the mirror column is cleared.
-		if (current.isPrimary) await mirror(tx, workspaceId);
+		if (current.isPrimary) await mirrorContacts(tx, workspaceId);
 	});
 }
 
 // ── Locations ────────────────────────────────────────────────────────────────
 
 export interface ILocationInput {
+	branchId?: string | null;
 	name?: string;
 	address?: IWorkspaceAddress;
 	taxRegion?: string | null;
@@ -314,16 +282,18 @@ const getLocation = (tx: IStoreAdapter, workspaceId: string, id: string) =>
 export async function createLocation(store: IStoreAdapter, workspaceId: string, input: ILocationInput & { name: string; address: IWorkspaceAddress }): Promise<IWorkspaceLocation> {
 	return store.transaction(async (tx) => {
 		await lock(tx, workspaceId);
-		const n = await count(tx, 'fonderie_workspace_locations', workspaceId);
-		if (n >= CONTACT_LIMITS.locations) throw new ContactError(422, 'LIMIT_REACHED', `A workspace holds at most ${CONTACT_LIMITS.locations} locations`);
-		const [head] = await tx.query(`SELECT 1 FROM fonderie_workspace_locations WHERE workspace_id = $1 AND is_head_office`, [workspaceId]);
+		const branchId = await resolveBranch(tx, workspaceId, input.branchId);
+		const n = await count(tx, 'fonderie_workspace_locations', branchId);
+		if (n >= CONTACT_LIMITS.locations) throw new ContactError(422, 'LIMIT_REACHED', `A branch holds at most ${CONTACT_LIMITS.locations} locations`);
+		const [head] = await tx.query(`SELECT 1 FROM fonderie_workspace_locations WHERE branch_id = $1 AND is_head_office`, [branchId]);
 		const taxRegion = input.taxRegion !== undefined ? input.taxRegion : taxRegionOf(input.address);
 		const [row] = await tx.query<{ id: string }>(
 			`INSERT INTO fonderie_workspace_locations
-			   (workspace_id, name, address, tax_region, latitude, longitude, phone, email, position)
-			 VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9) RETURNING id`,
+			   (workspace_id, branch_id, name, address, tax_region, latitude, longitude, phone, email, position)
+			 VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10) RETURNING id`,
 			[
 				workspaceId,
+				branchId,
 				input.name,
 				JSON.stringify(input.address ?? {}),
 				taxRegion,
@@ -335,8 +305,8 @@ export async function createLocation(store: IStoreAdapter, workspaceId: string, 
 			],
 		);
 		if (!head || input.isHeadOffice) {
-			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', workspaceId, row!.id);
-			await mirrorAddress(tx, workspaceId);
+			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', branchId, row!.id);
+			await mirrorContacts(tx, workspaceId);
 		}
 		return (await getLocation(tx, workspaceId, row!.id))!;
 	});
@@ -371,10 +341,10 @@ export async function updateLocation(store: IStoreAdapter, workspaceId: string, 
 		if (input.position !== undefined) set('position', input.position);
 		await tx.query(`UPDATE fonderie_workspace_locations SET ${sets.join(', ')} WHERE workspace_id = $1 AND id = $2`, params);
 		if (input.isHeadOffice === true && !current.isHeadOffice) {
-			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', workspaceId, id);
-			await mirrorAddress(tx, workspaceId);
+			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', current.branchId, id);
+			await mirrorContacts(tx, workspaceId);
 		} else if (current.isHeadOffice && input.address !== undefined) {
-			await mirrorAddress(tx, workspaceId);
+			await mirrorContacts(tx, workspaceId);
 		}
 		return (await getLocation(tx, workspaceId, id))!;
 	});
@@ -415,10 +385,10 @@ export async function restoreLocation(store: IStoreAdapter, workspaceId: string,
 
 /**
  * Called in the same transaction as the profile update, after it. The profile's
- * email / phone / address become the primary email / primary phone / head
- * office — created when there is none. A phone that is not E.164 ('514 555
- * 0100') cannot be a phone entry: it stays on the workspace as typed, and the
- * phone list is left alone.
+ * email / phone / address become the DEFAULT branch's primary email / primary
+ * phone / head office — created when there is none. A phone that is not
+ * E.164 ('514 555 0100') cannot be a phone entry: it stays on the workspace
+ * as typed, and the phone list is left alone.
  */
 export async function fromProfile(
 	tx: IStoreAdapter,
@@ -427,86 +397,86 @@ export async function fromProfile(
 ): Promise<void> {
 	if (profile.email === undefined && profile.phone === undefined && profile.address === undefined) return;
 	await lock(tx, workspaceId);
+	const branchId = await defaultBranchId(tx, workspaceId);
 
 	if (profile.email !== undefined) {
 		const email = profile.email?.trim().toLowerCase() || null;
-		await setPrimaryValue(tx, 'fonderie_workspace_emails', 'email', workspaceId, email, CONTACT_LIMITS.emails);
-		await mirrorEmail(tx, workspaceId);
+		await setPrimaryValue(tx, 'fonderie_workspace_emails', 'email', workspaceId, branchId, email, CONTACT_LIMITS.emails);
 	}
 
 	if (profile.phone !== undefined) {
 		const phone = profile.phone?.replace(/[\s().-]/g, '') || null;
 		if (phone === null || E164.test(phone)) {
-			await setPrimaryValue(tx, 'fonderie_workspace_phones', 'phone', workspaceId, phone, CONTACT_LIMITS.phones);
-			await mirrorPhone(tx, workspaceId);
+			await setPrimaryValue(tx, 'fonderie_workspace_phones', 'phone', workspaceId, branchId, phone, CONTACT_LIMITS.phones);
 		}
 	}
 
 	if (profile.address !== undefined) {
 		const address = isEmpty(profile.address) ? {} : profile.address!;
-		const [head] = await tx.query<{ id: string }>(
-			`SELECT id FROM fonderie_workspace_locations WHERE workspace_id = $1 AND is_head_office`,
-			[workspaceId],
-		);
+		const [head] = await tx.query<{ id: string }>(`SELECT id FROM fonderie_workspace_locations WHERE branch_id = $1 AND is_head_office`, [branchId]);
 		if (head) {
 			await tx.query(
-				`UPDATE fonderie_workspace_locations SET address = $3::jsonb, tax_region = $4, updated_at = now() WHERE workspace_id = $1 AND id = $2`,
-				[workspaceId, head.id, JSON.stringify(address), taxRegionOf(address)],
+				`UPDATE fonderie_workspace_locations SET address = $2::jsonb, tax_region = $3, updated_at = now() WHERE id = $1`,
+				[head.id, JSON.stringify(address), taxRegionOf(address)],
 			);
-		} else if (!isEmpty(address) && (await count(tx, 'fonderie_workspace_locations', workspaceId)) < CONTACT_LIMITS.locations) {
+		} else if (!isEmpty(address) && (await count(tx, 'fonderie_workspace_locations', branchId)) < CONTACT_LIMITS.locations) {
 			await tx.query(
-				`INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_region, is_head_office)
-				 VALUES ($1, 'Head office', $2::jsonb, $3, true)`,
-				[workspaceId, JSON.stringify(address), taxRegionOf(address)],
+				`INSERT INTO fonderie_workspace_locations (workspace_id, branch_id, name, address, tax_region, is_head_office)
+				 VALUES ($1, $2, 'Head office', $3::jsonb, $4, true)`,
+				[workspaceId, branchId, JSON.stringify(address), taxRegionOf(address)],
 			);
 		}
-		await mirrorAddress(tx, workspaceId);
+	}
+	// A non-E.164 phone stays on the workspace as typed: the mirror below
+	// re-derives email and address, and the phone only when a primary exists.
+	await mirrorContacts(tx, workspaceId);
+	if (profile.phone !== undefined) {
+		const phone = profile.phone?.replace(/[\s().-]/g, '') || null;
+		if (phone !== null && !E164.test(phone)) {
+			await tx.query(`UPDATE fonderie_workspaces SET phone = $2, updated_at = now() WHERE id = $1`, [workspaceId, profile.phone]);
+		}
 	}
 }
 
 /**
- * The primary entry becomes `value`: an existing entry with that value takes
- * the flag; otherwise the primary's value is replaced, or a primary is created.
- * null removes the primary (the next one, if any, takes its place).
+ * The branch's primary entry becomes `value`: an existing entry with that
+ * value takes the flag; otherwise the primary's value is replaced, or a
+ * primary is created. null removes the primary (the next one, if any, takes
+ * its place).
  */
 async function setPrimaryValue(
 	tx: IStoreAdapter,
-	table: 'fonderie_workspace_emails' | 'fonderie_workspace_phones',
+	table: ListTable,
 	col: 'email' | 'phone',
 	workspaceId: string,
+	branchId: string,
 	value: string | null,
 	limit: number,
 ): Promise<void> {
 	const noExt = table === 'fonderie_workspace_phones' ? ' AND extension IS NULL' : '';
-	const [primary] = await tx.query<{ id: string; value: string }>(
-		`SELECT id, ${col} AS value FROM ${table} WHERE workspace_id = $1 AND is_primary`,
-		[workspaceId],
-	);
+	const [primary] = await tx.query<{ id: string; value: string }>(`SELECT id, ${col} AS value FROM ${table} WHERE branch_id = $1 AND is_primary`, [branchId]);
 	if (value === null) {
 		if (primary) {
-			await tx.query(`DELETE FROM ${table} WHERE workspace_id = $1 AND id = $2`, [workspaceId, primary.id]);
-			await promoteNext(tx, table, workspaceId);
+			await tx.query(`DELETE FROM ${table} WHERE id = $1`, [primary.id]);
+			await promoteNext(tx, table, branchId);
 		}
 		return;
 	}
 	if (primary?.value === value) return;
-	const [existing] = await tx.query<{ id: string }>(
-		`SELECT id FROM ${table} WHERE workspace_id = $1 AND ${col} = $2${noExt}`,
-		[workspaceId, value],
-	);
+	const [existing] = await tx.query<{ id: string }>(`SELECT id FROM ${table} WHERE branch_id = $1 AND ${col} = $2${noExt}`, [branchId, value]);
 	if (existing) {
-		await moveFlag(tx, table, 'is_primary', workspaceId, existing.id);
+		await moveFlag(tx, table, 'is_primary', branchId, existing.id);
 		return;
 	}
 	if (primary) {
-		await tx.query(`UPDATE ${table} SET ${col} = $3, updated_at = now() WHERE workspace_id = $1 AND id = $2`, [workspaceId, primary.id, value]);
+		await tx.query(`UPDATE ${table} SET ${col} = $2, updated_at = now() WHERE id = $1`, [primary.id, value]);
 		return;
 	}
-	const n = await count(tx, table, workspaceId);
+	const n = await count(tx, table, branchId);
 	if (n >= limit) return; // full: the profile column still holds it (mirror re-derives below)
 	const [row] = await tx.query<{ id: string }>(
-		`INSERT INTO ${table} (workspace_id, ${col}, position) VALUES ($1, $2, $3) RETURNING id`,
-		[workspaceId, value, n],
+		`INSERT INTO ${table} (workspace_id, branch_id, ${col}, position) VALUES ($1, $2, $3, $4) RETURNING id`,
+		[workspaceId, branchId, value, n],
 	);
-	await moveFlag(tx, table, 'is_primary', workspaceId, row!.id);
+	await moveFlag(tx, table, 'is_primary', branchId, row!.id);
 }

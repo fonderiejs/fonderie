@@ -45,6 +45,7 @@ export function duplicateCode(err: unknown): 'reference' | 'referral' | null {
 const SELECT_CUSTOMER = `
 	id,
 	workspace_id   AS "workspaceId",
+	branch_id      AS "branchId",
 	type,
 	sex,
 	first_name     AS "firstName",
@@ -69,6 +70,7 @@ const SELECT_CUSTOMER = `
 const SELECT_CUSTOMER_C = `
 	c.id,
 	c.workspace_id   AS "workspaceId",
+	c.branch_id      AS "branchId",
 	c.type,
 	c.sex,
 	c.first_name     AS "firstName",
@@ -91,6 +93,8 @@ const SELECT_CUSTOMER_C = `
 
 export interface ListCustomersOpts {
 	workspaceId: string;
+	/** Only this branch's customers. */
+	branchId?: string | undefined;
 	search?: string | undefined;
 	blacklisted?: boolean | undefined;
 	/** false (default): active only; true: archived only; 'all': both. */
@@ -101,6 +105,8 @@ export interface ListCustomersOpts {
 
 export interface CreateCustomerOpts {
 	workspaceId: string;
+	/** The branch they deal with; null / omitted = the workspace's default branch. */
+	branchId?: string | null;
 	type?: string;
 	sex?: string;
 	firstName?: string | null;
@@ -122,6 +128,8 @@ export interface CreateCustomerOpts {
 }
 
 export interface UpdateCustomerOpts {
+	/** Move them to another branch; null = the default branch. */
+	branchId?: string | null;
 	type?: string;
 	sex?: string;
 	firstName?: string | null;
@@ -133,6 +141,19 @@ export interface UpdateCustomerOpts {
 	timezone?: string | null;
 	/** Explicit code to assign. Omit to keep existing or auto-generate if none. */
 	referenceCode?: string;
+}
+
+/**
+ * A customer's branch must be one of the workspace's live branches
+ * (@fonderie/workspaces migration 011). Read, not referenced: modules never
+ * couple at the database level, so the check is here, on every write.
+ */
+export async function isWorkspaceBranch(store: IStoreAdapter, workspaceId: string, branchId: string): Promise<boolean> {
+	const [row] = await store.query<{ ok: boolean }>(
+		`SELECT true AS ok FROM fonderie_workspace_branches WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`,
+		[branchId, workspaceId],
+	);
+	return !!row;
 }
 
 export class CustomerModel {
@@ -215,6 +236,10 @@ export class CustomerModel {
 		if (opts.blacklisted !== undefined) {
 			params.push(opts.blacklisted);
 			conditions.push(`c.is_blacklisted = $${params.length}`);
+		}
+		if (opts.branchId !== undefined) {
+			params.push(opts.branchId);
+			conditions.push(`c.branch_id = $${params.length}`);
 		}
 		if (opts.archived !== 'all') {
 			params.push(opts.archived === true);
@@ -614,8 +639,8 @@ export class CustomerModel {
 			try {
 				const [row] = await this.store.query<ICustomer>(
 					`INSERT INTO fonderie_customers
-					   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by, timezone)
-					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+					   (workspace_id, type, sex, first_name, last_name, company_name, avatar_url, locale, reference_code, referral_code, referred_by, created_by, timezone, branch_id)
+					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 					 RETURNING ${SELECT_CUSTOMER}`,
 					[
 						opts.workspaceId,
@@ -631,6 +656,7 @@ export class CustomerModel {
 						referredBy,
 						opts.createdBy ?? null,
 						opts.timezone ?? null,
+						opts.branchId ?? null,
 					],
 				);
 				if (!row) throw new Error('Failed to create customer');
@@ -699,6 +725,10 @@ export class CustomerModel {
 		if (opts.timezone !== undefined) {
 			params.push(opts.timezone);
 			sets.push(`timezone = $${params.length}`);
+		}
+		if (opts.branchId !== undefined) {
+			params.push(opts.branchId);
+			sets.push(`branch_id = $${params.length}`);
 		}
 		const resolvedCode = opts.referenceCode ?? autoCode;
 		if (resolvedCode !== undefined) {

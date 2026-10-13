@@ -116,13 +116,40 @@ export interface IWorkspaceSettings {
 	documentPrefixes?: Record<string, string>;
 }
 
-// ── Contacts & locations (migration 010) ─────────────────────────────────────
-// The primary email, the primary phone and the head office's address are
-// mirrored onto fonderie_workspaces.email / phone / address.
+// ── Branches (migration 011) ─────────────────────────────────────────────────
+// One customer-facing identity of the business; it owns its emails, phones and
+// locations. The default branch's identity and primary contacts are mirrored
+// onto the workspace's own columns.
+
+export interface IWorkspaceBranch {
+	id: string;
+	workspaceId: string;
+	name: string;
+	/** The host a funnel runs on ('quebecmover.com'), lower-cased; null when none. */
+	domain: string | null;
+	motto: string | null;
+	industry: string | null;
+	website: string | null;
+	logoUrl: string | null;
+	/** BCP 47; null = the workspace's own language. */
+	locale: string | null;
+	taxRegistrations: ITaxRegistration[] | null;
+	isDefault: boolean;
+	position: number;
+	archivedAt: string | null;
+	archivedBy: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+// ── Contacts & locations (migration 010, per branch since 011) ───────────────
+// The default branch's primary email, primary phone and head office's address
+// are mirrored onto fonderie_workspaces.email / phone / address.
 
 export interface IWorkspaceEmail {
 	id: string;
 	workspaceId: string;
+	branchId: string;
 	/** Lower-cased. */
 	email: string;
 	label: string | null;
@@ -135,6 +162,7 @@ export interface IWorkspaceEmail {
 export interface IWorkspacePhone {
 	id: string;
 	workspaceId: string;
+	branchId: string;
 	/** E.164, e.g. '+15145550100'. */
 	phone: string;
 	/** Digits only, e.g. '204'. */
@@ -149,6 +177,7 @@ export interface IWorkspacePhone {
 export interface IWorkspaceLocation {
 	id: string;
 	workspaceId: string;
+	branchId: string;
 	name: string;
 	address: IWorkspaceAddress;
 	/** address.country, as stored (a generated column). */

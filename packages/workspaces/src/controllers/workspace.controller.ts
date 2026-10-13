@@ -10,6 +10,7 @@ import { RoleModel } from '../models/role.model';
 import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
 import { fromProfile } from '../services/contacts';
 import { isWorkspaceArchived } from '../middlewares/require-active-workspace';
+import { profileToDefaultBranch } from '../services/branches';
 
 export function workspaceController(store: IStoreAdapter, config: IWorkspacesConfig) {
 	const workspaces = new WorkspaceModel(store);
@@ -117,8 +118,13 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			const workspace = await store.transaction(async (tx) => {
 				const updated = await new WorkspaceModel(tx).update(id, opts);
 				if (!updated) return null;
+				// The identity fields and the primary contacts belong to the DEFAULT
+				// branch (migration 011): the profile is its mirror, so a write here
+				// lands there too, in the same transaction.
+				const identity = { motto: opts.motto, industry: opts.industry, website: opts.website, logoUrl: opts.logoUrl, taxRegistrations: opts.taxRegistrations };
 				const mirrored = { email: opts.email, phone: opts.phone, address: opts.address };
-				if (Object.values(mirrored).every((v) => v === undefined)) return updated;
+				if ([...Object.values(identity), ...Object.values(mirrored)].every((v) => v === undefined)) return updated;
+				await profileToDefaultBranch(tx, id, identity);
 				await fromProfile(tx, id, mirrored);
 				return new WorkspaceModel(tx).findById(id);
 			});

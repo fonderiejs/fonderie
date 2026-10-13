@@ -634,12 +634,12 @@ test('invite: emits NOTIFICATION_EVENT with workspaceInvitation payload', async 
 
 test('importWorkspace: preserves supplied identity, stringifies jsonb, omits rest', async () => {
 	const { importWorkspace } = await import('../migrate');
-	let sql = '';
-	let params: unknown[] = [];
+	// Every query, in order: the insert comes first, then the default branch
+	// (migration 011) is looked up / created for the imported workspace.
+	const calls: Array<{ sql: string; params: unknown[] }> = [];
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(q: string, p?: unknown[]): Promise<T[]> => {
-			sql = q;
-			params = p ?? [];
+			calls.push({ sql: q, params: p ?? [] });
 			return [{ id: (p?.[0] as string) ?? 'gen' }] as unknown as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -654,7 +654,9 @@ test('importWorkspace: preserves supplied identity, stringifies jsonb, omits res
 		createdAt,
 	});
 	assert.equal(res.id, '22222222-2222-2222-2222-222222222222');
+	const { sql, params } = calls[0]!;
 	assert.match(sql, /INSERT INTO fonderie_workspaces \(id, name, slug, owner_id, settings, created_at\)/);
+	assert.ok(calls.some((c) => c.sql.includes('fonderie_workspace_branches') && c.sql.includes('is_default')), 'looks up the default branch');
 	assert.deepEqual(params, [
 		'22222222-2222-2222-2222-222222222222',
 		'Acme',
@@ -710,12 +712,12 @@ test('importMembership: inserts the join replay-safely, confirmed defaults true'
 
 test('importRole: preserves id, scopes to workspace, omits defaults', async () => {
 	const { importRole } = await import('../migrate');
-	let sql = '';
-	let params: unknown[] = [];
+	// Every query, in order: the insert comes first, then the default branch
+	// (migration 011) is looked up / created for the imported workspace.
+	const calls: Array<{ sql: string; params: unknown[] }> = [];
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(q: string, p?: unknown[]): Promise<T[]> => {
-			sql = q;
-			params = p ?? [];
+			calls.push({ sql: q, params: p ?? [] });
 			return [{ id: (p?.[0] as string) ?? 'gen' }] as unknown as T[];
 		},
 		transaction: async (fn) => fn(store),
@@ -726,6 +728,7 @@ test('importRole: preserves id, scopes to workspace, omits defaults', async () =
 		workspaceId: '22222222-2222-2222-2222-222222222222',
 	});
 	assert.equal(res.id, '33333333-3333-3333-3333-333333333333');
+	const { sql, params } = calls[0]!;
 	assert.match(sql, /INSERT INTO fonderie_roles \(id, name, workspace_id\)/);
 	assert.deepEqual(params, [
 		'33333333-3333-3333-3333-333333333333',

@@ -34,3 +34,7 @@ export type { IUseWorkspaceContactsReturn } from './useWorkspaceContacts';
 export { useWorkspaceContacts } from './useWorkspaceContacts';
 export type { IUseWorkspaceLocationsReturn } from './useWorkspaceLocations';
 export { useWorkspaceLocations } from './useWorkspaceLocations';
+export type { IUseWorkspaceBranchesReturn } from './useWorkspaceBranches';
+export { useWorkspaceBranches } from './useWorkspaceBranches';
+export type { IUseWorkspaceBranchReturn } from './useWorkspaceBranch';
+export { useWorkspaceBranch } from './useWorkspaceBranch';

@@ -25,6 +25,9 @@ export type {
 	IWorkspacePhoneDTO,
 	IWorkspaceLocationDTO,
 	IWorkspaceContactsResult,
+	IWorkspaceBranchDTO,
+	ICreateWorkspaceBranchInput,
+	IUpdateWorkspaceBranchInput,
 	IAddWorkspaceEmailInput,
 	IUpdateWorkspaceEmailInput,
 	IAddWorkspacePhoneInput,
@@ -55,6 +58,8 @@ export type {
 	IUseOwnershipOfferReturn,
 	IUseWorkspaceContactsReturn,
 	IUseWorkspaceLocationsReturn,
+	IUseWorkspaceBranchesReturn,
+	IUseWorkspaceBranchReturn,
 } from './composables';
 export {
 	useCurrentWorkspace,
@@ -76,4 +81,6 @@ export {
 	useOwnershipOffer,
 	useWorkspaceContacts,
 	useWorkspaceLocations,
+	useWorkspaceBranches,
+	useWorkspaceBranch,
 } from './composables';

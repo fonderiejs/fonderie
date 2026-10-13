@@ -19,6 +19,8 @@ import type {
 
 export interface ICustomerDTO {
 	id: string;
+	/** The branch of the business they deal with; \'\' = the workspace\'s default branch. */
+	branchId: string;
 	type: string;
 	sex: CustomerSex;
 	firstName: string;
@@ -181,6 +183,7 @@ export function displayNameOf(c: Pick<ICustomer, 'type' | 'firstName' | 'lastNam
 export function toCustomerDTO(c: ICustomer): ICustomerDTO {
 	return {
 		id: stringOrEmpty(c.id),
+		branchId: stringOrEmpty(c.branchId),
 		type: stringOrEmpty(c.type),
 		sex: VALID_SEX.includes(c.sex as CustomerSex) ? (c.sex as CustomerSex) : 'UNKNOWN',
 		firstName: stringOrEmpty(c.firstName),

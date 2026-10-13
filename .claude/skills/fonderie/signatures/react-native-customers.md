@@ -121,6 +121,7 @@ interface IBlacklistCustomerInput {
 }
 
 interface ICreateCustomerInput {
+    branchId?: string | null;
     type?: CustomerType;
     sex?: CustomerSex;
     firstName?: string | null;
@@ -144,6 +145,7 @@ interface ICustomerAddressDTO {
 
 interface ICustomerDTO {
     id: string;
+    branchId: string;
     type: string;
     sex: CustomerSex;
     firstName: string;
@@ -250,6 +252,7 @@ interface IGetCustomerInput {
 }
 
 interface IListCustomersInput {
+    branchId?: string;
     search?: string;
     blacklisted?: boolean;
     archived?: boolean | 'all';

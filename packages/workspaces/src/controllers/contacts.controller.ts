@@ -4,6 +4,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { toWorkspaceContactsDTO, toWorkspaceEmailDTO, toWorkspaceLocationDTO, toWorkspacePhoneDTO } from '../dtos/workspace';
 import {
+	BranchError,
 	ContactError,
 	addEmail,
 	addPhone,
@@ -30,7 +31,7 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 	try {
 		return await run();
 	} catch (err) {
-		if (err instanceof ContactError) return setApiResponse(err.status, err.reason, err.message);
+		if (err instanceof ContactError || err instanceof BranchError) return setApiResponse(err.status, err.reason, err.message);
 		// A unique index caught what the checks under the lock did not.
 		if ((err as { code?: string }).code === '23505') return setApiResponse(HTTP.CONFLICT, 'DUPLICATE', 'This is already on the workspace');
 		throw err;
@@ -41,9 +42,14 @@ export function contactsController(store: IStoreAdapter) {
 	const noWorkspace = () => setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
 	return {
+		// ?branchId=<uuid> narrows to one branch; otherwise every branch's (each row names its branch).
 		async list(ctx: IFonderieContext): Promise<Response> {
 			if (!ctx.workspace) return noWorkspace();
-			const contacts = await listContacts(ctx.workspace.id, store);
+			const branchId = ctx.request.url ? new URL(ctx.request.url).searchParams.get('branchId') : null;
+			if (branchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchId)) {
+				return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'branchId is a UUID');
+			}
+			const contacts = await listContacts(ctx.workspace.id, store, branchId);
 			return setApiResponse(HTTP.OK, 'WORKSPACE_CONTACTS_FETCHED', 'Workspace contacts retrieved.', toWorkspaceContactsDTO(contacts));
 		},
 
