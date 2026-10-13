@@ -587,6 +587,7 @@ interface IBlacklistCustomerInput {
 }
 
 interface ICreateCustomerInput {
+    branchId?: string | null;
     type?: CustomerType;
     sex?: CustomerSex;
     firstName?: string | null;
@@ -605,6 +606,7 @@ interface IGetCustomerInput {
 }
 
 interface IListCustomersInput {
+    branchId?: string;
     search?: string;
     blacklisted?: boolean;
     archived?: boolean | 'all';
@@ -784,9 +786,29 @@ interface IUpdateWorkspaceInput {
 }
 
 interface IAddWorkspaceEmailInput {
+    branchId?: string;
     email: string;
     label?: string | null;
     isPrimary?: boolean;
+}
+
+interface ICreateWorkspaceBranchInput {
+    name: string;
+    domain?: string | null;
+    motto?: string | null;
+    industry?: string | null;
+    website?: string | null;
+    logoUrl?: string | null;
+    locale?: string | null;
+    taxRegistrations?: IUpdateWorkspaceInput['taxRegistrations'];
+    isDefault?: boolean;
+    position?: number;
+}
+
+type IUpdateWorkspaceBranchInput = Partial<ICreateWorkspaceBranchInput>;
+
+interface IWorkspaceContactsReadOptions extends IReadOptions {
+    branchId?: string;
 }
 
 interface IUpdateWorkspaceEmailInput {
@@ -796,6 +818,7 @@ interface IUpdateWorkspaceEmailInput {
 }
 
 interface IAddWorkspacePhoneInput {
+    branchId?: string;
     phone: string;
     extension?: string | null;
     label?: string | null;
@@ -810,6 +833,7 @@ interface IUpdateWorkspacePhoneInput {
 }
 
 interface IWorkspaceLocationInput {
+    branchId?: string;
     name: string;
     address: NonNullable<IUpdateWorkspaceInput['address']>;
     taxRegion?: string | null;
@@ -867,7 +891,7 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .cancelInvitation(inviteId: string): Promise<IApiResponse<undefined>>
   .resendInvitation(inviteId: string): Promise<IApiResponse<IInvitationResult>>
   .acceptInvitation(code: string | IAcceptInvitationInput): Promise<IApiResponse<IAcceptInvitationResult>>
-  .getContacts(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceContactsResult>>
+  .getContacts(opts?: IWorkspaceContactsReadOptions | undefined): Promise<IApiResponse<IWorkspaceContactsResult>>
   .addEmail(input: IAddWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
   .updateEmail(emailId: string, input: IUpdateWorkspaceEmailInput): Promise<IApiResponse<IWorkspaceEmailResult>>
   .removeEmail(emailId: string): Promise<IApiResponse<{ deleted: boolean; }>>
@@ -878,6 +902,13 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .updateLocation(locationId: string, input: Partial<IWorkspaceLocationInput>): Promise<IApiResponse<IWorkspaceLocationResult>>
   .archiveLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
   .restoreLocation(locationId: string): Promise<IApiResponse<IWorkspaceLocationResult>>
+  .listBranches(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceBranchListResult>>
+  .createBranch(input: ICreateWorkspaceBranchInput): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .getBranch(branchId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .updateBranch(branchId: string, input: Partial<ICreateWorkspaceBranchInput>): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .setDefaultBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .archiveBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
+  .restoreBranch(branchId: string): Promise<IApiResponse<IWorkspaceBranchResult>>
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
@@ -1450,6 +1481,7 @@ interface ICustomerDetailDTO extends ICustomerDTO {
 
 interface ICustomerDTO {
     id: string;
+    branchId: string;
     type: string;
     sex: CustomerSex;
     firstName: string;
@@ -2147,6 +2179,7 @@ interface IWorkspaceSettingsResult {
 
 interface IWorkspaceEmailDTO {
     id: string;
+    branchId: string;
     email: string;
     label: string;
     isPrimary: boolean;
@@ -2157,6 +2190,7 @@ interface IWorkspaceEmailDTO {
 
 interface IWorkspacePhoneDTO {
     id: string;
+    branchId: string;
     phone: string;
     extension: string;
     label: string;
@@ -2168,6 +2202,7 @@ interface IWorkspacePhoneDTO {
 
 interface IWorkspaceLocationDTO {
     id: string;
+    branchId: string;
     name: string;
     address: IWorkspaceAddressDTO;
     taxRegion: string;
@@ -2182,6 +2217,33 @@ interface IWorkspaceLocationDTO {
     archivedBy: string;
     createdAt: string;
     updatedAt: string;
+}
+
+interface IWorkspaceBranchDTO {
+    id: string;
+    name: string;
+    domain: string;
+    motto: string;
+    industry: string;
+    website: string;
+    logoUrl: string;
+    locale: string;
+    taxRegistrations: ITaxRegistrationDTO[];
+    isDefault: boolean;
+    position: number;
+    isArchived: boolean;
+    archivedAt: string;
+    archivedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface IWorkspaceBranchListResult {
+    branches: IWorkspaceBranchDTO[];
+}
+
+interface IWorkspaceBranchResult {
+    branch: IWorkspaceBranchDTO;
 }
 
 interface IWorkspaceContactsResult {

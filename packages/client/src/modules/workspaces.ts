@@ -22,6 +22,8 @@ import type {
 	IWorkspaceListResult,
 	IWorkspaceResult,
 	IWorkspaceSettingsResult,
+	IWorkspaceBranchListResult,
+	IWorkspaceBranchResult,
 	IWorkspaceContactsResult,
 	IWorkspaceEmailResult,
 	IWorkspacePhoneResult,
@@ -85,6 +87,8 @@ export interface IUpdateWorkspaceInput {
 }
 
 export interface IAddWorkspaceEmailInput {
+	/** The branch it belongs to; omitted = the default branch. */
+	branchId?: string;
 	email: string;
 	label?: string | null;
 	/** Moves the primary flag here. The first email added is primary anyway. */
@@ -99,6 +103,8 @@ export interface IUpdateWorkspaceEmailInput {
 }
 
 export interface IAddWorkspacePhoneInput {
+	/** The branch it belongs to; omitted = the default branch. */
+	branchId?: string;
 	/** International format; spaces, dots, dashes and parentheses are dropped: '+1 514 555-0100'. */
 	phone: string;
 	/** 1–8 digits. */
@@ -115,6 +121,8 @@ export interface IUpdateWorkspacePhoneInput {
 }
 
 export interface IWorkspaceLocationInput {
+	/** The branch it belongs to; omitted = the default branch. */
+	branchId?: string;
 	name: string;
 	/** Normalized by the country's rules, like the workspace address. */
 	address: NonNullable<IUpdateWorkspaceInput['address']>;
@@ -131,6 +139,29 @@ export interface IWorkspaceLocationInput {
 }
 
 export type IUpdateWorkspaceLocationInput = Partial<IWorkspaceLocationInput>;
+
+export interface ICreateWorkspaceBranchInput {
+	name: string;
+	/** A host name ('quebecmover.com'); lower-cased; one live branch per host (409 DUPLICATE_DOMAIN). */
+	domain?: string | null;
+	motto?: string | null;
+	industry?: string | null;
+	website?: string | null;
+	logoUrl?: string | null;
+	/** BCP 47; null = the workspace's own language. */
+	locale?: string | null;
+	taxRegistrations?: IUpdateWorkspaceInput['taxRegistrations'];
+	/** Makes it the default; the first branch is the default anyway. */
+	isDefault?: boolean;
+	position?: number;
+}
+
+export type IUpdateWorkspaceBranchInput = Partial<ICreateWorkspaceBranchInput>;
+
+/** GET /workspaces/contacts: every branch's, or one branch's. */
+export interface IWorkspaceContactsReadOptions extends IReadOptions {
+	branchId?: string;
+}
 
 export interface IInviteEntry {
 	email: string;
@@ -636,10 +667,10 @@ export class WorkspacesClient {
 	// Members read; owners / managers write. The primary email / phone and the
 	// head office's address are mirrored onto the workspace (IWorkspaceDTO).
 
-	getContacts(opts?: IReadOptions) {
+	getContacts(opts?: IWorkspaceContactsReadOptions) {
 		return this.http.request<IApiResponse<IWorkspaceContactsResult>>({
 			method: 'GET',
-			path: '/workspaces/contacts',
+			path: '/workspaces/contacts' + (opts?.branchId ? `?branchId=${encodeURIComponent(opts.branchId)}` : ''),
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 			bust: opts?.bust,
@@ -738,6 +769,79 @@ export class WorkspacesClient {
 		return this.http.request<IApiResponse<IWorkspaceLocationResult>>({
 			method: 'POST',
 			path: `/workspaces/locations/${encodeURIComponent(locationId)}/restore`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// ── Branches ─────────────────────────────────────────────────────────────────
+	// One customer-facing identity each; the default one is what the workspace's
+	// own profile and primary contacts mirror. Members read; managers write.
+
+	listBranches(opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceBranchListResult>>({
+			method: 'GET',
+			path: '/workspaces/branches',
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	createBranch(input: ICreateWorkspaceBranchInput) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'POST',
+			path: '/workspaces/branches',
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	getBranch(branchId: string, opts?: IReadOptions) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'GET',
+			path: `/workspaces/branches/${encodeURIComponent(branchId)}`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+			bust: opts?.bust,
+		});
+	}
+
+	updateBranch(branchId: string, input: IUpdateWorkspaceBranchInput) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'PATCH',
+			path: `/workspaces/branches/${encodeURIComponent(branchId)}`,
+			body: input,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// The workspace's profile and primary contacts follow the new default.
+	setDefaultBranch(branchId: string) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'POST',
+			path: `/workspaces/branches/${encodeURIComponent(branchId)}/default`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	// The default cannot be archived (409 DEFAULT_ARCHIVE): make another the default first.
+	archiveBranch(branchId: string) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'POST',
+			path: `/workspaces/branches/${encodeURIComponent(branchId)}/archive`,
+			token: this.tokens.get(),
+			workspaceId: this.workspaceId,
+		});
+	}
+
+	restoreBranch(branchId: string) {
+		return this.http.request<IApiResponse<IWorkspaceBranchResult>>({
+			method: 'POST',
+			path: `/workspaces/branches/${encodeURIComponent(branchId)}/restore`,
 			token: this.tokens.get(),
 			workspaceId: this.workspaceId,
 		});

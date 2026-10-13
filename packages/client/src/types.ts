@@ -588,6 +588,8 @@ export interface IAcceptInvitationResult {
 
 export interface IWorkspaceEmailDTO {
 	id: string;
+	/** The branch this belongs to (one primary / head office per branch). */
+	branchId: string;
 	/** Lower-cased. */
 	email: string;
 	label: string;
@@ -599,6 +601,8 @@ export interface IWorkspaceEmailDTO {
 
 export interface IWorkspacePhoneDTO {
 	id: string;
+	/** The branch this belongs to (one primary / head office per branch). */
+	branchId: string;
 	/** E.164, e.g. '+15145550100'. */
 	phone: string;
 	/** Digits; '' when none. */
@@ -612,6 +616,8 @@ export interface IWorkspacePhoneDTO {
 
 export interface IWorkspaceLocationDTO {
 	id: string;
+	/** The branch this belongs to (one primary / head office per branch). */
+	branchId: string;
 	name: string;
 	address: IWorkspaceAddressDTO;
 	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
@@ -630,7 +636,43 @@ export interface IWorkspaceLocationDTO {
 	updatedAt: string;
 }
 
-/** GET /workspaces/contacts. */
+// ── Workspace branches ───────────────────────────────────────────────────────
+// One customer-facing identity of the business (name, logo, slogan, sector,
+// website, domain, language, tax registrations) owning its emails, phones and
+// locations. One branch is the default: IWorkspaceDTO's profile and primary
+// contacts mirror it.
+
+export interface IWorkspaceBranchDTO {
+	id: string;
+	name: string;
+	/** The host a funnel runs on ('quebecmover.com'), lower-cased; '' when none. */
+	domain: string;
+	motto: string;
+	industry: string;
+	website: string;
+	logoUrl: string;
+	/** BCP 47; '' = the workspace's own language (settings). */
+	locale: string;
+	taxRegistrations: ITaxRegistrationDTO[];
+	isDefault: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** GET /workspaces/branches. The default first; archived ones last. */
+export interface IWorkspaceBranchListResult {
+	branches: IWorkspaceBranchDTO[];
+}
+
+export interface IWorkspaceBranchResult {
+	branch: IWorkspaceBranchDTO;
+}
+
+/** GET /workspaces/contacts — every branch's, or one branch's with `branchId`. */
 export interface IWorkspaceContactsResult {
 	/** The primary first. */
 	emails: IWorkspaceEmailDTO[];
@@ -1286,6 +1328,8 @@ export type CustomerLabelType = 'phone' | 'email' | 'address';
 
 export interface ICustomerDTO {
 	id: string;
+	/** The branch of the business they deal with; '' = the workspace's default branch. */
+	branchId: string;
 	type: string;
 	sex: CustomerSex;
 	firstName: string;

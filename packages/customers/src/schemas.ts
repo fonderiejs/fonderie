@@ -15,6 +15,9 @@ const phone = z
 	.refine((v) => /^\+?[1-9]\d{6,14}$/.test(v.replace(/[\s\-()]/g, '')), 'Invalid phone number');
 
 const customerFields = {
+	// The branch of the business they deal with (one of the workspace's live
+	// branches — checked by the controller); null = the default branch.
+	branchId: z.string().uuid('branchId is a UUID').nullable().optional(),
 	type: z.enum(['individual', 'business']).optional(),
 	sex: z.enum(['UNKNOWN', 'MALE', 'FEMALE']).optional(),
 	firstName: z.string().max(100).nullable().optional(),

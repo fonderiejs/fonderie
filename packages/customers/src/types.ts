@@ -12,6 +12,8 @@ export interface ICustomerLabel {
 export interface ICustomer {
 	id: string;
 	workspaceId: string;
+	/** The branch of the business this customer deals with; null = the workspace's default branch. */
+	branchId: string | null;
 	type: CustomerType;
 	sex: CustomerSex;
 	firstName: string | null;

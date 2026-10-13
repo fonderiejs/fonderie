@@ -10,7 +10,7 @@ import type {
 	WorkspacesClient,
 } from '@fonderie/client';
 import { useFonderieSubClient, useScopedQuery, useWrite } from '@fonderie/react';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 export interface IUseWorkspaceContactsReturn {
 	/** The primary first. */
@@ -41,7 +41,12 @@ export const fetchWorkspaceContacts = async (api: WorkspacesClient, bust?: boole
 // The selected workspace's emails and phones — re-read on a workspace switch
 // and after every change (a change also re-reads the workspace, whose email /
 // phone mirror the primary ones). Writes are for owners / managers.
-export function useWorkspaceContacts(client?: WorkspacesClient): IUseWorkspaceContactsReturn {
+/** Narrow to one branch's contacts; the read stays shared (one request serves every branch). */
+export interface IWorkspaceContactsOptions {
+	branchId?: string;
+}
+
+export function useWorkspaceContacts(client?: WorkspacesClient, opts?: IWorkspaceContactsOptions): IUseWorkspaceContactsReturn {
 	const api = useFonderieSubClient(client, (c) => c.workspaces, 'useWorkspaceContacts');
 	const q = useScopedQuery(api, WORKSPACE_CONTACTS_KEY, (bust) => fetchWorkspaceContacts(api, bust));
 	const w = useWrite(q.refresh);
@@ -57,9 +62,12 @@ export function useWorkspaceContacts(client?: WorkspacesClient): IUseWorkspaceCo
 		[api, w.run],
 	);
 	const removePhone = useCallback((phoneId: string) => w.run(async () => void (await api.removePhone(phoneId))), [api, w.run]);
+	const branchId = opts?.branchId;
+	const emails = useMemo(() => (branchId ? (q.data?.emails ?? NO_EMAILS).filter((e) => e.branchId === branchId) : (q.data?.emails ?? NO_EMAILS)), [q.data, branchId]);
+	const phones = useMemo(() => (branchId ? (q.data?.phones ?? NO_PHONES).filter((p) => p.branchId === branchId) : (q.data?.phones ?? NO_PHONES)), [q.data, branchId]);
 	return {
-		emails: q.data?.emails ?? NO_EMAILS,
-		phones: q.data?.phones ?? NO_PHONES,
+		emails,
+		phones,
 		isLoading: q.isLoading,
 		error: w.error ?? q.error,
 		refresh: q.refresh,

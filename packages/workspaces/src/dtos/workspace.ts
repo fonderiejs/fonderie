@@ -7,6 +7,7 @@ import type {
 	IInvitation,
 	IWorkspaceSettings,
 	IWorkspaceAddress,
+	IWorkspaceBranch,
 	IWorkspaceContacts,
 	IWorkspaceEmail,
 	IWorkspaceLocation,
@@ -146,6 +147,7 @@ export interface IWorkspaceSettingsDTO {
 
 export interface IWorkspaceEmailDTO {
 	id: string;
+	branchId: string;
 	/** Lower-cased. */
 	email: string;
 	label: string;
@@ -157,6 +159,7 @@ export interface IWorkspaceEmailDTO {
 
 export interface IWorkspacePhoneDTO {
 	id: string;
+	branchId: string;
 	/** E.164, e.g. '+15145550100'. */
 	phone: string;
 	/** Digits; '' when none. */
@@ -170,6 +173,7 @@ export interface IWorkspacePhoneDTO {
 
 export interface IWorkspaceLocationDTO {
 	id: string;
+	branchId: string;
 	name: string;
 	address: IWorkspaceAddressDTO;
 	/** ISO 3166-2, e.g. 'CA-QC' — whose sales taxes apply here; '' when unknown. */
@@ -219,6 +223,7 @@ const numberOrNull = (v: unknown): number | null => {
 export function toWorkspaceEmailDTO(e: IWorkspaceEmail): IWorkspaceEmailDTO {
 	return {
 		id: stringOrEmpty(e.id),
+		branchId: stringOrEmpty(e.branchId),
 		email: stringOrEmpty(e.email),
 		label: stringOrEmpty(e.label),
 		isPrimary: booleanOrFalse(e.isPrimary),
@@ -231,6 +236,7 @@ export function toWorkspaceEmailDTO(e: IWorkspaceEmail): IWorkspaceEmailDTO {
 export function toWorkspacePhoneDTO(p: IWorkspacePhone): IWorkspacePhoneDTO {
 	return {
 		id: stringOrEmpty(p.id),
+		branchId: stringOrEmpty(p.branchId),
 		phone: stringOrEmpty(p.phone),
 		extension: stringOrEmpty(p.extension),
 		label: stringOrEmpty(p.label),
@@ -244,6 +250,7 @@ export function toWorkspacePhoneDTO(p: IWorkspacePhone): IWorkspacePhoneDTO {
 export function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocationDTO {
 	return {
 		id: stringOrEmpty(l.id),
+		branchId: stringOrEmpty(l.branchId),
 		name: stringOrEmpty(l.name),
 		address: toAddressDTO(l.address),
 		taxRegion: stringOrEmpty(l.taxRegion),
@@ -258,6 +265,59 @@ export function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocatio
 		archivedBy: stringOrEmpty(l.archivedBy),
 		createdAt: dateOrEmpty(l.createdAt),
 		updatedAt: dateOrEmpty(l.updatedAt),
+	};
+}
+
+export interface IWorkspaceBranchDTO {
+	id: string;
+	name: string;
+	/** Lower-cased host; '' when none. */
+	domain: string;
+	motto: string;
+	industry: string;
+	website: string;
+	logoUrl: string;
+	/** BCP 47; '' = the workspace's own language. */
+	locale: string;
+	taxRegistrations: IWorkspaceDTO['taxRegistrations'];
+	isDefault: boolean;
+	position: number;
+	isArchived: boolean;
+	archivedAt: string;
+	archivedBy: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export function toTaxRegistrationsDTO(regs: unknown): IWorkspaceDTO['taxRegistrations'] {
+	return (Array.isArray(regs) ? regs : []).map((r: Record<string, unknown>) => ({
+		country: stringOrEmpty(r['country'] as string),
+		type: stringOrEmpty(r['type'] as string),
+		number: stringOrEmpty(r['number'] as string),
+		region: stringOrEmpty(r['region'] as string),
+		label: stringOrEmpty(r['label'] as string),
+		rate: typeof r['rate'] === 'number' && Number.isFinite(r['rate']) ? (r['rate'] as number) : null,
+	}));
+}
+
+export function toWorkspaceBranchDTO(b: IWorkspaceBranch): IWorkspaceBranchDTO {
+	return {
+		id: stringOrEmpty(b.id),
+		name: stringOrEmpty(b.name),
+		domain: stringOrEmpty(b.domain),
+		motto: stringOrEmpty(b.motto),
+		industry: stringOrEmpty(b.industry),
+		website: stringOrEmpty(b.website),
+		logoUrl: stringOrEmpty(b.logoUrl),
+		locale: stringOrEmpty(b.locale),
+		taxRegistrations: toTaxRegistrationsDTO(b.taxRegistrations),
+		isDefault: booleanOrFalse(b.isDefault),
+		position: Number(b.position ?? 0),
+		isArchived: b.archivedAt !== null && b.archivedAt !== undefined,
+		archivedAt: dateOrEmpty(b.archivedAt),
+		archivedBy: stringOrEmpty(b.archivedBy),
+		createdAt: dateOrEmpty(b.createdAt),
+		updatedAt: dateOrEmpty(b.updatedAt),
 	};
 }
 

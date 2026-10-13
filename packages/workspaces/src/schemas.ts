@@ -217,7 +217,11 @@ const position = z.number().int().min(0).max(32767);
 const lowerEmail = email.transform((v) => v.toLowerCase()).pipe(z.string().max(254));
 const atLeastOne = (o: Record<string, unknown>) => Object.values(o).some((v) => v !== undefined);
 
+/** The branch a contact belongs to; absent = the default branch. */
+const branchId = z.string().uuid('branchId is a UUID').optional();
+
 export const addWorkspaceEmailSchema = z.object({
+	branchId,
 	email: lowerEmail,
 	label: contactLabel,
 	isPrimary: z.boolean().optional(),
@@ -230,6 +234,7 @@ export const updateWorkspaceEmailSchema = z
 const extension = z.string().trim().regex(/^[0-9]{1,8}$/, 'An extension is 1–8 digits').nullable().optional();
 
 export const addWorkspacePhoneSchema = z.object({
+	branchId,
 	phone: e164,
 	extension,
 	label: contactLabel,
@@ -265,7 +270,35 @@ const locationFields = {
 	position: position.optional(),
 };
 
-export const createWorkspaceLocationSchema = z.object(locationFields);
+export const createWorkspaceLocationSchema = z.object({ branchId, ...locationFields });
+
+// ── Branches ─────────────────────────────────────────────────────────────────
+// A host name, lower-cased: 'QuebecMover.com' → 'quebecmover.com'. No scheme, no path.
+const domain = z
+	.string()
+	.trim()
+	.toLowerCase()
+	.max(253)
+	.regex(/^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/, "domain is a host name (e.g. 'quebecmover.com')");
+
+const branchFields = {
+	name: z.string().trim().min(1, 'name is required').max(100),
+	domain: domain.nullable().optional(),
+	motto: z.string().max(300).nullable().optional(),
+	industry: industry.nullable().optional(),
+	website: z.string().trim().pipe(z.url({ protocol: /^https?$/ })).nullable().optional(),
+	logoUrl: z.string().trim().pipe(z.url({ protocol: /^https?$/ })).nullable().optional(),
+	locale: localeTag.nullable().optional(),
+	taxRegistrations: z.array(taxRegistration).max(20).optional(),
+	isDefault: z.boolean().optional(),
+	position: position.optional(),
+};
+
+export const createWorkspaceBranchSchema = z.object(branchFields);
+
+export const updateWorkspaceBranchSchema = z
+	.object({ ...branchFields, name: branchFields.name.optional() })
+	.refine(atLeastOne, 'Provide at least one field');
 
 export const updateWorkspaceLocationSchema = z
 	.object({
