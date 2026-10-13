@@ -1,5 +1,50 @@
 # @fonderie/client
 
+## 3.24.0
+
+### Minor Changes
+
+- 0ac44f4: A customer belongs to one branch of the business (`branchId`, migration 017):
+  the face they deal with — the funnel that signed them up, the branch whose
+  name, address, taxes and language their documents carry — so a customer of
+  one branch never receives another branch's identity. `POST /customers` and
+  `PUT /customers/:id` accept `branchId` (one of the workspace's live branches,
+  else 422; null = the workspace's default branch); `GET /customers?branchId=`
+  filters. `ICustomerDTO.branchId` is '' for customers on the default branch.
+  Requires `@fonderie/workspaces` with branches (migration 011).
+- 0ac44f4: Branches: a workspace can have several customer-facing identities, each with
+  its own name, logo, slogan, sector, website, domain, language, tax
+  registrations, emails, phones and locations. Before this, a business with
+  more than one front (a Québec branch and an Ontario branch, each with its own
+  address, phone and tax numbers) had one profile for all of them, so every
+  customer saw the head office's identity on their documents.
+  
+  - `fonderie_workspace_branches` (migration 011); every workspace gets a default
+    branch built from its current profile, and every existing contact row moves
+    under it — a workspace with one branch behaves exactly as before.
+  - Emails, phones and locations belong to a branch: one primary email, one
+    primary phone and one head office PER BRANCH; `GET /workspaces/contacts`
+    returns every branch's (each row names its `branchId`) or one branch's
+    with `?branchId=`; add / create accept `branchId` (default: the default
+    branch).
+  - `IWorkspaceDTO`'s motto / industry / website / logo / tax registrations and
+    email / phone / address mirror the DEFAULT branch, both ways: `PUT
+    /workspaces` with those fields lands on it, and setting another branch as
+    the default moves the mirror.
+  - Routes (members read, managers write): `GET/POST /workspaces/branches`,
+    `GET/PATCH /workspaces/branches/:branchId`, `POST …/default`, `…/archive`,
+    `…/restore`. A branch's `domain` is a host name, lower-cased, one live
+    branch per host across every workspace (409 DUPLICATE_DOMAIN) — what a
+    sign-up funnel on that host uses to know which branch it belongs to
+    (`findBranchByDomain`). The default cannot be archived (409
+    DEFAULT_ARCHIVE); an archived branch takes no contact (409 BRANCH_ARCHIVED).
+  - Client: `listBranches`, `createBranch`, `getBranch`, `updateBranch`,
+    `setDefaultBranch`, `archiveBranch`, `restoreBranch`; `getContacts({
+    branchId })`. Hooks / composables: `useWorkspaceBranches()` (list,
+    `defaultBranch`, create / update / setDefault / archive / restore) and
+    `useWorkspaceBranch(id)`; `useWorkspaceContacts` and
+    `useWorkspaceLocations` take `{ branchId }` to narrow the shared read.
+
 ## 3.23.0
 
 ### Minor Changes
