@@ -29,13 +29,17 @@ export class BranchError extends Error {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const BRANCH_COLS = `id, workspace_id AS "workspaceId", name, domain, motto, industry, website, logo_url AS "logoUrl",
-	locale, tax_registrations AS "taxRegistrations", is_default AS "isDefault", position,
-	archived_at AS "archivedAt", archived_by AS "archivedBy", created_at AS "createdAt", updated_at AS "updatedAt"`;
+// `b` is fonderie_workspace_branches. The domain is not stored: it is the
+// host of the branch's primary email ('bureau@quebecmover.com' →
+// 'quebecmover.com'), so it can never disagree with how the branch is reached.
+export const BRANCH_COLS = `b.id, b.workspace_id AS "workspaceId", b.name,
+	(SELECT lower(split_part(e.email, '@', 2)) FROM fonderie_workspace_emails e WHERE e.branch_id = b.id AND e.is_primary LIMIT 1) AS domain,
+	b.motto, b.industry, b.website, b.logo_url AS "logoUrl",
+	b.locale, b.tax_registrations AS "taxRegistrations", b.is_default AS "isDefault", b.position,
+	b.archived_at AS "archivedAt", b.archived_by AS "archivedBy", b.created_at AS "createdAt", b.updated_at AS "updatedAt"`;
 
 export interface IBranchInput {
 	name?: string;
-	domain?: string | null;
 	motto?: string | null;
 	industry?: string | null;
 	website?: string | null;
@@ -52,7 +56,7 @@ export async function lockWorkspace(tx: IStoreAdapter, workspaceId: string): Pro
 
 export async function getBranch(tx: IStoreAdapter, workspaceId: string, id: string): Promise<IWorkspaceBranch | null> {
 	if (!UUID.test(id)) return null;
-	const [row] = await tx.query<IWorkspaceBranch>(`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches WHERE workspace_id = $1 AND id = $2`, [workspaceId, id]);
+	const [row] = await tx.query<IWorkspaceBranch>(`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches b WHERE b.workspace_id = $1 AND b.id = $2`, [workspaceId, id]);
 	return row ?? null;
 }
 
@@ -104,21 +108,12 @@ async function moveDefault(tx: IStoreAdapter, workspaceId: string, id: string): 
 	await tx.query(`UPDATE fonderie_workspace_branches SET is_default = true, updated_at = now() WHERE workspace_id = $1 AND id = $2`, [workspaceId, id]);
 }
 
-async function assertDomainFree(tx: IStoreAdapter, domain: string | null | undefined, exceptId: string | null): Promise<void> {
-	if (!domain) return;
-	const [taken] = await tx.query(
-		`SELECT 1 FROM fonderie_workspace_branches WHERE domain = $1 AND archived_at IS NULL AND ($2::uuid IS NULL OR id <> $2)`,
-		[domain, exceptId],
-	);
-	if (taken) throw new BranchError(409, 'DUPLICATE_DOMAIN', 'Another branch already uses this domain');
-}
-
 // ── Read ─────────────────────────────────────────────────────────────────────
 
 export async function listBranches(workspaceId: string, store: IStoreAdapter): Promise<IWorkspaceBranch[]> {
 	return store.query<IWorkspaceBranch>(
-		`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches WHERE workspace_id = $1
-		 ORDER BY is_default DESC, (archived_at IS NOT NULL), position, created_at, id`,
+		`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches b WHERE b.workspace_id = $1
+		 ORDER BY b.is_default DESC, (b.archived_at IS NOT NULL), b.position, b.created_at, b.id`,
 		[workspaceId],
 	);
 }
@@ -127,10 +122,19 @@ export async function findBranch(workspaceId: string, id: string, store: IStoreA
 	return getBranch(store, workspaceId, id);
 }
 
-/** The branch a request on `host` belongs to, if any live branch claims it. Not workspace-scoped: a funnel knows the host, not the business. */
+/**
+ * The branch a request on `host` belongs to: the live branch whose primary
+ * email is on that host — the default one first when several are (two
+ * branches of one business on one domain). Not workspace-scoped: a funnel
+ * knows the host, not the business.
+ */
 export async function findBranchByDomain(domain: string, store: IStoreAdapter): Promise<IWorkspaceBranch | null> {
 	const [row] = await store.query<IWorkspaceBranch>(
-		`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches WHERE domain = $1 AND archived_at IS NULL`,
+		`SELECT ${BRANCH_COLS} FROM fonderie_workspace_branches b
+		 JOIN fonderie_workspace_emails e ON e.branch_id = b.id AND e.is_primary
+		 WHERE lower(split_part(e.email, '@', 2)) = $1 AND b.archived_at IS NULL
+		 ORDER BY b.is_default DESC, b.position, b.created_at
+		 LIMIT 1`,
 		[domain.trim().toLowerCase()],
 	);
 	return row ?? null;
@@ -144,14 +148,12 @@ export async function createBranch(store: IStoreAdapter, workspaceId: string, in
 		const [c] = await tx.query<{ n: string }>(`SELECT count(*) AS n FROM fonderie_workspace_branches WHERE workspace_id = $1`, [workspaceId]);
 		const n = Number(c?.n ?? 0);
 		if (n >= BRANCH_LIMIT) throw new BranchError(422, 'LIMIT_REACHED', `A workspace holds at most ${BRANCH_LIMIT} branches`);
-		await assertDomainFree(tx, input.domain, null);
 		const [row] = await tx.query<{ id: string }>(
-			`INSERT INTO fonderie_workspace_branches (workspace_id, name, domain, motto, industry, website, logo_url, locale, tax_registrations, position)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10) RETURNING id`,
+			`INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, position)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9) RETURNING id`,
 			[
 				workspaceId,
 				input.name,
-				input.domain ?? null,
 				input.motto ?? null,
 				input.industry ?? null,
 				input.website ?? null,
@@ -173,7 +175,6 @@ export async function updateBranch(store: IStoreAdapter, workspaceId: string, id
 		if (!current) throw new BranchError(404, 'NOT_FOUND', 'Branch not found');
 		if (input.isDefault === false && current.isDefault) throw new BranchError(409, 'DEFAULT_REQUIRED', 'Make another branch the default instead');
 		if (input.isDefault === true && current.archivedAt) throw new BranchError(409, 'BRANCH_ARCHIVED', 'Restore this branch before making it the default');
-		if (input.domain !== undefined) await assertDomainFree(tx, input.domain, id);
 		const sets: string[] = ['updated_at = now()'];
 		const params: unknown[] = [workspaceId, id];
 		const set = (col: string, value: unknown, cast = '') => {
@@ -181,7 +182,6 @@ export async function updateBranch(store: IStoreAdapter, workspaceId: string, id
 			sets.push(`${col} = $${params.length}${cast}`);
 		};
 		if (input.name !== undefined) set('name', input.name);
-		if (input.domain !== undefined) set('domain', input.domain);
 		if (input.motto !== undefined) set('motto', input.motto);
 		if (input.industry !== undefined) set('industry', input.industry);
 		if (input.website !== undefined) set('website', input.website);
@@ -218,8 +218,6 @@ export async function restoreBranch(store: IStoreAdapter, workspaceId: string, i
 		const current = await getBranch(tx, workspaceId, id);
 		if (!current) throw new BranchError(404, 'NOT_FOUND', 'Branch not found');
 		if (current.archivedAt) {
-			// Its domain may have been claimed by another branch meanwhile.
-			await assertDomainFree(tx, current.domain, id);
 			await tx.query(
 				`UPDATE fonderie_workspace_branches SET archived_at = NULL, archived_by = NULL, updated_at = now() WHERE workspace_id = $1 AND id = $2`,
 				[workspaceId, id],

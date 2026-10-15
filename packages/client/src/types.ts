@@ -638,14 +638,14 @@ export interface IWorkspaceLocationDTO {
 
 // ── Workspace branches ───────────────────────────────────────────────────────
 // One customer-facing identity of the business (name, logo, slogan, sector,
-// website, domain, language, tax registrations) owning its emails, phones and
+// website, language, tax registrations) owning its emails, phones and
 // locations. One branch is the default: IWorkspaceDTO's profile and primary
-// contacts mirror it.
+// contacts are its own, read from it.
 
 export interface IWorkspaceBranchDTO {
 	id: string;
 	name: string;
-	/** The host a funnel runs on ('quebecmover.com'), lower-cased; '' when none. */
+	/** The host of the branch's primary email ('quebecmover.com'), derived by the server; '' without one. */
 	domain: string;
 	motto: string;
 	industry: string;

@@ -67,7 +67,7 @@ packages, with `{ branchId }` to narrow to one branch.
 
 A business can have more than one face: the branches its customers deal with.
 Each branch is one customer-facing identity — name, logo, slogan, sector,
-website, `domain`, language and tax registrations — and owns its emails,
+website, language and tax registrations — and owns its emails,
 phones and locations (one primary email / phone and one head office per
 branch). The workspace keeps the legal identity (legal name, legal form,
 business number) and its name as the team's name. `GET /workspaces/branches`
@@ -79,10 +79,11 @@ start (built from its profile by the migration). The profile fields on
 phone, address) are the default branch's, read from it in one query and
 written to it by `PUT /workspaces` — stored once, so nothing that reads
 `IWorkspaceDTO` changes. The default cannot be archived — make another
-the default first. A branch's `domain` is a host name (`quebecmover.com`),
-one live branch per host across every workspace: a sign-up funnel on that
-host calls `findBranchByDomain` to know which branch (and so which language,
-address and taxes) a new customer belongs to. Limit: 20 branches. Frontend:
+the default first. A branch's `domain` is not typed in: it is the host of
+its primary email (`bureau@quebecmover.com` → `quebecmover.com`), so a
+sign-up funnel on that host calls `findBranchByDomain` to know which branch
+(and so which language, address and taxes) a new customer belongs to — the
+default branch first when several share the host. Limit: 20 branches. Frontend:
 `useWorkspaceBranches()` and `useWorkspaceBranch(id)`.
 
 ### Archiving: read-only until restored

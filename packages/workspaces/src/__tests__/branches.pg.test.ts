@@ -5,6 +5,7 @@ import { FonderieApp, defineConfig } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { WorkspacesModule } from '../module';
+import { findBranchByDomain } from '../services/branches';
 import { getMigrationsPath } from '../migrations';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,7 +14,7 @@ import { join } from 'node:path';
 // workspace starts with a default branch; contacts belong to a branch, with
 // one primary email / phone and one head office PER BRANCH; the workspace's
 // own profile IS the default branch's (read from it) and follows a change of
-// default; domains are unique; the default cannot be archived; the profile
+// default; a domain is the primary email's host; the default cannot be archived; the profile
 // written through PUT /workspaces lands on the default branch.
 //
 //   WORKSPACES_PG_URL=postgres://... npm test -w @fonderie/workspaces
@@ -160,13 +161,13 @@ test('a second branch: its own primaries; the workspace profile shows the DEFAUL
 
 	const host = `quebec-${Date.now()}.example`;
 	const made = await call(token, 'POST', '/workspaces/branches', {
-		name: 'Québec Mover', domain: host.toUpperCase(), motto: 'Déménagement sans souci', locale: 'fr-CA', website: 'https://quebecmover.com',
+		name: 'Québec Mover', motto: 'Déménagement sans souci', locale: 'fr-CA', website: 'https://quebecmover.com',
 		taxRegistrations: [{ country: 'CA', type: 'GST_HST', number: '123456789RT0001' }],
 	}, ws);
 	assert.equal(made.status, 201, JSON.stringify(made));
 	const qc = made.result['branch'];
 	assert.equal(qc.isDefault, false);
-	assert.equal(qc.domain, host);
+	assert.equal(qc.domain, '', 'no primary email yet: no domain');
 	assert.equal(qc.locale, 'fr-CA');
 	assert.equal(qc.taxRegistrations[0].number, '123456789RT0001');
 	assert.ok(emitted.some((e) => e.type === 'fonderie.workspace.branch.created' && e.payload['branchId'] === qc.id));
@@ -200,23 +201,30 @@ test('a second branch: its own primaries; the workspace profile shows the DEFAUL
 	assert.equal((await call(token, 'PATCH', `/workspaces/branches/${qc.id}`, { isDefault: false }, ws)).reason, 'DEFAULT_REQUIRED');
 });
 
-test('domains: lower-cased, one live branch per host, a host name only', { skip }, async () => {
-	const a = await owner();
-	const b = await owner();
+test('a domain is the host of the primary email — derived, never typed; a funnel finds the branch by it, the default first', { skip }, async () => {
+	const { token, ws } = await owner();
 	const host = `move-${Date.now()}.example`;
-	assert.equal((await call(a.token, 'POST', '/workspaces/branches', { name: 'A', domain: host.toUpperCase() }, a.ws)).status, 201);
-	// Another business cannot claim it either: a funnel's host names one branch.
-	const dup = await call(b.token, 'POST', '/workspaces/branches', { name: 'B', domain: host }, b.ws);
-	assert.equal(dup.status, 409, JSON.stringify(dup));
-	assert.equal(dup.reason, 'DUPLICATE_DOMAIN');
-	for (const bad of ['https://quebecmover.com', 'quebecmover.com/fr', 'not a host', '-bad.example']) {
-		const r = await call(a.token, 'POST', '/workspaces/branches', { name: 'X', domain: bad }, a.ws);
-		assert.equal(r.status, 422, `${bad} → ${JSON.stringify(r)}`);
-	}
-	// Clearing it frees it.
-	const [, mine] = await branches(a.token, a.ws);
-	assert.equal((await call(a.token, 'PATCH', `/workspaces/branches/${mine!.id}`, { domain: null }, a.ws)).status, 200);
-	assert.equal((await call(b.token, 'POST', '/workspaces/branches', { name: 'B', domain: host }, b.ws)).status, 201);
+	// `domain` on the input is not a field: stripped, not stored.
+	const made = await call(token, 'POST', '/workspaces/branches', { name: 'Ottawa', domain: 'typed.example' }, ws);
+	assert.equal(made.status, 201, JSON.stringify(made));
+	const ottawa = made.result['branch'];
+	assert.equal(ottawa.domain, '');
+	assert.equal(await findBranchByDomain(host, store), null);
+
+	const e = await call(token, 'POST', '/workspaces/emails', { branchId: ottawa.id, email: `Ottawa@${host.toUpperCase()}` }, ws);
+	assert.equal(e.status, 201, JSON.stringify(e));
+	const [, mine] = await branches(token, ws);
+	assert.equal(mine!.domain, host);
+	assert.equal((await findBranchByDomain(host.toUpperCase(), store))?.id, ottawa.id);
+
+	// The default branch on the same host wins the lookup; an archived branch never answers.
+	const [def] = await branches(token, ws);
+	await call(token, 'POST', '/workspaces/emails', { email: `bureau@${host}` }, ws);
+	assert.equal((await findBranchByDomain(host, store))?.id, def!.id);
+	assert.equal((await call(token, 'POST', `/workspaces/branches/${ottawa.id}/archive`, undefined, ws)).status, 200);
+	const defEmail = (await contacts(token, ws)).emails.find((x: { branchId: string }) => x.branchId === def!.id);
+	assert.equal((await call(token, 'DELETE', `/workspaces/emails/${defEmail.id}`, undefined, ws)).status, 200);
+	assert.equal(await findBranchByDomain(host, store), null);
 });
 
 test('archive: never the default; an archived branch takes no contact; restore brings it back', { skip }, async () => {

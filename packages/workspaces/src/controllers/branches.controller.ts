@@ -27,7 +27,6 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 	} catch (err) {
 		if (err instanceof BranchError) return setApiResponse(err.status, err.reason, err.message);
 		// A unique index caught what the checks under the lock did not.
-		if ((err as { code?: string }).code === '23505') return setApiResponse(HTTP.CONFLICT, 'DUPLICATE_DOMAIN', 'Another branch already uses this domain');
 		throw err;
 	}
 }

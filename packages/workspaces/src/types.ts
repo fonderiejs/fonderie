@@ -127,7 +127,7 @@ export interface IWorkspaceBranch {
 	id: string;
 	workspaceId: string;
 	name: string;
-	/** The host a funnel runs on ('quebecmover.com'), lower-cased; null when none. */
+	/** The host of the branch's primary email ('quebecmover.com'), derived — not stored; null without a primary email. */
 	domain: string | null;
 	motto: string | null;
 	industry: string | null;
