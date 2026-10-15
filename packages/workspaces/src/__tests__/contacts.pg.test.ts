@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // A workspace's emails, phones and locations on a REAL Postgres, over HTTP:
-// one primary email / phone and one head office, flags that move, the mirror
+// one primary email / phone and one head office, flags that move, the profile
 // onto the workspace's own email / phone / address kept in step both ways,
 // limits, who may write, and the migration's backfill.
 //
@@ -283,9 +283,11 @@ test('PUT /workspaces email / phone / address updates the primary entries and th
 	assert.equal(c.locations.length, 1);
 	assert.equal(c.locations[0].taxRegion, 'CA-ON');
 
-	// A phone not in international format stays on the workspace, as typed; the list is left alone.
+	// A phone not in international format cannot be an entry, and there is nowhere else to keep it: refused, the list left alone.
 	const legacy = await call(token, 'PUT', '/workspaces', { phone: '514 555 0100' }, ws);
-	assert.equal(legacy.result['workspace'].phone, '514 555 0100');
+	assert.equal(legacy.status, 422, JSON.stringify(legacy));
+	assert.match(legacy.explanation, /^phone:/);
+	assert.equal((await profile(token, ws)).phone, '+15145550199');
 	assert.deepEqual((await contacts(token, ws)).phones.map((p: { phone: string }) => p.phone), ['+15145550199']);
 
 	// null removes the primary; the next one takes its place (and the mirror).

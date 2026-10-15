@@ -4,9 +4,12 @@ import type { ITaxRegistration, IWorkspaceBranch } from '../types';
 
 // A workspace's branches (migration 011): one customer-facing identity each,
 // one of them the default. The default branch's identity (motto, industry,
-// website, logo, tax registrations) is MIRRORED onto fonderie_workspaces so
-// code that reads the workspace's profile keeps working; its primary
-// contacts are mirrored by services/contacts.ts the same way.
+// website, logo, tax registrations) and its primary contacts ARE the
+// workspace's profile: services/workspaces.ts reads them from here (one
+// LATERAL join), nothing copies them onto fonderie_workspaces. The profile
+// columns that row still carries from migration 005 are dead — read only by
+// ensureDefaultBranch / defaultBranchId, to build the default branch of a
+// row older than 011's backfill — and go with a later migration.
 //
 // Every write locks the workspace row first (FOR UPDATE), so two requests at
 // once cannot both become "the first branch" or race the default flag.
@@ -95,18 +98,6 @@ export async function resolveBranch(tx: IStoreAdapter, workspaceId: string, bran
 	return branch.id;
 }
 
-/** The workspace's profile columns follow the default branch. */
-export async function mirrorProfile(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(
-		`UPDATE fonderie_workspaces w
-		 SET motto = b.motto, industry = b.industry, website = b.website, logo_url = b.logo_url,
-		     tax_registrations = b.tax_registrations, updated_at = now()
-		 FROM fonderie_workspace_branches b
-		 WHERE w.id = $1 AND b.workspace_id = w.id AND b.is_default`,
-		[workspaceId],
-	);
-}
-
 /** Clear the default flag on every other branch, then set it on this one. */
 async function moveDefault(tx: IStoreAdapter, workspaceId: string, id: string): Promise<void> {
 	await tx.query(`UPDATE fonderie_workspace_branches SET is_default = false, updated_at = now() WHERE workspace_id = $1 AND is_default AND id <> $2`, [workspaceId, id]);
@@ -170,10 +161,7 @@ export async function createBranch(store: IStoreAdapter, workspaceId: string, in
 				input.position ?? n,
 			],
 		);
-		if (n === 0 || input.isDefault) {
-			await moveDefault(tx, workspaceId, row!.id);
-			await mirrorProfile(tx, workspaceId);
-		}
+		if (n === 0 || input.isDefault) await moveDefault(tx, workspaceId, row!.id);
 		return (await getBranch(tx, workspaceId, row!.id))!;
 	});
 }
@@ -202,14 +190,8 @@ export async function updateBranch(store: IStoreAdapter, workspaceId: string, id
 		if (input.taxRegistrations !== undefined) set('tax_registrations', JSON.stringify(input.taxRegistrations), '::jsonb');
 		if (input.position !== undefined) set('position', input.position);
 		await tx.query(`UPDATE fonderie_workspace_branches SET ${sets.join(', ')} WHERE workspace_id = $1 AND id = $2`, params);
-		if (input.isDefault === true && !current.isDefault) {
-			await moveDefault(tx, workspaceId, id);
-			await mirrorProfile(tx, workspaceId);
-			// The workspace's email / phone / address follow the new default's primaries.
-			await mirrorContacts(tx, workspaceId);
-		} else if (current.isDefault) {
-			await mirrorProfile(tx, workspaceId);
-		}
+		// The workspace's profile reads from whichever branch is the default: nothing else to move.
+		if (input.isDefault === true && !current.isDefault) await moveDefault(tx, workspaceId, id);
 		return (await getBranch(tx, workspaceId, id))!;
 	});
 }
@@ -273,18 +255,4 @@ export async function profileToDefaultBranch(tx: IStoreAdapter, workspaceId: str
 	if (profile.logoUrl !== undefined) set('logo_url', profile.logoUrl);
 	if (profile.taxRegistrations !== undefined) set('tax_registrations', JSON.stringify(profile.taxRegistrations), '::jsonb');
 	await tx.query(`UPDATE fonderie_workspace_branches SET ${sets.join(', ')} WHERE id = $1`, params);
-}
-
-/** The workspace's email / phone / address follow the DEFAULT branch's primary email / phone / head office. */
-export async function mirrorContacts(tx: IStoreAdapter, workspaceId: string): Promise<void> {
-	await tx.query(
-		`UPDATE fonderie_workspaces w
-		 SET email = (SELECT e.email FROM fonderie_workspace_emails e WHERE e.branch_id = b.id AND e.is_primary),
-		     phone = (SELECT p.phone FROM fonderie_workspace_phones p WHERE p.branch_id = b.id AND p.is_primary),
-		     address = COALESCE((SELECT l.address FROM fonderie_workspace_locations l WHERE l.branch_id = b.id AND l.is_head_office), '{}'::jsonb),
-		     updated_at = now()
-		 FROM fonderie_workspace_branches b
-		 WHERE w.id = $1 AND b.workspace_id = w.id AND b.is_default`,
-		[workspaceId],
-	);
 }

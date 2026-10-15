@@ -12,7 +12,7 @@ import { join } from 'node:path';
 // A workspace's BRANCHES on a REAL Postgres, over HTTP (migration 011): every
 // workspace starts with a default branch; contacts belong to a branch, with
 // one primary email / phone and one head office PER BRANCH; the workspace's
-// own profile columns mirror the default branch and follow a change of
+// own profile IS the default branch's (read from it) and follows a change of
 // default; domains are unique; the default cannot be archived; the profile
 // written through PUT /workspaces lands on the default branch.
 //
@@ -151,7 +151,7 @@ test('a workspace row from before the migration gets its default branch from its
 
 // ── a second branch ──────────────────────────────────────────────────────────
 
-test('a second branch: its own primaries; the workspace mirrors the DEFAULT branch, and follows a change of default', { skip }, async () => {
+test('a second branch: its own primaries; the workspace profile shows the DEFAULT branch, and follows a change of default', { skip }, async () => {
 	const { token, ws } = await owner();
 	const [def] = await branches(token, ws);
 	await call(token, 'POST', '/workspaces/emails', { email: 'montreal@acme.example' }, ws);

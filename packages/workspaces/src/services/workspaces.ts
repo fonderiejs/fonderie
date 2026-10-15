@@ -2,52 +2,29 @@ import { randomBytes } from 'node:crypto';
 
 import type { IStoreAdapter } from '@fonderie/store';
 
-import { ensureDefaultBranch } from './branches';
+import { ensureDefaultBranch, profileToDefaultBranch } from './branches';
+import { fromProfile } from './contacts';
 
 import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSettings } from '../types';
 
-const SELECT_WS = `
-	id,
-	name,
-	slug,
-	type,
-	description,
-	motto,
-	phone,
-	business_type AS "businessType",
-	industry,
-	address,
-	legal_name AS "legalName",
-	email,
-	website,
-	logo_url AS "logoUrl",
-	tax_registrations AS "taxRegistrations",
-	languages,
-	plan,
-	owner_id    AS "ownerId",
-	is_personal AS "isPersonal",
-	archived_at AS "archivedAt",
-	archived_by AS "archivedBy",
-	created_at  AS "createdAt",
-	updated_at  AS "updatedAt"
-`;
+// A workspace row holds what belongs to the TEAM: its name, slug, type,
+// description, legal identity (legal name, legal form, languages), plan and
+// archive state. The customer-facing profile — motto, industry, website,
+// logo, tax registrations, email, phone, address — is the DEFAULT BRANCH's
+// (migration 011) and its primary contacts: it is READ from there, never
+// copied onto the workspace row. The profile columns fonderie_workspaces
+// still carries from migration 005 are dead: not written, not read, dropped
+// by a later migration once every deployment runs this version.
 
-const SELECT_WS_W = `
+/** The workspace's own columns, `w` being fonderie_workspaces. */
+const OWN_COLS = `
 	w.id,
 	w.name,
 	w.slug,
 	w.type,
 	w.description,
-	w.motto,
-	w.phone,
 	w.business_type AS "businessType",
-	w.industry,
-	w.address,
 	w.legal_name AS "legalName",
-	w.email,
-	w.website,
-	w.logo_url AS "logoUrl",
-	w.tax_registrations AS "taxRegistrations",
 	w.languages,
 	w.plan,
 	w.owner_id    AS "ownerId",
@@ -58,12 +35,55 @@ const SELECT_WS_W = `
 	w.updated_at  AS "updatedAt"
 `;
 
+/** The profile, from the default branch joined as `d` (see PROFILE_JOIN). */
+const PROFILE_COLS = `
+	d.motto,
+	d.phone,
+	d.industry,
+	d.address,
+	d.email,
+	d.website,
+	d.logo_url AS "logoUrl",
+	d.tax_registrations AS "taxRegistrations"
+`;
+
+/** A brand-new row: no branch yet, so an empty profile. */
+const EMPTY_PROFILE_COLS = `
+	NULL::text AS motto,
+	NULL::text AS phone,
+	NULL::text AS industry,
+	NULL::jsonb AS address,
+	NULL::text AS email,
+	NULL::text AS website,
+	NULL::text AS "logoUrl",
+	NULL::jsonb AS "taxRegistrations"
+`;
+
+const SELECT_WS_W = `${OWN_COLS}, ${PROFILE_COLS}`;
+
+/**
+ * The default branch and its primary email, primary phone and head office,
+ * one row per workspace (`LATERAL`, so it reads as columns of `w`). A
+ * workspace without a default branch yet — one older than migration 011's
+ * backfill, before its first contact write creates it — shows an empty profile.
+ */
+const PROFILE_JOIN = `
+	LEFT JOIN LATERAL (
+	  SELECT b.motto, b.industry, b.website, b.logo_url, b.tax_registrations,
+	         (SELECT e.email FROM fonderie_workspace_emails e WHERE e.branch_id = b.id AND e.is_primary LIMIT 1) AS email,
+	         (SELECT p.phone FROM fonderie_workspace_phones p WHERE p.branch_id = b.id AND p.is_primary LIMIT 1) AS phone,
+	         (SELECT l.address FROM fonderie_workspace_locations l WHERE l.branch_id = b.id AND l.is_head_office LIMIT 1) AS address
+	    FROM fonderie_workspace_branches b
+	   WHERE b.workspace_id = w.id AND b.is_default
+	) d ON true
+`;
+
 export async function findWorkspaceById(
 	id: string,
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const [row] = await store.query<IWorkspace>(
-		`SELECT ${SELECT_WS} FROM fonderie_workspaces WHERE id = $1`,
+		`SELECT ${SELECT_WS_W} FROM fonderie_workspaces w ${PROFILE_JOIN} WHERE w.id = $1`,
 		[id],
 	);
 	return row ?? null;
@@ -101,7 +121,7 @@ export async function findWorkspaceAccess(
 		             AND r.is_system      = true
 		             AND r.active         = true
 		        ) AS "systemRoles"
-		 FROM fonderie_workspaces w
+		 FROM fonderie_workspaces w ${PROFILE_JOIN}
 		 WHERE w.id = $1`,
 		[workspaceId, userId],
 	);
@@ -114,14 +134,17 @@ export async function findWorkspacesByUserId(
 	userId: string,
 	store: IStoreAdapter,
 ): Promise<IWorkspace[]> {
+	// Membership as a subquery (not a join): a member with two roles has two
+	// rows there, and the profile columns cannot be grouped by the id.
 	return store.query<IWorkspace>(
 		`SELECT ${SELECT_WS_W}
-		 FROM fonderie_workspaces w
-		 JOIN fonderie_role_user_workspaces ruw ON ruw.workspace_id = w.id
-		 WHERE ruw.user_id   = $1
-		   AND ruw.removed   = false
-		   AND ruw.suspended = false
-		 GROUP BY w.id
+		 FROM fonderie_workspaces w ${PROFILE_JOIN}
+		 WHERE w.id IN (
+		   SELECT ruw.workspace_id FROM fonderie_role_user_workspaces ruw
+		    WHERE ruw.user_id   = $1
+		      AND ruw.removed   = false
+		      AND ruw.suspended = false
+		 )
 		 ORDER BY w.created_at ASC`,
 		[userId],
 	);
@@ -149,7 +172,7 @@ export async function createWorkspace(
 			`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, description, plan)
 			 VALUES ($1, $2, $3, $4, $5, $6)
 			 ON CONFLICT (slug) WHERE archived_at IS NULL DO NOTHING
-			 RETURNING ${SELECT_WS}`,
+			 RETURNING ${OWN_COLS.replace(/\bw\./g, '')}, ${EMPTY_PROFILE_COLS}`,
 			[
 				opts.name,
 				slug,
@@ -177,7 +200,7 @@ export async function createPersonalWorkspace(
 		`INSERT INTO fonderie_workspaces (name, slug, owner_id, type, is_personal)
 		 VALUES ($1, $2, $3, 'PERSONAL', true)
 		 ON CONFLICT (owner_id) WHERE is_personal = true DO NOTHING
-		 RETURNING ${SELECT_WS}`,
+		 RETURNING ${OWN_COLS.replace(/\bw\./g, '')}, ${EMPTY_PROFILE_COLS}`,
 		[opts.name, opts.slug, opts.ownerId],
 	);
 	if (workspace) await ensureDefaultBranch(store, workspace.id);
@@ -189,14 +212,24 @@ export async function findPersonalWorkspace(
 	store: IStoreAdapter,
 ): Promise<IWorkspace | null> {
 	const [row] = await store.query<IWorkspace>(
-		`SELECT ${SELECT_WS} FROM fonderie_workspaces
-		 WHERE owner_id = $1 AND is_personal = true
+		`SELECT ${SELECT_WS_W} FROM fonderie_workspaces w ${PROFILE_JOIN}
+		 WHERE w.owner_id = $1 AND w.is_personal = true
 		 LIMIT 1`,
 		[userId],
 	);
 	return row ?? null;
 }
 
+/**
+ * The workspace's own fields land on its row; the profile fields go where
+ * they live — motto / industry / website / logoUrl / taxRegistrations on the
+ * default branch, email / phone / address as its primary email, primary phone
+ * and head office (created when there is none). Call inside a transaction
+ * when more than one of those is given. A profile value that cannot be
+ * stored (a phone that is not E.164, a full list) is refused with a
+ * ContactError / BranchError — nothing is dropped on the floor. Resolves to
+ * the workspace as it now reads, or null when there is no such workspace.
+ */
 export async function updateWorkspace(
 	id: string,
 	opts: {
@@ -232,49 +265,31 @@ export async function updateWorkspace(
 		params.push(opts.slug);
 		sets.push(`slug = $${params.length}`);
 	}
-	if (opts.motto !== undefined) {
-		params.push(opts.motto);
-		sets.push(`motto = $${params.length}`);
-	}
-	if (opts.phone !== undefined) {
-		params.push(opts.phone);
-		sets.push(`phone = $${params.length}`);
-	}
 	if (opts.businessType !== undefined) {
 		params.push(opts.businessType);
 		sets.push(`business_type = $${params.length}`);
 	}
-	if (opts.industry !== undefined) {
-		params.push(opts.industry);
-		sets.push(`industry = $${params.length}`);
-	}
-	if (opts.address !== undefined) {
-		params.push(JSON.stringify(opts.address ?? {}));
-		sets.push(`address = $${params.length}::jsonb`);
-	}
-	for (const [key, col] of [['legalName', 'legal_name'], ['email', 'email'], ['website', 'website'], ['logoUrl', 'logo_url']] as const) {
-		if (opts[key] !== undefined) {
-			params.push(opts[key]);
-			sets.push(`${col} = $${params.length}`);
-		}
-	}
-	if (opts.taxRegistrations !== undefined) {
-		params.push(JSON.stringify(opts.taxRegistrations));
-		sets.push(`tax_registrations = $${params.length}::jsonb`);
+	if (opts.legalName !== undefined) {
+		params.push(opts.legalName);
+		sets.push(`legal_name = $${params.length}`);
 	}
 	if (opts.languages !== undefined) {
 		params.push(opts.languages);
 		sets.push(`languages = $${params.length}::text[]`);
 	}
 
-	const [row] = await store.query<IWorkspace>(
+	const [row] = await store.query<{ id: string }>(
 		`UPDATE fonderie_workspaces
 		 SET ${sets.join(', ')}
 		 WHERE id = $1
-		 RETURNING ${SELECT_WS}`,
+		 RETURNING id`,
 		params,
 	);
-	return row ?? null;
+	if (!row) return null;
+
+	await profileToDefaultBranch(store, id, { motto: opts.motto, industry: opts.industry, website: opts.website, logoUrl: opts.logoUrl, taxRegistrations: opts.taxRegistrations });
+	await fromProfile(store, id, { email: opts.email, phone: opts.phone, address: opts.address });
+	return findWorkspaceById(id, store);
 }
 
 export async function archiveWorkspace(

@@ -30,6 +30,8 @@ export interface IWorkspace {
 	slug: string;
 	type: WorkspaceType;
 	description: string | null;
+	// The profile — read from the DEFAULT branch (migration 011) and its
+	// primary email, primary phone and head office; written there too.
 	motto: string | null;
 	phone: string | null;
 	businessType: string | null;

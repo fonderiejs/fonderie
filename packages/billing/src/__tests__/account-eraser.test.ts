@@ -70,10 +70,15 @@ const close = (store: unknown) => (store as { end?: () => Promise<void> }).end?.
 
 async function workspace(store: Store, owner: string, members: Array<{ id: string; removed?: boolean; suspended?: boolean }>, email: string | null = null) {
 	const id = randomUUID();
-	await store.query(
-		`INSERT INTO fonderie_workspaces (id, name, slug, owner_id, email) VALUES ($1, 'Acme', $2, $3, $4)`,
-		[id, `erase-${id}`, owner, email],
+	await store.query(`INSERT INTO fonderie_workspaces (id, name, slug, owner_id) VALUES ($1, 'Acme', $2, $3)`, [id, `erase-${id}`, owner]);
+	// The business email is the default branch's primary email (workspaces 8.2).
+	const [branch] = await store.query<{ id: string }>(
+		`INSERT INTO fonderie_workspace_branches (workspace_id, name, is_default) VALUES ($1, 'Acme', true) RETURNING id`,
+		[id],
 	);
+	if (email) {
+		await store.query(`INSERT INTO fonderie_workspace_emails (workspace_id, branch_id, email, is_primary) VALUES ($1, $2, $3, true)`, [id, branch!.id, email]);
+	}
 	const [role] = await store.query<{ id: string }>(`SELECT id FROM fonderie_roles WHERE name = 'ADMIN' AND workspace_id IS NULL`);
 	for (const m of [{ id: owner }, ...members]) {
 		await store.query(
