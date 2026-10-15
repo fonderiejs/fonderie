@@ -273,17 +273,9 @@ const locationFields = {
 export const createWorkspaceLocationSchema = z.object({ branchId, ...locationFields });
 
 // ── Branches ─────────────────────────────────────────────────────────────────
-// A host name, lower-cased: 'QuebecMover.com' → 'quebecmover.com'. No scheme, no path.
-const domain = z
-	.string()
-	.trim()
-	.toLowerCase()
-	.max(253)
-	.regex(/^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/, "domain is a host name (e.g. 'quebecmover.com')");
-
+// No `domain` field: a branch's domain is the host of its primary email, derived.
 const branchFields = {
 	name: z.string().trim().min(1, 'name is required').max(100),
-	domain: domain.nullable().optional(),
 	motto: z.string().max(300).nullable().optional(),
 	industry: industry.nullable().optional(),
 	website: z.string().trim().pipe(z.url({ protocol: /^https?$/ })).nullable().optional(),

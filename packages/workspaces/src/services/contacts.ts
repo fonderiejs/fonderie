@@ -8,20 +8,18 @@ import type {
 	IWorkspaceLocation,
 	IWorkspacePhone,
 } from '../types';
-import { BranchError, defaultBranchId, lockWorkspace, mirrorContacts, resolveBranch } from './branches';
+import { BranchError, defaultBranchId, lockWorkspace, resolveBranch } from './branches';
 
 // A workspace's emails, phones and locations (migration 010), each owned by a
 // BRANCH (migration 011): one primary email, one primary phone and one head
 // office per branch, and the limits per branch.
 //
-// fonderie_workspaces.email / phone / address are the MIRROR of the DEFAULT
-// branch's primary email, primary phone and head office's address. This
-// service keeps them in step, in the same transaction as the change, both ways:
-//
-//   - a write here (add, flag moved, delete…) re-derives the mirror columns;
-//   - PUT /workspaces with email / phone / address (fromProfile) updates the
-//     default branch's primary entry or head office — creating it when there
-//     is none.
+// The workspace's profile email / phone / address ARE the DEFAULT branch's
+// primary email, primary phone and head office's address: services/
+// workspaces.ts reads them from these tables, nothing is copied onto the
+// workspace row. PUT /workspaces with email / phone / address (fromProfile)
+// updates the default branch's primary entry or head office — creating it
+// when there is none.
 //
 // Every write locks the workspace row first (FOR UPDATE), so two requests at
 // once cannot both become "the first entry", both pass a limit, or race a
@@ -133,7 +131,6 @@ export async function addEmail(
 			[workspaceId, branchId, email, input.label ?? null, n],
 		);
 		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_emails', 'is_primary', branchId, row!.id);
-		await mirrorContacts(tx, workspaceId);
 		return (await getOne<IWorkspaceEmail>(tx, 'fonderie_workspace_emails', EMAIL_COLS, workspaceId, row!.id))!;
 	});
 }
@@ -175,7 +172,6 @@ export async function addPhone(
 			[workspaceId, branchId, input.phone, extension, input.label ?? null, n],
 		);
 		if (n === 0 || input.isPrimary) await moveFlag(tx, 'fonderie_workspace_phones', 'is_primary', branchId, row!.id);
-		await mirrorContacts(tx, workspaceId);
 		return (await getOne<IWorkspacePhone>(tx, 'fonderie_workspace_phones', PHONE_COLS, workspaceId, row!.id))!;
 	});
 }
@@ -241,7 +237,6 @@ async function updateListEntry<T extends { isPrimary: boolean; branchId: string 
 		await tx.query(`UPDATE ${table} SET ${sets.join(', ')} WHERE workspace_id = $1 AND id = $2`, params);
 		if (input.isPrimary === true && !current.isPrimary) {
 			await moveFlag(tx, table, 'is_primary', current.branchId, id);
-			await mirrorContacts(tx, workspaceId);
 		}
 		return (await getOne<T>(tx, table, cols, workspaceId, id))!;
 	});
@@ -256,8 +251,6 @@ async function removeListEntry(store: IStoreAdapter, table: ListTable, what: str
 			throw new ContactError(409, 'PRIMARY_REQUIRED', `Make another ${what.toLowerCase()} primary before removing this one`);
 		}
 		await tx.query(`DELETE FROM ${table} WHERE workspace_id = $1 AND id = $2`, [workspaceId, id]);
-		// The last one gone: the mirror column is cleared.
-		if (current.isPrimary) await mirrorContacts(tx, workspaceId);
 	});
 }
 
@@ -306,7 +299,6 @@ export async function createLocation(store: IStoreAdapter, workspaceId: string, 
 		);
 		if (!head || input.isHeadOffice) {
 			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', branchId, row!.id);
-			await mirrorContacts(tx, workspaceId);
 		}
 		return (await getLocation(tx, workspaceId, row!.id))!;
 	});
@@ -340,12 +332,7 @@ export async function updateLocation(store: IStoreAdapter, workspaceId: string, 
 		if (input.email !== undefined) set('email', input.email?.toLowerCase() ?? null);
 		if (input.position !== undefined) set('position', input.position);
 		await tx.query(`UPDATE fonderie_workspace_locations SET ${sets.join(', ')} WHERE workspace_id = $1 AND id = $2`, params);
-		if (input.isHeadOffice === true && !current.isHeadOffice) {
-			await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', current.branchId, id);
-			await mirrorContacts(tx, workspaceId);
-		} else if (current.isHeadOffice && input.address !== undefined) {
-			await mirrorContacts(tx, workspaceId);
-		}
+		if (input.isHeadOffice === true && !current.isHeadOffice) await moveFlag(tx, 'fonderie_workspace_locations', 'is_head_office', current.branchId, id);
 		return (await getLocation(tx, workspaceId, id))!;
 	});
 }
@@ -387,8 +374,8 @@ export async function restoreLocation(store: IStoreAdapter, workspaceId: string,
  * Called in the same transaction as the profile update, after it. The profile's
  * email / phone / address become the DEFAULT branch's primary email / primary
  * phone / head office — created when there is none. A phone that is not
- * E.164 ('514 555 0100') cannot be a phone entry: it stays on the workspace
- * as typed, and the phone list is left alone.
+ * E.164 ('514 555 0100') cannot be a phone entry, and there is nowhere else
+ * to keep it: refused (422), as POST /workspaces/phones refuses it.
  */
 export async function fromProfile(
 	tx: IStoreAdapter,
@@ -406,9 +393,8 @@ export async function fromProfile(
 
 	if (profile.phone !== undefined) {
 		const phone = profile.phone?.replace(/[\s().-]/g, '') || null;
-		if (phone === null || E164.test(phone)) {
-			await setPrimaryValue(tx, 'fonderie_workspace_phones', 'phone', workspaceId, branchId, phone, CONTACT_LIMITS.phones);
-		}
+		if (phone !== null && !E164.test(phone)) throw new ContactError(422, 'INVALID_PARAMETER', 'phone: must be in international format (+15145550100)');
+		await setPrimaryValue(tx, 'fonderie_workspace_phones', 'phone', workspaceId, branchId, phone, CONTACT_LIMITS.phones);
 	}
 
 	if (profile.address !== undefined) {
@@ -419,21 +405,15 @@ export async function fromProfile(
 				`UPDATE fonderie_workspace_locations SET address = $2::jsonb, tax_region = $3, updated_at = now() WHERE id = $1`,
 				[head.id, JSON.stringify(address), taxRegionOf(address)],
 			);
-		} else if (!isEmpty(address) && (await count(tx, 'fonderie_workspace_locations', branchId)) < CONTACT_LIMITS.locations) {
+		} else if (!isEmpty(address)) {
+			if ((await count(tx, 'fonderie_workspace_locations', branchId)) >= CONTACT_LIMITS.locations) {
+				throw new ContactError(422, 'LIMIT_REACHED', `A branch holds at most ${CONTACT_LIMITS.locations} locations`);
+			}
 			await tx.query(
 				`INSERT INTO fonderie_workspace_locations (workspace_id, branch_id, name, address, tax_region, is_head_office)
 				 VALUES ($1, $2, 'Head office', $3::jsonb, $4, true)`,
 				[workspaceId, branchId, JSON.stringify(address), taxRegionOf(address)],
 			);
-		}
-	}
-	// A non-E.164 phone stays on the workspace as typed: the mirror below
-	// re-derives email and address, and the phone only when a primary exists.
-	await mirrorContacts(tx, workspaceId);
-	if (profile.phone !== undefined) {
-		const phone = profile.phone?.replace(/[\s().-]/g, '') || null;
-		if (phone !== null && !E164.test(phone)) {
-			await tx.query(`UPDATE fonderie_workspaces SET phone = $2, updated_at = now() WHERE id = $1`, [workspaceId, profile.phone]);
 		}
 	}
 }
@@ -473,7 +453,7 @@ async function setPrimaryValue(
 		return;
 	}
 	const n = await count(tx, table, branchId);
-	if (n >= limit) return; // full: the profile column still holds it (mirror re-derives below)
+	if (n >= limit) throw new ContactError(422, 'LIMIT_REACHED', `A branch holds at most ${limit} ${col}s`);
 	const [row] = await tx.query<{ id: string }>(
 		`INSERT INTO ${table} (workspace_id, branch_id, ${col}, position) VALUES ($1, $2, $3, $4) RETURNING id`,
 		[workspaceId, branchId, value, n],

@@ -8,9 +8,9 @@ import { WorkspaceModel } from '../models/workspace.model';
 import { MemberModel } from '../models/member.model';
 import { RoleModel } from '../models/role.model';
 import { toWorkspaceDTO, toSettingsDTO } from '../dtos/workspace';
-import { fromProfile } from '../services/contacts';
+import { ContactError } from '../services/contacts';
 import { isWorkspaceArchived } from '../middlewares/require-active-workspace';
-import { profileToDefaultBranch } from '../services/branches';
+import { BranchError } from '../services/branches';
 
 export function workspaceController(store: IStoreAdapter, config: IWorkspacesConfig) {
 	const workspaces = new WorkspaceModel(store);
@@ -112,22 +112,17 @@ export function workspaceController(store: IStoreAdapter, config: IWorkspacesCon
 			if (Array.isArray(body?.['taxRegistrations'])) opts.taxRegistrations = body['taxRegistrations'] as NonNullable<typeof opts.taxRegistrations>;
 			if (Array.isArray(body?.['languages'])) opts.languages = body['languages'] as string[];
 
-			// The profile's email / phone / address are the mirror of the primary
-			// email, the primary phone and the head office: one transaction moves both.
+			// The workspace's own fields and the profile — the DEFAULT branch's
+			// identity and primary contacts (migration 011) — move in one transaction.
 			const id = ctx.workspace.id;
-			const workspace = await store.transaction(async (tx) => {
-				const updated = await new WorkspaceModel(tx).update(id, opts);
-				if (!updated) return null;
-				// The identity fields and the primary contacts belong to the DEFAULT
-				// branch (migration 011): the profile is its mirror, so a write here
-				// lands there too, in the same transaction.
-				const identity = { motto: opts.motto, industry: opts.industry, website: opts.website, logoUrl: opts.logoUrl, taxRegistrations: opts.taxRegistrations };
-				const mirrored = { email: opts.email, phone: opts.phone, address: opts.address };
-				if ([...Object.values(identity), ...Object.values(mirrored)].every((v) => v === undefined)) return updated;
-				await profileToDefaultBranch(tx, id, identity);
-				await fromProfile(tx, id, mirrored);
-				return new WorkspaceModel(tx).findById(id);
-			});
+			let workspace: IWorkspace | null;
+			try {
+				workspace = await store.transaction((tx) => new WorkspaceModel(tx).update(id, opts));
+			} catch (err) {
+				// A profile value with nowhere to go: a phone that is not E.164, a full list.
+				if (err instanceof ContactError || err instanceof BranchError) return setApiResponse(err.status, err.reason, err.message);
+				throw err;
+			}
 			if (!workspace) return setApiResponse(HTTP.NOT_FOUND, 'NOT_FOUND', 'Workspace not found');
 
 			return setApiResponse(HTTP.OK, 'WORKSPACE_UPDATED', 'Workspace updated successfully.', {

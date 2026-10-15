@@ -271,7 +271,7 @@ export function toWorkspaceLocationDTO(l: IWorkspaceLocation): IWorkspaceLocatio
 export interface IWorkspaceBranchDTO {
 	id: string;
 	name: string;
-	/** Lower-cased host; '' when none. */
+	/** The host of the branch's primary email ('quebecmover.com'); '' without one. */
 	domain: string;
 	motto: string;
 	industry: string;
