@@ -52,9 +52,11 @@ locations; owners and managers add and change them under `/workspaces/emails`,
 `/workspaces/phones` and `/workspaces/locations` (archive / restore — never
 delete a location). One email and one phone are primary, one location is the
 head office; the first added takes the flag, and setting it on another moves
-it. The workspace's own `email`, `phone` and `address` mirror the primary
-email, the primary phone and the head office's address — a `PUT /workspaces`
-with any of them updates the entries too, in the same transaction. Phones are
+it. The workspace's `email`, `phone` and `address` (on `IWorkspaceDTO`) are
+the default branch's primary email, primary phone and head office's address,
+read from there — a `PUT /workspaces` with any of them updates those entries,
+in the same transaction, and is refused (422) when the value cannot be an
+entry (a phone that is not E.164, a full list). Phones are
 E.164 (`+15145550100`, optional `extension`); a location's `taxRegion`
 (`CA-QC`) comes from its address unless given. Limits: 10 emails, 10 phones,
 50 locations — per branch. Frontend: `useWorkspaceContacts()` and
@@ -65,20 +67,23 @@ packages, with `{ branchId }` to narrow to one branch.
 
 A business can have more than one face: the branches its customers deal with.
 Each branch is one customer-facing identity — name, logo, slogan, sector,
-website, `domain`, language and tax registrations — and owns its emails,
+website, language and tax registrations — and owns its emails,
 phones and locations (one primary email / phone and one head office per
 branch). The workspace keeps the legal identity (legal name, legal form,
 business number) and its name as the team's name. `GET /workspaces/branches`
 (any member) lists them, the default first; owners and managers create and
 change them under `/workspaces/branches` and `POST …/:branchId/default`,
 `…/archive`, `…/restore`. Every workspace has a default branch from the
-start (built from its profile by the migration); the workspace's own
-profile fields and primary contacts mirror it, both ways, so nothing that
-reads `IWorkspaceDTO` changes. The default cannot be archived — make another
-the default first. A branch's `domain` is a host name (`quebecmover.com`),
-one live branch per host across every workspace: a sign-up funnel on that
-host calls `findBranchByDomain` to know which branch (and so which language,
-address and taxes) a new customer belongs to. Limit: 20 branches. Frontend:
+start (built from its profile by the migration). The profile fields on
+`IWorkspaceDTO` (motto, industry, website, logo, tax registrations, email,
+phone, address) are the default branch's, read from it in one query and
+written to it by `PUT /workspaces` — stored once, so nothing that reads
+`IWorkspaceDTO` changes. The default cannot be archived — make another
+the default first. A branch's `domain` is not typed in: it is the host of
+its primary email (`bureau@quebecmover.com` → `quebecmover.com`), so a
+sign-up funnel on that host calls `findBranchByDomain` to know which branch
+(and so which language, address and taxes) a new customer belongs to — the
+default branch first when several share the host. Limit: 20 branches. Frontend:
 `useWorkspaceBranches()` and `useWorkspaceBranch(id)`.
 
 ### Archiving: read-only until restored

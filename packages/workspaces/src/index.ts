@@ -47,9 +47,9 @@ export {
 export { CONTACT_LIMITS, listContacts, taxRegionOf } from './services/contacts';
 // The workspace's branches — one customer-facing identity each (name, logo,
 // language, tax registrations, and its own contacts); one is the default,
-// whose identity and primary contacts the workspace's own columns mirror.
-// `findBranchByDomain` is what a funnel on a branch's host calls to know
-// which branch a sign-up belongs to.
+// whose identity and primary contacts are the workspace's profile.
+// `findBranchByDomain` is what a funnel on a host calls to know which branch
+// a sign-up belongs to: the live branch whose primary email is on that host.
 export { BRANCH_LIMIT, listBranches, findBranch, findBranchByDomain } from './services/branches';
 // The workspace's settings (locale, timezone, currency…) with defaults applied —
 // what another brick reads to default a customer's language or a document's currency.

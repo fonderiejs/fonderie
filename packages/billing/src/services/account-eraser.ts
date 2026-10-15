@@ -216,11 +216,18 @@ const UNKNOWN = new Map<string, IWorkspaceFact>();
 // no workspace; the reverse would cancel a surviving team's plan. Reads the
 // workspaces brick's tables (data, not code — the same cross-brick read as
 // services/membership.ts). Without that brick, there are none.
+// The workspace's business email is its DEFAULT branch's primary email
+// (@fonderie/workspaces 8.2: the profile lives on the branch, nothing is
+// copied onto the workspace row).
+const WORKSPACE_EMAIL = `(SELECT e.email FROM fonderie_workspace_emails e
+	  JOIN fonderie_workspace_branches b ON b.id = e.branch_id
+	 WHERE b.workspace_id = w.id AND b.is_default AND e.is_primary LIMIT 1)`;
+
 async function relatedWorkspaces(store: IStoreAdapter, userId: string): Promise<Map<string, IWorkspaceFact>> {
 	let rows: IWorkspaceFact[];
 	try {
 		rows = await store.query<IWorkspaceFact>(
-			`SELECT w.id, w.email,
+			`SELECT w.id, ${WORKSPACE_EMAIL} AS email,
 			        (w.owner_id = $1 AND NOT EXISTS (
 			           SELECT 1 FROM fonderie_role_user_workspaces m
 			            JOIN fonderie_users u ON u.id = m.user_id AND u.deleted_at IS NULL
@@ -244,7 +251,7 @@ async function existingWorkspaces(store: IStoreAdapter, ids: string[]): Promise<
 	if (ids.length === 0) return new Map();
 	try {
 		const rows = await store.query<{ id: string; email: string | null }>(
-			`SELECT id, email FROM fonderie_workspaces WHERE id = ANY($1::uuid[])`,
+			`SELECT w.id, ${WORKSPACE_EMAIL} AS email FROM fonderie_workspaces w WHERE w.id = ANY($1::uuid[])`,
 			[ids],
 		);
 		return new Map(rows.map((r) => [r.id, { id: r.id, email: r.email, goes: false }]));

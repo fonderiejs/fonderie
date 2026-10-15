@@ -142,8 +142,6 @@ export type IUpdateWorkspaceLocationInput = Partial<IWorkspaceLocationInput>;
 
 export interface ICreateWorkspaceBranchInput {
 	name: string;
-	/** A host name ('quebecmover.com'); lower-cased; one live branch per host (409 DUPLICATE_DOMAIN). */
-	domain?: string | null;
 	motto?: string | null;
 	industry?: string | null;
 	website?: string | null;
