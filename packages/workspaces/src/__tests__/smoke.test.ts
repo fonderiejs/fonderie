@@ -23,11 +23,13 @@ function makeStore(
 				return [{ ...opts.workspace, isMember: !!opts.member, systemRoles: [] }] as T[];
 			}
 
-			if (sql.includes('fonderie_workspaces') && sql.includes('GROUP BY w.id')) {
+			// findWorkspacesByUserId: the member's workspaces, oldest first.
+			if (sql.includes('fonderie_workspaces w') && sql.includes('ORDER BY w.created_at')) {
 				return (opts.workspaces ?? []) as T[];
 			}
 
-			if (sql.includes('fonderie_workspaces') && sql.includes('WHERE id = $1')) {
+			// findWorkspaceById: the row with its default branch's profile joined.
+			if (sql.includes('fonderie_workspaces w') && sql.includes('WHERE w.id = $1')) {
 				if (!opts.workspace) return [] as T[];
 				return [opts.workspace] as T[];
 			}
