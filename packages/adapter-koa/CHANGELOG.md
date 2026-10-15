@@ -1,5 +1,12 @@
 # @fonderie/adapter-koa
 
+## 5.4.14
+
+### Patch Changes
+
+- Updated dependencies [c6421a8]
+  - @fonderie/workspaces@9.0.0
+
 ## 5.4.13
 
 ### Patch Changes

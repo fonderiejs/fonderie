@@ -1,5 +1,12 @@
 # @fonderie/adapter-hono
 
+## 6.3.11
+
+### Patch Changes
+
+- Updated dependencies [c6421a8]
+  - @fonderie/workspaces@9.0.0
+
 ## 6.3.10
 
 ### Patch Changes
