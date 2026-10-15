@@ -282,7 +282,6 @@ interface IWorkspaceBranchDTO {
 
 interface ICreateWorkspaceBranchInput {
     name: string;
-    domain?: string | null;
     motto?: string | null;
     industry?: string | null;
     website?: string | null;
