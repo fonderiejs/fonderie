@@ -12,9 +12,7 @@ import type { ITaxRegistration, IWorkspace, IWorkspaceAddress, IWorkspaceSetting
 // archive state. The customer-facing profile — motto, industry, website,
 // logo, tax registrations, email, phone, address — is the DEFAULT BRANCH's
 // (migration 011) and its primary contacts: it is READ from there, never
-// copied onto the workspace row. The profile columns fonderie_workspaces
-// still carries from migration 005 are dead: not written, not read, dropped
-// by a later migration once every deployment runs this version.
+// copied onto the workspace row (migration 012 dropped the copies).
 
 /** The workspace's own columns, `w` being fonderie_workspaces. */
 const OWN_COLS = `
