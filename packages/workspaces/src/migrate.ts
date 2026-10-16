@@ -1,5 +1,7 @@
 import type { IStoreAdapter } from '@fonderie/store';
-import { ensureDefaultBranch } from './services/branches';
+import type { IWorkspaceAddress } from './types';
+import { ensureDefaultBranch, profileToDefaultBranch } from './services/branches';
+import { fromProfile } from './services/contacts';
 
 // Migrating existing teams/orgs onto Fonderie workspaces. Like `importUser` in
 // @fonderie/auth, the runtime `create*` paths are for fresh workspaces (new id,
@@ -25,10 +27,13 @@ export interface IImportWorkspace {
 	description?: string | null;
 	settings?: Record<string, unknown>; // jsonb
 	isPersonal?: boolean;
-	// Organization-profile fields (migration 003), all optional.
+	businessType?: string | null;
+	// The business profile, all optional — it lands on the workspace's DEFAULT
+	// BRANCH (motto, industry) and its primary phone / head office (phone,
+	// address), since that is where the profile lives (migration 012). A
+	// phone must be E.164 (`+15145550100`): there is nowhere to keep another.
 	motto?: string | null;
 	phone?: string | null;
-	businessType?: string | null;
 	industry?: string | null;
 	address?: Record<string, unknown>; // jsonb
 	// Preserve the original creation time; omitted defaults to now().
@@ -61,11 +66,7 @@ export async function importWorkspace(
 	if (ws.description !== undefined) add('description', ws.description);
 	if (ws.settings !== undefined) add('settings', JSON.stringify(ws.settings));
 	if (ws.isPersonal !== undefined) add('is_personal', ws.isPersonal);
-	if (ws.motto !== undefined) add('motto', ws.motto);
-	if (ws.phone !== undefined) add('phone', ws.phone);
 	if (ws.businessType !== undefined) add('business_type', ws.businessType);
-	if (ws.industry !== undefined) add('industry', ws.industry);
-	if (ws.address !== undefined) add('address', JSON.stringify(ws.address));
 	if (ws.createdAt !== undefined) add('created_at', ws.createdAt);
 	if (ws.archivedAt !== undefined) add('archived_at', ws.archivedAt);
 	if (ws.archivedBy !== undefined) add('archived_by', ws.archivedBy);
@@ -77,8 +78,11 @@ export async function importWorkspace(
 		vals,
 	);
 	if (!row) throw new Error('[workspaces] importWorkspace: insert returned no row');
-	// An imported workspace gets its default branch like any other (migration 011).
+	// An imported workspace gets its default branch like any other (migration
+	// 011), and the profile given lands there.
 	await ensureDefaultBranch(store, row.id);
+	await profileToDefaultBranch(store, row.id, { motto: ws.motto, industry: ws.industry });
+	await fromProfile(store, row.id, { phone: ws.phone, address: ws.address as IWorkspaceAddress | undefined });
 	return row;
 }
 

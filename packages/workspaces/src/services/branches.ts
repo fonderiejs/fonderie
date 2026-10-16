@@ -6,10 +6,8 @@ import type { ITaxRegistration, IWorkspaceBranch } from '../types';
 // one of them the default. The default branch's identity (motto, industry,
 // website, logo, tax registrations) and its primary contacts ARE the
 // workspace's profile: services/workspaces.ts reads them from here (one
-// LATERAL join), nothing copies them onto fonderie_workspaces. The profile
-// columns that row still carries from migration 005 are dead — read only by
-// ensureDefaultBranch / defaultBranchId, to build the default branch of a
-// row older than 011's backfill — and go with a later migration.
+// LATERAL join), nothing copies them onto fonderie_workspaces — migration
+// 012 dropped the columns that row used to carry.
 //
 // Every write locks the workspace row first (FOR UPDATE), so two requests at
 // once cannot both become "the first branch" or race the default flag.
@@ -60,11 +58,11 @@ export async function getBranch(tx: IStoreAdapter, workspaceId: string, id: stri
 	return row ?? null;
 }
 
-/** A new workspace's default branch, from its profile — one statement, nothing read back (a fake store in a unit test returns nothing). */
+/** A new workspace's default branch — its name and language, the rest empty — in one statement, nothing read back (a fake store in a unit test returns nothing). */
 export async function ensureDefaultBranch(store: IStoreAdapter, workspaceId: string): Promise<void> {
 	await store.query(
-		`INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, is_default)
-		 SELECT w.id, w.name, w.motto, w.industry, w.website, w.logo_url, NULLIF(w.settings->>'locale', ''), COALESCE(w.tax_registrations, '[]'::jsonb), true
+		`INSERT INTO fonderie_workspace_branches (workspace_id, name, locale, is_default)
+		 SELECT w.id, w.name, NULLIF(w.settings->>'locale', ''), true
 		   FROM fonderie_workspaces w
 		  WHERE w.id = $1 AND NOT EXISTS (SELECT 1 FROM fonderie_workspace_branches b WHERE b.workspace_id = w.id AND b.is_default)
 		 ON CONFLICT DO NOTHING`,
@@ -72,13 +70,13 @@ export async function ensureDefaultBranch(store: IStoreAdapter, workspaceId: str
 	);
 }
 
-/** The default branch's id — created from the workspace's profile when there is none (a workspace older than the backfill, or a race). */
+/** The default branch's id — created (name and language only) when there is none: a race, or a row no backfill saw. */
 export async function defaultBranchId(tx: IStoreAdapter, workspaceId: string): Promise<string> {
 	const [row] = await tx.query<{ id: string }>(`SELECT id FROM fonderie_workspace_branches WHERE workspace_id = $1 AND is_default`, [workspaceId]);
 	if (row) return row.id;
 	const [made] = await tx.query<{ id: string }>(
-		`INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, is_default)
-		 SELECT id, name, motto, industry, website, logo_url, NULLIF(settings->>'locale', ''), COALESCE(tax_registrations, '[]'::jsonb), true
+		`INSERT INTO fonderie_workspace_branches (workspace_id, name, locale, is_default)
+		 SELECT id, name, NULLIF(settings->>'locale', ''), true
 		   FROM fonderie_workspaces WHERE id = $1
 		 ON CONFLICT DO NOTHING
 		 RETURNING id`,

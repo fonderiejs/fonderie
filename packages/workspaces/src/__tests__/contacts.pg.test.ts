@@ -6,13 +6,13 @@ import type { IStoreAdapter } from '@fonderie/store';
 
 import { WorkspacesModule } from '../module';
 import { getMigrationsPath } from '../migrations';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 // A workspace's emails, phones and locations on a REAL Postgres, over HTTP:
-// one primary email / phone and one head office, flags that move, the profile
-// onto the workspace's own email / phone / address kept in step both ways,
-// limits, who may write, and the migration's backfill.
+// one primary email / phone and one head office, flags that move, the
+// workspace profile's email / phone / address read from them and written to
+// them, limits, who may write. (Migration 010's backfill of the old workspace
+// columns is exercised by every boot of a fresh database — 010 runs before
+// 012 drops those columns — and cannot be replayed after 012.)
 //
 //   WORKSPACES_PG_URL=postgres://... npm test -w @fonderie/workspaces
 
@@ -353,86 +353,4 @@ test('a member reads the contacts but cannot change them; another workspace’s 
 	// A's owner is no member of B: withWorkspace refuses (403), as on every workspace route.
 	assert.equal((await call(a.token, 'GET', '/workspaces/contacts', undefined, b.ws)).status, 403);
 	assert.equal((await contacts(b.token, b.ws)).emails.length, 1);
-});
-
-// ── the migration's backfill ─────────────────────────────────────────────────
-
-// Migration 010's rows predate branches: relax the 011 constraint for the
-// replay (DDL rolls back with the transaction), then run 011's assignment.
-async function preBranches(tx: IStoreAdapter): Promise<void> {
-	for (const t of ['fonderie_workspace_emails', 'fonderie_workspace_phones', 'fonderie_workspace_locations']) {
-		await tx.query(`ALTER TABLE ${t} ALTER COLUMN branch_id DROP NOT NULL`);
-	}
-}
-async function assignBranches(tx: IStoreAdapter, ws: string): Promise<void> {
-	// 011's assignment, scoped to this workspace: the replayed 010 backfill
-	// ran over the whole (shared) table, and those other rows roll back.
-	for (const t of ['fonderie_workspace_emails', 'fonderie_workspace_phones', 'fonderie_workspace_locations']) {
-		await tx.query(
-			`UPDATE ${t} r SET branch_id = b.id FROM fonderie_workspace_branches b
-			 WHERE r.workspace_id = $1 AND r.branch_id IS NULL AND b.workspace_id = r.workspace_id AND b.is_default`,
-			[ws],
-		);
-	}
-}
-
-test('backfill: a workspace from before migration 010 gets its email, phone and address as entries', { skip }, async () => {
-	const { ws } = await owner();
-	const sql = readFileSync(join(getMigrationsPath(), '010_workspace_contacts.sql'), 'utf8');
-	const backfill = sql.slice(sql.indexOf('-- Backfill'));
-	// Inside a transaction that is rolled back: the backfill runs over the whole
-	// table, and this suite shares its database — nobody else's rows may change.
-	// Migration 010 ran before branches existed: its rows have no branch until
-	// 011 assigns them to the default branch — replayed here in that order.
-	const rolledBack = new Error('rollback');
-	let seen: { emails: unknown[]; phones: unknown[]; locations: Array<Record<string, unknown>> } | null = null;
-	await store
-		.transaction(async (tx) => {
-			await preBranches(tx);
-			await tx.query(`DELETE FROM fonderie_workspace_emails WHERE workspace_id = $1`, [ws]);
-			await tx.query(
-				`UPDATE fonderie_workspaces SET email = 'Bureau@acme.example', phone = '+15145550100',
-				        address = '{"line1":"123 rue Saint-Denis","city":"Montréal","state":"qc","country":"CA"}'::jsonb
-				 WHERE id = $1`,
-				[ws],
-			);
-			await tx.query(backfill);
-			await assignBranches(tx, ws);
-			assert.deepEqual(await tx.query(`SELECT count(*)::int AS n FROM fonderie_workspace_emails WHERE workspace_id = $1 AND branch_id IS NULL`, [ws]), [{ n: 0 }]);
-			seen = {
-				emails: await tx.query(`SELECT email, is_primary FROM fonderie_workspace_emails WHERE workspace_id = $1`, [ws]),
-				phones: await tx.query(`SELECT phone, is_primary FROM fonderie_workspace_phones WHERE workspace_id = $1`, [ws]),
-				locations: await tx.query(`SELECT name, tax_region, is_head_office, address->>'city' AS city FROM fonderie_workspace_locations WHERE workspace_id = $1`, [ws]),
-			};
-			throw rolledBack;
-		})
-		.catch((err) => {
-			if (err !== rolledBack) throw err;
-		});
-	assert.deepEqual(seen!.emails, [{ email: 'bureau@acme.example', is_primary: true }]);
-	assert.deepEqual(seen!.phones, [{ phone: '+15145550100', is_primary: true }]);
-	assert.deepEqual(seen!.locations, [{ name: 'Head office', tax_region: 'CA-QC', is_head_office: true, city: 'Montréal' }]);
-	// Nothing stayed.
-	assert.deepEqual(await store.query(`SELECT 1 FROM fonderie_workspace_phones WHERE workspace_id = $1`, [ws]), []);
-});
-
-test('backfill: an address stored before normalization (a state name, not a code) does not fail the migration', { skip }, async () => {
-	const { ws } = await owner();
-	const sql = readFileSync(join(getMigrationsPath(), '010_workspace_contacts.sql'), 'utf8');
-	const backfill = sql.slice(sql.indexOf('-- Backfill'));
-	const rolledBack = new Error('rollback');
-	let rows: Array<Record<string, unknown>> = [];
-	await store
-		.transaction(async (tx) => {
-			await preBranches(tx);
-			await tx.query(`UPDATE fonderie_workspaces SET address = '{"city":"Montréal","state":"Québec","country":"CA"}'::jsonb WHERE id = $1`, [ws]);
-			await tx.query(backfill);
-			await assignBranches(tx, ws);
-			rows = await tx.query(`SELECT tax_region, is_head_office FROM fonderie_workspace_locations WHERE workspace_id = $1`, [ws]);
-			throw rolledBack;
-		})
-		.catch((err) => {
-			if (err !== rolledBack) throw err;
-		});
-	assert.deepEqual(rows, [{ tax_region: null, is_head_office: true }]);
 });
