@@ -135,19 +135,20 @@ test('a new workspace has one default branch, named after it; contacts without a
 	assert.equal((await call(token, 'GET', '/workspaces/contacts?branchId=nope', undefined, ws)).status, 422);
 });
 
-test('a workspace row from before the migration gets its default branch from its profile on first read', { skip }, async () => {
+test('a workspace row with no default branch gets one — its name and language — on the first contact write', { skip }, async () => {
 	const { token, ws } = await owner();
 	await store.query(`DELETE FROM fonderie_workspace_branches WHERE workspace_id = $1`, [ws]);
-	await store.query(`UPDATE fonderie_workspaces SET motto = 'On time', website = 'https://acme.example', settings = '{"locale":"fr-CA"}'::jsonb WHERE id = $1`, [ws]);
-	// A contact write resolves the default branch — and creates it from the profile.
+	await store.query(`UPDATE fonderie_workspaces SET settings = '{"locale":"fr-CA"}'::jsonb WHERE id = $1`, [ws]);
+	// A contact write resolves the default branch — and creates it.
 	const e = await call(token, 'POST', '/workspaces/emails', { email: 'bureau@acme.example' }, ws);
 	assert.equal(e.status, 201, JSON.stringify(e));
 	const [def] = await branches(token, ws);
 	assert.equal(def!.isDefault, true);
-	assert.equal(def!.motto, 'On time');
-	assert.equal(def!.website, 'https://acme.example');
+	assert.match(def!.name, /^Branches /);
 	assert.equal(def!.locale, 'fr-CA');
+	assert.equal(def!.motto, '');
 	assert.equal(e.result['email'].branchId, def!.id);
+	assert.equal((await profile(token, ws)).email, 'bureau@acme.example');
 });
 
 // ── a second branch ──────────────────────────────────────────────────────────

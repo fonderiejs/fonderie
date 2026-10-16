@@ -60,7 +60,6 @@ braked_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
 workspace_id             UUID NOT NULL REFERENCES fonderie_workspaces(id) ON DELETE CASCADE
 name                     TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100)
-domain                   TEXT CHECK (domain IS NULL OR (domain = lower(domain) AND length(domain) <= 253))
 motto                    TEXT CHECK (motto IS NULL OR length(motto) <= 300)
 industry                 TEXT
 website                  TEXT
@@ -75,7 +74,6 @@ created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 -- CHECK (NOT (is_default AND archived_at IS NOT NULL))
 -- UNIQUE INDEX ux_fwb_default (workspace_id)
--- UNIQUE INDEX ux_fwb_domain (domain)
 -- INDEX idx_fwb_workspace (workspace_id)
 ```
 
@@ -190,17 +188,9 @@ archived_by              UUID
 created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 is_personal              BOOLEAN NOT NULL DEFAULT false
-motto                    TEXT
-phone                    TEXT
 business_type            TEXT
-address                  JSONB NOT NULL DEFAULT '{}'
 legal_name               TEXT
-email                    TEXT
-website                  TEXT
-logo_url                 TEXT
-tax_registrations        JSONB NOT NULL DEFAULT '[]'
 languages                TEXT[] NOT NULL DEFAULT '{}'
-industry                 TEXT
 ```
 
 Raw SQL ships in `node_modules/@fonderie/workspaces/dist/migrations/sql/` — read it there if you must; never download tarballs.
@@ -212,6 +202,7 @@ INSERT INTO fonderie_roles (name, workspace_id, is_system, description) VALUES (
 INSERT INTO fonderie_workspace_emails (workspace_id, email, is_primary) SELECT id, lower(email), true FROM fonderie_workspaces WHERE email IS NOT NULL AND email <> '' ON CONFLICT DO NOTHING;
 INSERT INTO fonderie_workspace_phones (workspace_id, phone, is_primary) SELECT id, phone, true FROM fonderie_workspaces WHERE phone ~ '^\+[1-9][0-9]{6,14}$' ON CONFLICT DO NOTHING;
 INSERT INTO fonderie_workspace_locations (workspace_id, name, address, tax_region, is_head_office) SELECT id, 'Head office', address, CASE WHEN address->>'country' IN ('CA','US') AND upper(coalesce(address->>'state','')) ~ '^[A-Z0-9]{1,3}$' THEN (address->>'country') || '-' || upper(address->>'state') END, true FROM fonderie_workspaces WHERE address IS NOT NULL AND address <> '{}'::jsonb ON CONFLICT DO NOTHING;
+INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, is_default) SELECT w.id, w.name, w.motto, w.industry, w.website, w.logo_url, NULLIF(w.settings->>'locale', ''), COALESCE(w.tax_registrations, '[]'::jsonb), true FROM fonderie_workspaces w WHERE NOT EXISTS (SELECT 1 FROM fonderie_workspace_branches b WHERE b.workspace_id = w.id AND b.is_default);
 INSERT INTO fonderie_workspace_branches (workspace_id, name, motto, industry, website, logo_url, locale, tax_registrations, is_default) SELECT w.id, w.name, w.motto, w.industry, w.website, w.logo_url, NULLIF(w.settings->>'locale', ''), COALESCE(w.tax_registrations, '[]'::jsonb), true FROM fonderie_workspaces w WHERE NOT EXISTS (SELECT 1 FROM fonderie_workspace_branches b WHERE b.workspace_id = w.id AND b.is_default);
 ```
 
