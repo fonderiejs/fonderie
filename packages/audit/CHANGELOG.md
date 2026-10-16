@@ -1,5 +1,12 @@
 # @fonderie/audit
 
+## 5.3.4
+
+### Patch Changes
+
+- Updated dependencies [c6421a8]
+  - @fonderie/workspaces@9.0.0
+
 ## 5.3.3
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @fonderie/adapter-express
 
+## 5.4.13
+
+### Patch Changes
+
+- Updated dependencies [c6421a8]
+  - @fonderie/workspaces@9.0.0
+
 ## 5.4.12
 
 ### Patch Changes
