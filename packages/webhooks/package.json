@@ -55,7 +55,7 @@
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
 		"@fonderie/workspaces": "../workspaces",
-		"@types/node": "^26.6.4",
+		"@types/node": "^26.6.5",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3"
@@ -80,7 +80,7 @@
 		"url": "https://github.com/fonderiejs/fonderie/issues"
 	},
 	"dependencies": {
-		"zod": "^4.6.5",
+		"zod": "^4.6.7",
 		"undici": "^8.11.2"
 	}
 }
