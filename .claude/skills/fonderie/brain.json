@@ -1,18 +1,18 @@
 {
   "schema": 1,
   "sdkVersions": {
-    "adapter-express": "5.4.12",
-    "adapter-hono": "6.3.10",
-    "adapter-koa": "5.4.13",
+    "adapter-express": "5.4.13",
+    "adapter-hono": "6.3.11",
+    "adapter-koa": "5.4.14",
     "admin": "1.8.4",
-    "audit": "5.3.3",
+    "audit": "5.3.4",
     "auth": "7.27.5",
-    "billing": "11.5.0",
-    "client": "3.24.0",
+    "billing": "11.5.1",
+    "client": "3.25.0",
     "config": "6.6.10",
     "core": "0.33.0",
     "courier": "7.16.3",
-    "customers": "6.11.0",
+    "customers": "6.11.1",
     "events": "5.13.3",
     "geo": "0.5.14",
     "logger": "0.3.10",
@@ -76,12 +76,12 @@
     "vue-webhooks-screens": "0.4.2",
     "vue-workspaces": "0.16.0",
     "vue-workspaces-screens": "0.5.7",
-    "webhooks": "7.2.3",
-    "workspaces": "8.1.0"
+    "webhooks": "7.2.4",
+    "workspaces": "9.0.0"
   },
   "packages": {
     "adapter-express": {
-      "version": "5.4.12",
+      "version": "5.4.13",
       "stability": "stable",
       "requires": [
         "core",
@@ -104,7 +104,7 @@
       "hasOutcomes": false
     },
     "adapter-hono": {
-      "version": "6.3.10",
+      "version": "6.3.11",
       "stability": "stable",
       "requires": [
         "core",
@@ -127,7 +127,7 @@
       "hasOutcomes": false
     },
     "adapter-koa": {
-      "version": "5.4.13",
+      "version": "5.4.14",
       "stability": "stable",
       "requires": [
         "core",
@@ -317,7 +317,7 @@
       "hasOutcomes": true
     },
     "audit": {
-      "version": "5.3.3",
+      "version": "5.3.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -661,7 +661,7 @@
       "hasOutcomes": true
     },
     "billing": {
-      "version": "11.5.0",
+      "version": "11.5.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -876,7 +876,7 @@
       "hasOutcomes": true
     },
     "client": {
-      "version": "3.24.0",
+      "version": "3.25.0",
       "stability": "maturing",
       "requires": [],
       "dependsOn": [],
@@ -1175,7 +1175,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.11.0",
+      "version": "6.11.1",
       "stability": "stable",
       "requires": [
         "core",
@@ -3056,7 +3056,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "7.2.3",
+      "version": "7.2.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -3141,7 +3141,7 @@
       "hasOutcomes": true
     },
     "workspaces": {
-      "version": "8.1.0",
+      "version": "9.0.0",
       "stability": "stable",
       "requires": [
         "core",

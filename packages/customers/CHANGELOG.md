@@ -1,5 +1,12 @@
 # @fonderie/customers
 
+## 6.11.1
+
+### Patch Changes
+
+- Updated dependencies [c6421a8]
+  - @fonderie/workspaces@9.0.0
+
 ## 6.11.0
 
 ### Minor Changes
