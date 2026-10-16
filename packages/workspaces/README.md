@@ -77,7 +77,8 @@ change them under `/workspaces/branches` and `POST …/:branchId/default`,
 start (built from its profile by the migration). The profile fields on
 `IWorkspaceDTO` (motto, industry, website, logo, tax registrations, email,
 phone, address) are the default branch's, read from it in one query and
-written to it by `PUT /workspaces` — stored once, so nothing that reads
+written to it by `PUT /workspaces` — stored once (migration 012 dropped the
+copies the workspace row used to carry), so nothing that reads
 `IWorkspaceDTO` changes. The default cannot be archived — make another
 the default first. A branch's `domain` is not typed in: it is the host of
 its primary email (`bureau@quebecmover.com` → `quebecmover.com`), so a

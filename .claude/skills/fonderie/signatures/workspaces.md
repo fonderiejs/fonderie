@@ -397,9 +397,9 @@ interface IImportWorkspace {
     description?: string | null;
     settings?: Record<string, unknown>;
     isPersonal?: boolean;
+    businessType?: string | null;
     motto?: string | null;
     phone?: string | null;
-    businessType?: string | null;
     industry?: string | null;
     address?: Record<string, unknown>;
     createdAt?: Date;
