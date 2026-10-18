@@ -59,7 +59,7 @@
 		"bcryptjs": "^3.0.3",
 		"jsonwebtoken": "^9.0.3",
 		"qrcode": "^1.5.4",
-		"zod": "^4.6.5",
+		"zod": "^4.6.7",
 		"@fonderie/rate-limit": "^4.1.2"
 	},
 	"peerDependencies": {
@@ -77,7 +77,7 @@
 		"@fonderie/events": "../events",
 		"@fonderie/store": "../store",
 		"@types/jsonwebtoken": "^9.0.10",
-		"@types/node": "^26.6.4",
+		"@types/node": "^26.6.5",
 		"@types/qrcode": "^1.5.6",
 		"tsup": "^8.5.1",
 		"tsx": "^4.23.15",
