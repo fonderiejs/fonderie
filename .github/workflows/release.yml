@@ -33,7 +33,7 @@ jobs:
       # on bought nothing, and `npm test` here hung twice on 24 — all suites
       # green, turbo never summarised, one tsx child and its esbuild service
       # left alive until the job was killed. Never once on 22.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
