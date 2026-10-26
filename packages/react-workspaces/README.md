@@ -1,9 +1,11 @@
 # @fonderie/react-workspaces
 
-React hooks for Fonderie workspaces — `useWorkspaces`, `useCreateWorkspace`,
-`useMembers`, `useRemoveMember`, `useInvitations`, `useAcceptInvitation`,
-`useWorkspaceSettings`, and role management (`useRoles`, `useUpdateRole`,
-`useSetRolePermissions`, `useMemberRoles` — `@fonderie/permissions` has no
+React hooks for Fonderie workspaces — `useWorkspaces` (list, plus
+`createWorkspace` and `acceptInvitation`), `useMembers` (list, plus
+`removeMember`), `useInvitations`, `useWorkspaceSettings`, and role
+management (`useRoles` with `createRole`/`updateRole`/`removeRole`,
+`useRolePermissions` with `setRolePermissions`, `useMemberRoles` —
+`@fonderie/permissions` has no
 HTTP API of its own; role CRUD lives under `@fonderie/workspaces`' routes).
 Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client):

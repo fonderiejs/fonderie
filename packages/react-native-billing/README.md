@@ -5,8 +5,8 @@ React Native billing hooks for Fonderie — re-exports
 wholesale. Unlike auth, billing hooks own no storage of their own (they read
 the access token `@fonderie/auth` already set on the shared client), so
 there's no platform-specific code to fork — the same `usePlans`,
-`usePlan`, `useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`,
-`useRecordUsage`, in-app card-management hooks (`usePaymentMethod`,
+`usePlan`, `useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`
+(read + `recordUsage`), in-app card-management hooks (`usePaymentMethod`,
 `useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod`), and
 `usePurchasePack` (buy a credit pack by charging the saved card)
 work in React Native as-is — pair them with a native Stripe SDK / payment
