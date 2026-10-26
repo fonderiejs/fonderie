@@ -271,26 +271,11 @@ function leg2() {
 // Deliberately OUT OF SCOPE (see the file header): SKILL.md, API.md, and
 // with* names.
 //
-// TEMP_STALE_ALLOW holds the names that are stale TODAY, each with the same
-// reason "pending PR 3" so the cleanup PR can grep them out. The stale-entry
-// check below turns CI red the moment an entry no longer matches a stale
-// reference — the list must leave with the cleanup, not linger.
-export const TEMP_STALE_ALLOW = new Map([
-	['useAcceptInvitation', 'pending PR 3'],
-	['useAdminConfig', 'pending PR 3'],
-	['useCreateWorkspace', 'pending PR 3'],
-	['useDeleteConfigEntry', 'pending PR 3'],
-	['useDeleteSecret', 'pending PR 3'],
-	['useFlag', 'pending PR 3'],
-	['usePlanAdmin', 'pending PR 3'],
-	['useRecordUsage', 'pending PR 3'],
-	['useRemoveMember', 'pending PR 3'],
-	['useSaveConfigEntry', 'pending PR 3'],
-	['useSaveSecret', 'pending PR 3'],
-	['useSetRolePermissions', 'pending PR 3'],
-	['useTestWebhookEndpoint', 'pending PR 3'],
-	['useUpdateRole', 'pending PR 3'],
-]);
+// TEMP_STALE_ALLOW holds known-stale names while a doc cleanup is in flight;
+// every entry must carry its reason. The stale-entry check below turns CI red
+// the moment an entry no longer matches a stale reference — the list must
+// leave with the cleanup, not linger. Currently empty, and meant to stay so.
+export const TEMP_STALE_ALLOW = new Map([]);
 
 // Hook/composable names exported by any react*/vue* package.
 export function collectDefinedHooks(baseDir) {

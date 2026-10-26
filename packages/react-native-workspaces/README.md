@@ -3,10 +3,11 @@
 React Native workspaces hooks for Fonderie — re-exports
 [`@fonderie/react-workspaces`](https://github.com/fonderiejs/fonderie/tree/main/packages/react-workspaces)
 wholesale. Like billing, workspace hooks own no storage of their own, so
-there's no platform-specific code to fork — the same `useWorkspaces`,
-`useCreateWorkspace`, `useMembers`, `useRemoveMember`, `useInvitations`,
-`useAcceptInvitation`, `useWorkspaceSettings`, and role-management hooks
-(`useRoles`, `useUpdateRole`, `useSetRolePermissions`, `useMemberRoles`)
+there's no platform-specific code to fork — the same `useWorkspaces`
+(`createWorkspace`, `acceptInvitation`), `useMembers` (`removeMember`),
+`useInvitations`, `useWorkspaceSettings`, and role-management hooks
+(`useRoles` with `updateRole`, `useRolePermissions` with
+`setRolePermissions`, `useMemberRoles`)
 work in React Native as-is.
 
 ## Install

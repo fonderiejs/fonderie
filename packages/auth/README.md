@@ -1,8 +1,9 @@
 # @fonderie/auth
 
 Drop-in auth for SaaS: email/password, phone OTP, Google OAuth, and
-stateless JWT sessions — shipped as a brick that registers its routes,
-migrations, and events in one line.
+server-side sessions (each access token carries a `sid` claim tied to its
+session row — revoke the row and the token dies) — shipped as a brick that
+registers its routes, migrations, and events in one line.
 
 ## Install
 

@@ -1,7 +1,7 @@
 # @fonderie/vue-admin
 
 Vue composables over [`@fonderie/admin`](../admin) — the operator's surface. One per
-page: `useAttention`, `useManifest`, `useDoctor`, `useAdminConfig`,
+page: `useAttention`, `useManifest`, `useDoctor`, `useAdminEnvironment`,
 `useAdminRoutes`, `useAdminTokens` (+ `issue` / `revoke`, root token only),
 `useAdminLog` (paged, `loadMore`) — and over
 `AuthAdminClient` (`@fonderie/auth`'s described user routes): `useAdminUser`

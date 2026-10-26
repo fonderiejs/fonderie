@@ -1,8 +1,8 @@
 # @fonderie/vue-billing
 
 Vue 3 composables for Fonderie billing — `usePlans`, `usePlan`,
-`useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage`,
-`useRecordUsage`, in-app card management (`usePaymentMethod`,
+`useSubscription`, `useCheckout`, `useBillingPortal`, `useUsage` (read +
+`recordUsage`), in-app card management (`usePaymentMethod`,
 `useSetupPaymentMethod`, `useSavePaymentMethod`, `useRemovePaymentMethod`), and
 `usePurchasePack` (buy a credit pack by charging the saved card — no redirect).
 Thin bindings over

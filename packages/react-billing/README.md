@@ -1,7 +1,7 @@
 # @fonderie/react-billing
 
 React hooks for Fonderie billing — `usePlans`, `usePlan`, `useSubscription`,
-`useCheckout`, `useBillingPortal`, `useUsage`, `useRecordUsage`, and in-app
+`useCheckout`, `useBillingPortal`, `useUsage` (read + `recordUsage`), and in-app
 card management (`usePaymentMethod`, `useSetupPaymentMethod`,
 `useSavePaymentMethod`, `useRemovePaymentMethod`), and `usePurchasePack` (buy a
 credit pack by charging the saved card — no redirect). Thin bindings over
