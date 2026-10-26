@@ -144,7 +144,7 @@
       "recipe": "vue-billing-screens-wiring"
     },
     "react-workspaces.hooks": {
-      "description": "React hooks for workspaces — useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read hook since there's no 'get current workspace' route), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, plus role management (useRoles with createRole/updateRole/removeRole, useRolePermissions with setRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "React hooks for workspaces — useCurrentWorkspace (the selected workspace, follows a switch), useWorkspace (one by id), useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, useWorkspaceSeats, useWorkspaceBranches/useWorkspaceBranch, useWorkspaceContacts, useWorkspaceLocations, useOwnershipOffer, plus role management (useRoles with createRole/updateRole/removeRole, useRole, useDeletedRoles (restore within the undo window), useRolePermissions with setRolePermissions, usePermissions/usePermissionCatalog, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "react-workspaces",
       "recipe": "react-workspaces-wiring"
     },
@@ -164,7 +164,7 @@
       "recipe": "react-native-workspaces-screens-wiring"
     },
     "vue-workspaces.composables": {
-      "description": "Vue composables for workspaces — useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read composable since there's no 'get current workspace' route), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, plus role management (useRoles with createRole/updateRole/removeRole, useRolePermissions with setRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "Vue composables for workspaces — useCurrentWorkspace (the selected workspace, follows a switch), useWorkspace (one by id), useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, useWorkspaceSeats, useWorkspaceBranches/useWorkspaceBranch, useWorkspaceContacts, useWorkspaceLocations, useOwnershipOffer, plus role management (useRoles with createRole/updateRole/removeRole, useRole, useDeletedRoles (restore within the undo window), useRolePermissions with setRolePermissions, usePermissions/usePermissionCatalog, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "vue-workspaces",
       "recipe": "vue-workspaces-wiring"
     },
@@ -244,7 +244,7 @@
       "recipe": "vue-audit-screens-wiring"
     },
     "react-webhooks.hooks": {
-      "description": "React hooks for webhook endpoints — useWebhookEndpoints (list/create/delete), useWebhookEndpoint (get/update), useWebhookDeliveries (delivery history + testEndpoint to send a test event). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. createEndpoint's signing secret is only returned once, at creation.",
+      "description": "React hooks for webhook endpoints — useWebhookEndpoints (list/create/delete), useWebhookEndpoint (get/update), useWebhookDeliveries (delivery history + testEndpoint to send a test event), useDeletedWebhookEndpoints (list deleted endpoints, restore/purge within the undo window). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. createEndpoint's signing secret is only returned once, at creation.",
       "package": "react-webhooks",
       "recipe": "react-webhooks-wiring"
     },
@@ -264,7 +264,7 @@
       "recipe": "react-native-webhooks-screens-wiring"
     },
     "vue-webhooks.composables": {
-      "description": "Vue composables for webhook endpoints — useWebhookEndpoints, useWebhookEndpoint, useWebhookDeliveries (incl. testEndpoint). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. Endpoint IDs are read once at setup; call refresh() after changing them.",
+      "description": "Vue composables for webhook endpoints — useWebhookEndpoints, useWebhookEndpoint, useWebhookDeliveries (incl. testEndpoint), useDeletedWebhookEndpoints (restore/purge within the undo window). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. Endpoint IDs are read once at setup; call refresh() after changing them.",
       "package": "vue-webhooks",
       "recipe": "vue-webhooks-wiring"
     },
