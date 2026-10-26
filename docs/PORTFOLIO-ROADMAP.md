@@ -219,5 +219,5 @@ the live Stripe test-mode pass runs.
 
 **Not on this roadmap: deletion.** No package is unjustified enough to cut. We
 clean up by *explaining* — one map, one party model, one mirror pattern, honest
-tiers, one observability story. That is what turns 71 packages from "what is
+tiers, one observability story. That is what turns the package count from "what is
 all this?" into "oh — it's the stack."
