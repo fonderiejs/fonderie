@@ -177,7 +177,7 @@
         "fonderie_admin_sessions",
         "fonderie_admin_tokens"
       ],
-      "routeCount": 26,
+      "routeCount": 28,
       "routes": [
         {
           "method": "GET",
@@ -308,6 +308,16 @@
           "method": "POST",
           "path": "/_admin/session/verify",
           "mw": "[ check, validate(factorSchema), async (ctx) => { const s = await sessionAt(deps, ctx, 'password'); if (!s) return WRONG_STAGE(); const b = body(ctx); const r = await checkSecondFactor(store, box, s.op, { code: b['code'], backupCode: b['backupCode'], }); if (!r.ok) { const fresh = await findOperator(store, { id: s.op.id }); return fresh && lockMinutes(fresh) ? LOCKED(fresh) : BAD_CODE(); } await deleteSession(store, s.cookie); await store.query( `UPDATE fonderie_admin_operators SET last_login_at = now() WHERE id = $1`, [s.op.id], ); return startSession( deps, ctx, s.op, 'active', r.via === 'backup' ? { backupCodesLeft: r.backupLeft } : {}, ); }, ]"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/ui",
+          "mw": "...ui(async (ctx) => { // From the request, not from config: this is the only place that // knows basePath, a moved path AND a trailing slash at once. The // router's own normalizer, so the href and the routing cannot // disagree about what this path is. const here = normalizeRequestPath(new URL(ctx.request.url).pathname); // The version in the URL: the script is cached for minutes, so a // page loaded after a deploy must not reuse the previous bundle. return new Response(uiHtml(`${here}/app.js?v=${encodeURIComponent(this.version)}`), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, }); })"
+        },
+        {
+          "method": "GET",
+          "path": "/_admin/ui/app.js",
+          "mw": "...ui(async () => { const body = loadJs(); return body ? new Response(body, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', }, }) : setApiResponse( HTTP.SERVICE_UNAVAILABLE, 'UI_NOT_BUILT', 'This copy of @fonderie/admin has no built dashboard (dist/ui). Install the published package, or run its build.', ); })"
         }
       ],
       "secures": [
@@ -2460,11 +2470,22 @@
         "@fonderie/sse/env.json"
       ],
       "tables": [],
-      "routeCount": 0,
-      "routes": [],
+      "routeCount": 2,
+      "routes": [
+        {
+          "method": "GET",
+          "path": "{base}/stream",
+          "mw": "...before → (ctx) => this.stream(ctx)"
+        },
+        {
+          "method": "GET",
+          "path": "{base}/topics",
+          "mw": "...before → async (ctx) => this.topics(ctx)"
+        }
+      ],
       "secures": [],
       "hasSignature": true,
-      "hasOutcomes": false
+      "hasOutcomes": true
     },
     "storage": {
       "version": "0.1.32",
