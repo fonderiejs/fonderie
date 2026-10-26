@@ -161,7 +161,7 @@ export function bridge(fonderie: FonderieApp, options?: { maxBodyBytes?: number 
 			// body and core's parser re-materializes ctx.request; the infra
 			// handler in mount() reuses THAT.
 			req._fonderie = await fonderie.buildContext(webReq);
-			(req as any)._fonterieReq = req._fonderie.request;
+			(req as any)._fonderieReq = req._fonderie.request;
 			// A global middleware short-circuited during context-building (e.g.
 			// the parser's 413) — send that response, don't swallow it.
 			const early = req._fonderie.meta['pipelineResponse'];
@@ -329,7 +329,7 @@ export function mount<T extends ExpressApp>(
 	const infraHandler = async (req: ExpressRequest, res: ExpressResponse) => {
 		// bridge() (below) already read + capped the body and cached the request;
 		// the fallback only runs if it somehow didn't, so apply the same cap.
-		const webReq = (req as any)._fonterieReq as Request ?? await expressRequestToWeb(req, maxBytes, abortOnDisconnect(res));
+		const webReq = (req as any)._fonderieReq as Request ?? await expressRequestToWeb(req, maxBytes, abortOnDisconnect(res));
 		// Hand over what only the adapter can observe — the socket-derived
 		// client IP. handle() builds a fresh context, so without this seed every
 		// fonderie-owned route sees no IP (login events, per-IP limits, geo/risk).
