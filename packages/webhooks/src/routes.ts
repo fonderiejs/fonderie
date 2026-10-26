@@ -247,10 +247,7 @@ export function buildWebhookRoutes(store: IStoreAdapter, config: IWebhooksConfig
 			ws,
 			manager,
 			// Deleting too many too fast pauses the person (insider threat, Phase 5).
-			// The velocity brake ships in @fonderie/workspaces 7.1; absent before.
-			typeof workspaces.velocityBrake === 'function'
-				? workspaces.velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {})
-				: ((_ctx, next) => next()) as Middleware,
+			workspaces.velocityBrake(store, 'webhook.delete', config.velocityBrake ?? {}),
 			webhookTrail(bus, WEBHOOK_EVENTS.endpointDeleted, (c) => ({ endpointId: (c.meta['params'] as Record<string, string>)['endpointId'] })),
 			async (ctx) => {
 				if (!ctx.workspace)
