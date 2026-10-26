@@ -1,3 +1,6 @@
+// Deliberate duplicate of normalizeEmail in @fonderie/admin
+// (packages/admin/src/operators/service.ts): admin must not take an auth peer
+// for one string helper. If one changes, change both.
 export function normalizeEmail(email: string): string {
 	if (typeof email !== 'string' || email.length === 0) {
 		throw new Error('Invalid email');
