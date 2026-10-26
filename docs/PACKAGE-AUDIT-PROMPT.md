@@ -83,6 +83,31 @@ is it a real violation or a stale exemption list?
 
 ## Phase 2 — Principle and consistency audit
 
+### Accepted exceptions — check these BEFORE flagging anything
+
+A divergence that is written down is a decision, not a finding. Re-flagging
+documented exceptions is the known failure mode of this audit (B2/C2 were
+reported twice). Before writing up any Phase 2 finding, check it against:
+
+- `docs/ARCHITECTURE.md` → "Peer or dependency?" — which cross-brick hard
+  deps are allowed (rate-limit: yes, no module-level state; core: never).
+- `.claude/skills/fonderie/API.md` → "Deliberate divergences" in the adapter
+  section — `withCache` is Hono-only; `mount()` options differ per framework.
+- `packages/cli/README.md` — no `src/` or `tsup.config.ts`, on purpose.
+- `packages/create-fonderie-app/tsconfig.json` — why it cannot extend the base.
+- `packages/admin/src/operators/service.ts` and `packages/auth/src/services/email.ts`
+  — `normalizeEmail` is a deliberate, commented duplicate.
+- `docs/REALTIME-DESIGN.md` — the realtime → sse rename note at the top.
+- `packages/workspaces/src/services/paging.ts` — the parked cursor divergence
+  (PR 5): workspaces keeps its own `at|id` cursor pair because issued cursors
+  are a public surface; the dual-decode migration is deferred. The header
+  comment records the decision.
+
+If you believe a documented exception has BECOME wrong, say so explicitly and
+argue against the decision — do not report it as an undiscovered finding. If
+you and the maintainer accept a NEW divergence during the fix pass, document
+it in the place above it belongs to, in the same PR.
+
 Work tier by tier (Foundation → Adapters → Capability bricks → Client/CLI →
 Frontend mirrors). For each package, check:
 

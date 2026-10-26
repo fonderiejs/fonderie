@@ -1490,10 +1490,10 @@
     "logger": {
       "version": "0.3.10",
       "stability": "maturing",
-      "requires": [],
-      "dependsOn": [
+      "requires": [
         "core"
       ],
+      "dependsOn": [],
       "exports": [
         "Logger",
         "LoggerModule",
@@ -3724,7 +3724,7 @@
     {
       "from": "logger",
       "to": "core",
-      "type": "depends-on"
+      "type": "requires"
     },
     {
       "from": "media",

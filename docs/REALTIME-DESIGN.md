@@ -2,6 +2,11 @@
 
 **Status:** architecture agreed (2026-09-29); build started — step 1 (transport).
 
+> **Naming note (2026-10-26):** this doc predates the package rename — the
+> brick it calls `@fonderie/realtime` shipped as **`@fonderie/sse`**, and the
+> `/realtime/stream` route shipped as `${path}/stream` (default `/sse/stream`,
+> configurable via the module's `path` option). Read "realtime" below as "sse".
+
 ---
 
 ## 1. The issue
