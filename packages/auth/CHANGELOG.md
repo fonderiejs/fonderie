@@ -1,5 +1,11 @@
 # @fonderie/auth
 
+## 7.27.6
+
+### Patch Changes
+
+- 4d31935: Correct the package description: sessions are server-side rows referenced by a `sid` claim, not stateless JWTs. Metadata-only change; no behavior change.
+
 ## 7.27.5
 
 ### Patch Changes
