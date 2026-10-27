@@ -1,4 +1,7 @@
 {
+	// Deliberately does NOT extend tsconfig.base.json: the base targets
+	// tsup-bundled libraries (module esnext + bundler resolution); this package
+	// is the scaffolding tool that runs directly on Node, so it needs NodeNext.
 	"compilerOptions": {
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",

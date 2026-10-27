@@ -1,6 +1,6 @@
 # Portfolio Roadmap — coherence & legibility
 
-What Fonderie is, why the 71 packages still cohere, and the concrete work to
+What Fonderie is, why the packages still cohere, and the concrete work to
 make that coherence legible — to ourselves, to the brain (the LLM that is our
 real client), and to users.
 
@@ -61,7 +61,7 @@ workstream below assumes this identity.
 
 ## The portfolio in five tiers
 
-71 packages are not 71 ideas. Stated as tiers, the sprawl reads as structure —
+Dozens of packages are not dozens of ideas. Stated as tiers, the sprawl reads as structure —
 and this table is itself the first artifact the brain and users need.
 
 | Tier | Packages | Role |
@@ -219,5 +219,5 @@ the live Stripe test-mode pass runs.
 
 **Not on this roadmap: deletion.** No package is unjustified enough to cut. We
 clean up by *explaining* — one map, one party model, one mirror pattern, honest
-tiers, one observability story. That is what turns 71 packages from "what is
+tiers, one observability story. That is what turns the package count from "what is
 all this?" into "oh — it's the stack."

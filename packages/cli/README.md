@@ -13,6 +13,10 @@ turn (~6–28k tokens). This writes a small **router** that stays resident and
 a 3-condition, N=3 benchmark: **0.14× the knowledge overhead of the eager skill,
 at equal completion and quality** (harness kept in our private research repository).
 
+> Package layout exception: this package has no `src/` or `tsup.config.ts` on
+> purpose — the CLI is dependency-free plain ESM (`bin/*.mjs`) shipped unbuilt,
+> so `npx` runs it with zero install-time compilation.
+
 ## Commands
 
 - **`fonderie init [--project <dir>]`** — run once: generates the lazy skill AND

@@ -377,6 +377,7 @@ import type { IAdminLogEntry, IAdminLogPage } from '../types';
 
 function captureStore(opts: { failWrites?: boolean; rows?: IAdminLogEntry[] } = {}) {
 	const inserts: unknown[][] = [];
+	const selects: unknown[][] = [];
 	const store: IStoreAdapter = {
 		query: async <T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> => {
 			if (sql.includes('INSERT INTO fonderie_admin_log')) {
@@ -384,12 +385,15 @@ function captureStore(opts: { failWrites?: boolean; rows?: IAdminLogEntry[] } = 
 				inserts.push(params);
 				return [];
 			}
-			if (sql.includes('FROM fonderie_admin_log')) return (opts.rows ?? []) as unknown as T[];
+			if (sql.includes('FROM fonderie_admin_log')) {
+				selects.push(params);
+				return (opts.rows ?? []) as unknown as T[];
+			}
 			return [];
 		},
 		transaction: async (fn) => fn(store),
 	};
-	return { store, inserts };
+	return { store, inserts, selects };
 }
 
 test('admin log: every request through the surface is a row — served and refused alike', async () => {
@@ -477,6 +481,65 @@ test('admin log: readable at /_admin/activity/admin-log, paged newest first; abs
 	await bare.boot();
 	assert.equal((await get(bare, '/_admin/activity/admin-log', TOKEN)).status, 404);
 	assert.equal((await manifest(bare)).admin.log, false);
+});
+
+test('admin log: a crafted cursor is a 422, never a 500 at the SQL casts', async () => {
+	const { store, selects } = captureStore({ rows: [] });
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+
+	// The pre-upgrade pipe format, an out-of-range timestamp, a non-uuid id,
+	// and plain garbage all decode to null — rejected before the query runs.
+	const legacy = Buffer.from(
+		'2026-09-21T12:00:01.000Z|00000000-0000-0000-0000-000000000001',
+		'utf8',
+	).toString('base64url');
+	const outOfRange = Buffer.from(
+		JSON.stringify(['2026-13-40T25:61:99Z', '00000000-0000-0000-0000-000000000001']),
+	).toString('base64url');
+	const badId = Buffer.from(
+		JSON.stringify(['2026-09-21T12:00:01.000Z', 'not-a-uuid']),
+	).toString('base64url');
+	for (const bad of ['not-a-cursor', legacy, outOfRange, badId]) {
+		const res = await get(app, `/_admin/activity/admin-log?before=${bad}`, TOKEN);
+		assert.equal(res.status, 422, `crafted cursor must be a 422, got ${res.status}`);
+	}
+	assert.equal(selects.length, 0, 'no rejected cursor reaches the store');
+});
+
+test('admin log: a valid cursor round-trips into the keyset predicate', async () => {
+	const rows: IAdminLogEntry[] = Array.from({ length: 3 }, (_, i) => ({
+		id: `00000000-0000-0000-0000-00000000000${i}`,
+		at: new Date(Date.UTC(2026, 8, 21, 12, 0, i)).toISOString(),
+		actor: 'admin-token',
+		method: 'GET',
+		path: '/_admin/manifest',
+		route: '/_admin/manifest',
+		module: '@fonderie/admin',
+		status: 200,
+		durationMs: 1,
+		requestId: null,
+		clientIp: null,
+	}));
+	const { store, selects } = captureStore({ rows });
+	const app = new FonderieApp(config).register(new AdminModule({ adminToken: TOKEN, store }));
+	await app.boot();
+
+	const first = await get(app, '/_admin/activity/admin-log?limit=2', TOKEN);
+	assert.equal(first.status, 200);
+	const page = ((await first.json()) as { result: IAdminLogPage }).result;
+	assert.ok(page.next);
+
+	const second = await get(
+		app,
+		`/_admin/activity/admin-log?limit=2&before=${encodeURIComponent(page.next)}`,
+		TOKEN,
+	);
+	assert.equal(second.status, 200);
+	// The decoded cursor landed as the keyset predicate: (at, id) of the last
+	// entry of page one (rows[1] — the fake store returns rows unsliced).
+	assert.equal(selects[1]?.[0], '2026-09-21T12:00:01.000Z');
+	assert.equal(selects[1]?.[1], '00000000-0000-0000-0000-000000000001');
 });
 
 // ── config · routes · tokens ────────────────────────────────────────
