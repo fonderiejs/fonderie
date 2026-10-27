@@ -2,8 +2,8 @@
 
 Vue 3 composables for Fonderie's webhooks module — `useWebhookEndpoints`
 (list, create, delete), `useWebhookEndpoint` (get, update),
-`useWebhookDeliveries` (delivery history), and `useTestWebhookEndpoint`
-(send a test event). Thin bindings over
+`useWebhookDeliveries` (delivery history, plus `testEndpoint` to send a
+test event). Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client):
 reactive `ref`s for loading/error/data state and the request itself,
 nothing else. Bring your own UI.

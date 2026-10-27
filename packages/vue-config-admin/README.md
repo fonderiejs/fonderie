@@ -1,9 +1,9 @@
 # @fonderie/vue-config-admin
 
 Vue 3 composables for the Fonderie config admin API — feature flags/remote
-config (`useConfigEntries`, `useConfigEntry`, `useSaveConfigEntry`,
-`useDeleteConfigEntry`, `useConfigRevisions`) and secrets (`useSecrets`,
-`useSecret`, `useSaveSecret`, `useDeleteSecret`, `useSecretRevisions`,
+config (`useConfigEntries` (list + `saveEntry`/`removeEntry`),
+`useConfigEntry`, `useConfigRevisions`) and secrets (`useSecrets` (list +
+`saveSecret`/`removeSecret`), `useSecret`, `useSecretRevisions`,
 `useRevealSecret`). Thin bindings over
 [`@fonderie/client`](https://github.com/fonderiejs/fonderie/tree/main/packages/client)'s
 `ConfigAdminClient`: reactive `ref`s for loading/error/data state and the

@@ -27,6 +27,7 @@
     "audit:validation": "node scripts/audit-validation.mjs",
     "check:evidence": "node scripts/check-evidence.mjs",
     "check:hook-coverage": "node scripts/check-hook-coverage.mjs",
+    "check:hook-coverage:test": "node scripts/check-hook-coverage.test.mjs",
     "check:routes": "node scripts/check-client-routes.mjs",
     "check:template-coverage": "node scripts/check-template-coverage.mjs",
     "check:reasons": "node scripts/check-reasons.mjs",

@@ -1,12 +1,27 @@
 #!/usr/bin/env node
-// Hook-coverage gate (hook-gap audit, Phase 5). Every public method on the
-// typed sub-clients must be referenced by at least one hook/composable, or be
-// explicitly allow-listed below with a reason. Prevents the audit's Category A
-// gaps from regrowing: a new client method shipped without a hook fails CI.
+// Hook-coverage gate (hook-gap audit, Phase 5). Three legs:
+//   1. Every public method on the typed sub-clients must be referenced by at
+//      least one hook/composable, or be explicitly allow-listed below with a
+//      reason. Prevents the audit's Category A gaps from regrowing: a new
+//      client method shipped without a hook fails CI.
+//   2. Every backend route documented in the generated *-outcomes.md files
+//      must be reachable through a typed client method, or allow-listed.
+//   3. Every `useXxx` hook identifier cited in package READMEs, package brain
+//      fragments (packages/<pkg>/brain/*.md) or the curated
+//      brain-knowledge.json must resolve to a real exported hook/composable.
+//      Leg 3 scope limits, deliberate: `.claude/skills/fonderie/SKILL.md` and
+//      `API.md` are NOT scanned (curated teaching prose, allowed to show
+//      aspirational examples), and `with*` names are NOT checked (server-side
+//      helpers like withWorkspace, not hooks). Only backticked inline-code
+//      citations count in markdown — names inside fenced code blocks (e.g.
+//      third-party hooks like Stripe's useStripe/useElements in an import
+//      sample) are not Fonderie exports and are deliberately NOT checked.
+//      If a rename there ever looks uncaught, that is why.
 //
 // Run: npm run check:hook-coverage
+// Mutation tests: node scripts/check-hook-coverage.test.mjs
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,35 +78,37 @@ const hookSource = hookDirs
 	.flatMap((d) => readdirSync(d).filter((f) => f.endsWith('.ts')).map((f) => readFileSync(join(d, f), 'utf8')))
 	.join('\n');
 
-// Public methods: `\tname(args) {` at one-tab depth inside an exported class.
-const failures = [];
-let checked = 0;
-for (const file of readdirSync(modulesDir).filter((f) => f.endsWith('.ts'))) {
-	const src = readFileSync(join(modulesDir, file), 'utf8');
-	for (const cls of src.matchAll(/(?:export )?class (\w+Client) \{([\s\S]*?)\n\}/g)) {
-		const [, className, body] = cls;
-		// Admin clients are covered by their own packages' hooks too — same rule.
-		for (const m of body.matchAll(/\n\t(?:async )?([a-z]\w+)\(/g)) {
-			const method = m[1];
-			if (method === 'constructor') continue;
-			checked++;
-			const key = `${className}.${method}`;
-			if (ALLOW.has(key)) continue;
-			// Referenced as `.method(` anywhere in hook source.
-			if (!hookSource.includes(`.${method}(`)) {
-				failures.push(key);
+function leg1() {
+	// Public methods: `\tname(args) {` at one-tab depth inside an exported class.
+	const failures = [];
+	let checked = 0;
+	for (const file of readdirSync(modulesDir).filter((f) => f.endsWith('.ts'))) {
+		const src = readFileSync(join(modulesDir, file), 'utf8');
+		for (const cls of src.matchAll(/(?:export )?class (\w+Client) \{([\s\S]*?)\n\}/g)) {
+			const [, className, body] = cls;
+			// Admin clients are covered by their own packages' hooks too — same rule.
+			for (const m of body.matchAll(/\n\t(?:async )?([a-z]\w+)\(/g)) {
+				const method = m[1];
+				if (method === 'constructor') continue;
+				checked++;
+				const key = `${className}.${method}`;
+				if (ALLOW.has(key)) continue;
+				// Referenced as `.method(` anywhere in hook source.
+				if (!hookSource.includes(`.${method}(`)) {
+					failures.push(key);
+				}
 			}
 		}
 	}
-}
 
-if (failures.length) {
-	console.error(`check:hook-coverage — ${failures.length} client method(s) have no hook and no allow-list entry:`);
-	for (const f of failures) console.error(`  - ${f}`);
-	console.error('\nShip a hook with the method (re-export rule applies), or allow-list it WITH a reason.');
-	process.exit(1);
+	if (failures.length) {
+		console.error(`check:hook-coverage — ${failures.length} client method(s) have no hook and no allow-list entry:`);
+		for (const f of failures) console.error(`  - ${f}`);
+		console.error('\nShip a hook with the method (re-export rule applies), or allow-list it WITH a reason.');
+		process.exit(1);
+	}
+	console.log(`check:hook-coverage — ${checked} public client methods checked; all covered or allow-listed (${ALLOW.size} allowed).`);
 }
-console.log(`check:hook-coverage — ${checked} public client methods checked; all covered or allow-listed (${ALLOW.size} allowed).`);
 
 // ── Leg 2: backend route → client method ─────────────────────────────────────
 // Every HTTP route the @fonderie/* server packages register (as documented in
@@ -196,49 +213,157 @@ const ROUTE_ALLOW = new Map([
 	['DELETE /_admin/access/operators/links/:id', 'AdminClient.revokeOperatorLink() — prefix is configurable, invisible to the static match'],
 ]);
 
-const sigDir = join(root, '.claude/skills/fonderie/signatures');
-const routeRows = readdirSync(sigDir)
-	.filter((f) => f.endsWith('-outcomes.md'))
-	.flatMap((f) =>
-		[...readFileSync(join(sigDir, f), 'utf8').matchAll(/^\| (GET|POST|PUT|PATCH|DELETE) \| `([^`]+)`/gm)].map(
-			(m) => ({ pkg: f.replace('-outcomes.md', ''), method: m[1], path: m[2] }),
-		),
+function leg2() {
+	const sigDir = join(root, '.claude/skills/fonderie/signatures');
+	const routeRows = readdirSync(sigDir)
+		.filter((f) => f.endsWith('-outcomes.md'))
+		.flatMap((f) =>
+			[...readFileSync(join(sigDir, f), 'utf8').matchAll(/^\| (GET|POST|PUT|PATCH|DELETE) \| `([^`]+)`/gm)].map(
+				(m) => ({ pkg: f.replace('-outcomes.md', ''), method: m[1], path: m[2] }),
+			),
+		);
+
+	// Client path templates → normalized candidates. Dynamic segments (`${...}`)
+	// become :param; trailing/nested template suffixes are usually query-string
+	// builders, so stripped variants are accepted too.
+	const clientSrc = readdirSync(modulesDir)
+		.filter((f) => f.endsWith('.ts'))
+		.map((f) => readFileSync(join(modulesDir, f), 'utf8'))
+		.join('\n');
+	const clientPathSet = new Set();
+	for (const m of clientSrc.matchAll(/path: [`'"]([^`'"]+)[`'"]/g)) {
+		const raw = m[1].split('?')[0];
+		const paramized = raw.replace(/\$\{[^}]+\}/g, ':param');
+		clientPathSet.add(paramized);
+		if (/:param$/.test(paramized)) clientPathSet.add(paramized.replace(/\/?:param$/, ''));
+		const cut = raw.split('$' + '{')[0];
+		if (cut) clientPathSet.add(cut.replace(/\/$/, ''));
+	}
+
+	const normalizeRoute = (p) => p.split('?')[0].replace(/:[A-Za-z]+/g, ':param');
+
+	const uncoveredRoutes = [];
+	let routesChecked = 0;
+	for (const { method, path } of routeRows) {
+		routesChecked++;
+		const key = `${method} ${path}`;
+		if (ROUTE_ALLOW.has(key)) continue;
+		if (!clientPathSet.has(normalizeRoute(path))) uncoveredRoutes.push(key);
+	}
+
+	if (uncoveredRoutes.length) {
+		console.error(`check:hook-coverage — ${uncoveredRoutes.length} backend route(s) unreachable from the typed client:`);
+		for (const r of [...new Set(uncoveredRoutes)]) console.error(`  - ${r}`);
+		console.error('\nAdd a client method (leg 1 then requires a hook), or allow-list the route WITH a reason.');
+		process.exit(1);
+	}
+	console.log(
+		`check:hook-coverage — ${routesChecked} backend routes checked; all client-reachable or allow-listed (${ROUTE_ALLOW.size} allowed).`,
 	);
-
-// Client path templates → normalized candidates. Dynamic segments (`${...}`)
-// become :param; trailing/nested template suffixes are usually query-string
-// builders, so stripped variants are accepted too.
-const clientSrc = readdirSync(modulesDir)
-	.filter((f) => f.endsWith('.ts'))
-	.map((f) => readFileSync(join(modulesDir, f), 'utf8'))
-	.join('\n');
-const clientPathSet = new Set();
-for (const m of clientSrc.matchAll(/path: [`'"]([^`'"]+)[`'"]/g)) {
-	const raw = m[1].split('?')[0];
-	const paramized = raw.replace(/\$\{[^}]+\}/g, ':param');
-	clientPathSet.add(paramized);
-	if (/:param$/.test(paramized)) clientPathSet.add(paramized.replace(/\/?:param$/, ''));
-	const cut = raw.split('$' + '{')[0];
-	if (cut) clientPathSet.add(cut.replace(/\/$/, ''));
 }
 
-const normalizeRoute = (p) => p.split('?')[0].replace(/:[A-Za-z]+/g, ':param');
+// ── Leg 3: stale hook identifiers in docs ────────────────────────────────────
+// Every `useXxx` identifier cited in a package README, a package brain
+// fragment (packages/<pkg>/brain/*.md) or the curated brain-knowledge.json
+// must resolve to a hook/composable actually exported by a react*/vue*
+// package. A rename that leaves the old name in the docs fails CI.
+//
+// Deliberately OUT OF SCOPE (see the file header): SKILL.md, API.md, and
+// with* names.
+//
+// TEMP_STALE_ALLOW holds known-stale names while a doc cleanup is in flight;
+// every entry must carry its reason. The stale-entry check below turns CI red
+// the moment an entry no longer matches a stale reference — the list must
+// leave with the cleanup, not linger. Currently empty, and meant to stay so.
+export const TEMP_STALE_ALLOW = new Map([]);
 
-const uncoveredRoutes = [];
-let routesChecked = 0;
-for (const { method, path } of routeRows) {
-	routesChecked++;
-	const key = `${method} ${path}`;
-	if (ROUTE_ALLOW.has(key)) continue;
-	if (!clientPathSet.has(normalizeRoute(path))) uncoveredRoutes.push(key);
+// Hook/composable names exported by any react*/vue* package.
+export function collectDefinedHooks(baseDir) {
+	const defined = new Set();
+	for (const p of readdirSync(join(baseDir, 'packages'))) {
+		if (!/^(react|vue)(-|$)/.test(p)) continue;
+		for (const sub of ['src/hooks', 'src/composables']) {
+			const d = join(baseDir, 'packages', p, sub);
+			if (!existsSync(d)) continue;
+			for (const f of readdirSync(d).filter((f) => f.endsWith('.ts'))) {
+				const src = readFileSync(join(d, f), 'utf8');
+				for (const m of src.matchAll(/export (?:async )?function (use\w+)/g)) defined.add(m[1]);
+				for (const m of src.matchAll(/export const (use\w+)/g)) defined.add(m[1]);
+			}
+		}
+		const idx = join(baseDir, 'packages', p, 'src/index.ts');
+		if (existsSync(idx)) {
+			for (const m of readFileSync(idx, 'utf8').matchAll(/\b(use[A-Z]\w+)\b/g)) defined.add(m[1]);
+		}
+	}
+	return defined;
 }
 
-if (uncoveredRoutes.length) {
-	console.error(`check:hook-coverage — ${uncoveredRoutes.length} backend route(s) unreachable from the typed client:`);
-	for (const r of [...new Set(uncoveredRoutes)]) console.error(`  - ${r}`);
-	console.error('\nAdd a client method (leg 1 then requires a hook), or allow-list the route WITH a reason.');
-	process.exit(1);
+// `useXxx` identifiers cited in the scanned docs: backticked in markdown,
+// word-boundary in the curated knowledge JSON. Returns the reference map
+// (name → files) and the total scanned-identifier count.
+export function scanDocIdentifiers(baseDir) {
+	const referenced = new Map();
+	let scanned = 0;
+	const note = (name, file) => {
+		scanned++;
+		if (!referenced.has(name)) referenced.set(name, new Set());
+		referenced.get(name).add(file);
+	};
+	for (const p of readdirSync(join(baseDir, 'packages'))) {
+		const brain = join(baseDir, 'packages', p, 'brain');
+		if (existsSync(brain)) {
+			for (const f of readdirSync(brain).filter((f) => f.endsWith('.md'))) {
+				for (const m of readFileSync(join(brain, f), 'utf8').matchAll(/`(use[A-Z]\w+)`/g)) note(m[1], `packages/${p}/brain/${f}`);
+			}
+		}
+		const readme = join(baseDir, 'packages', p, 'README.md');
+		if (existsSync(readme)) {
+			for (const m of readFileSync(readme, 'utf8').matchAll(/`(use[A-Z]\w+)`/g)) note(m[1], `packages/${p}/README.md`);
+		}
+	}
+	const knowledge = join(baseDir, '.claude/skills/fonderie/brain-knowledge.json');
+	if (existsSync(knowledge)) {
+		for (const m of readFileSync(knowledge, 'utf8').matchAll(/\b(use[A-Z]\w+)\b/g)) {
+			note(m[1], '.claude/skills/fonderie/brain-knowledge.json');
+		}
+	}
+	return { referenced, scanned };
 }
-console.log(
-	`check:hook-coverage — ${routesChecked} backend routes checked; all client-reachable or allow-listed (${ROUTE_ALLOW.size} allowed).`,
-);
+
+// Pure check, exported for the mutation tests. Returns the stale names with
+// no allow-list entry, and the allow-list entries that no longer match a
+// stale reference (fixed or no longer cited — either way the entry must go).
+export function checkStaleIdentifiers(baseDir, tempAllow = TEMP_STALE_ALLOW) {
+	const defined = collectDefinedHooks(baseDir);
+	const { referenced, scanned } = scanDocIdentifiers(baseDir);
+	const stale = [...referenced.keys()].filter((n) => !defined.has(n)).sort();
+	const failures = stale.filter((n) => !tempAllow.has(n));
+	const staleEntries = [...tempAllow.keys()].filter((n) => !stale.includes(n));
+	return { scanned, stale, failures, staleEntries, referenced };
+}
+
+function leg3() {
+	const { scanned, stale, failures, staleEntries, referenced } = checkStaleIdentifiers(root);
+	if (staleEntries.length) {
+		console.error('check:hook-coverage — stale temporary allow-list entrie(s) (the doc reference is fixed or gone; remove the entry):');
+		for (const n of staleEntries) console.error(`  - ${n}`);
+		process.exit(1);
+	}
+	if (failures.length) {
+		console.error(`check:hook-coverage — ${failures.length} stale hook identifier(s) cited in docs but exported nowhere:`);
+		for (const n of failures) console.error(`  - ${n}  <- ${[...referenced.get(n)].join(', ')}`);
+		console.error('\nFix the doc to name the real hook, or allow-list WITH a reason.');
+		process.exit(1);
+	}
+	console.log(
+		`check:hook-coverage — ${scanned} doc hook identifiers scanned; all resolve to a real export (${stale.length} temporarily allow-listed).`,
+	);
+}
+
+const isMain = Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+	leg1();
+	leg2();
+	leg3();
+}

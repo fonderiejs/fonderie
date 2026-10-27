@@ -7441,7 +7441,7 @@
       "recipe": "vue-auth-screens-wiring"
     },
     "react-billing.hooks": {
-      "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, plus usePlanAdmin (create/update/delete plans) wrapping @fonderie/client's BillingClient. usePlanAdmin's routes are the one write surface in this SDK with no requireAuth/admin-token gate server-side — the app must authorize access to it itself before shipping any UI built on it.",
+      "description": "React hooks for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage (read + recordUsage), wrapping @fonderie/client's BillingClient. Plan create/update/delete is an operator surface, not in this package: useAdminCatalog in @fonderie/react-admin over BillingAdminClient's admin-token routes.",
       "package": "react-billing",
       "recipe": "react-billing-wiring"
     },
@@ -7461,7 +7461,7 @@
       "recipe": "react-native-billing-screens-wiring"
     },
     "vue-billing.composables": {
-      "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage, useRecordUsage, plus usePlanAdmin (create/update/delete plans) wrapping @fonderie/client's BillingClient. usePlanAdmin's routes are the one write surface in this SDK with no requireAuth/admin-token gate server-side — the app must authorize access to it itself before shipping any UI built on it.",
+      "description": "Vue composables for billing — usePlans, usePlan, useSubscription, useCheckout, useBillingPortal, useUsage (read + recordUsage), wrapping @fonderie/client's BillingClient. Plan create/update/delete is an operator surface, not in this package: useAdminCatalog in @fonderie/vue-admin over BillingAdminClient's admin-token routes.",
       "package": "vue-billing",
       "recipe": "vue-billing-wiring"
     },
@@ -7471,7 +7471,7 @@
       "recipe": "vue-billing-screens-wiring"
     },
     "react-workspaces.hooks": {
-      "description": "React hooks for workspaces — useWorkspaces, useCreateWorkspace, useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read hook since there's no 'get current workspace' route), useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "React hooks for workspaces — useCurrentWorkspace (the selected workspace, follows a switch), useWorkspace (one by id), useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, useWorkspaceSeats, useWorkspaceBranches/useWorkspaceBranch, useWorkspaceContacts, useWorkspaceLocations, useOwnershipOffer, plus role management (useRoles with createRole/updateRole/removeRole, useRole, useDeletedRoles (restore within the undo window), useRolePermissions with setRolePermissions, usePermissions/usePermissionCatalog, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "react-workspaces",
       "recipe": "react-workspaces-wiring"
     },
@@ -7491,7 +7491,7 @@
       "recipe": "react-native-workspaces-screens-wiring"
     },
     "vue-workspaces.composables": {
-      "description": "Vue composables for workspaces — useWorkspaces, useCreateWorkspace, useWorkspaceProfile (update/archive/restore the current workspace — action-only, no read composable since there's no 'get current workspace' route), useMembers, useRemoveMember, useInvitations, useAcceptInvitation, useWorkspaceSettings, plus role management (useRoles, useUpdateRole, useSetRolePermissions, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
+      "description": "Vue composables for workspaces — useCurrentWorkspace (the selected workspace, follows a switch), useWorkspace (one by id), useWorkspaces (list + createWorkspace + acceptInvitation), useWorkspaceProfile (update/archive/restore), useMembers (list + removeMember), useInvitations, useWorkspaceSettings, useWorkspaceSeats, useWorkspaceBranches/useWorkspaceBranch, useWorkspaceContacts, useWorkspaceLocations, useOwnershipOffer, plus role management (useRoles with createRole/updateRole/removeRole, useRole, useDeletedRoles (restore within the undo window), useRolePermissions with setRolePermissions, usePermissions/usePermissionCatalog, useMemberRoles) — @fonderie/permissions has no HTTP API of its own, role CRUD lives here under @fonderie/workspaces' routes. Wraps @fonderie/client's WorkspacesClient.",
       "package": "vue-workspaces",
       "recipe": "vue-workspaces-wiring"
     },
@@ -7521,7 +7521,7 @@
       "recipe": "vue-courier-admin-screens-wiring"
     },
     "react-config-admin.admin": {
-      "description": "React hooks for config's feature-flag/remote-config + secrets admin API — useConfigEntries, useConfigEntry, useSaveConfigEntry, useDeleteConfigEntry, useConfigRevisions and the secret equivalents (useSecrets, useSecret, useSaveSecret, useDeleteSecret, useSecretRevisions) plus useRevealSecret. Admin-token authenticated via a standalone ConfigAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
+      "description": "React hooks for config's feature-flag/remote-config + secrets admin API — useConfigEntries (list + saveEntry/removeEntry), useConfigEntry, useConfigRevisions and the secret equivalents (useSecrets (list + saveSecret/removeSecret), useSecret, useSecretRevisions) plus useRevealSecret. Admin-token authenticated via a standalone ConfigAdminClient — does NOT share FonderieClient's session token with auth/billing/workspaces.",
       "package": "react-config-admin",
       "recipe": "react-config-admin-wiring"
     },
@@ -7571,7 +7571,7 @@
       "recipe": "vue-audit-screens-wiring"
     },
     "react-webhooks.hooks": {
-      "description": "React hooks for webhook endpoints — useWebhookEndpoints (list/create/delete), useWebhookEndpoint (get/update), useWebhookDeliveries (delivery history), useTestWebhookEndpoint (send a test event). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. createEndpoint's signing secret is only returned once, at creation.",
+      "description": "React hooks for webhook endpoints — useWebhookEndpoints (list/create/delete), useWebhookEndpoint (get/update), useWebhookDeliveries (delivery history + testEndpoint to send a test event), useDeletedWebhookEndpoints (list deleted endpoints, restore/purge within the undo window). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. createEndpoint's signing secret is only returned once, at creation.",
       "package": "react-webhooks",
       "recipe": "react-webhooks-wiring"
     },
@@ -7591,7 +7591,7 @@
       "recipe": "react-native-webhooks-screens-wiring"
     },
     "vue-webhooks.composables": {
-      "description": "Vue composables for webhook endpoints — useWebhookEndpoints, useWebhookEndpoint, useWebhookDeliveries, useTestWebhookEndpoint. Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. Endpoint IDs are read once at setup; call refresh() after changing them.",
+      "description": "Vue composables for webhook endpoints — useWebhookEndpoints, useWebhookEndpoint, useWebhookDeliveries (incl. testEndpoint), useDeletedWebhookEndpoints (restore/purge within the undo window). Session-authenticated like billing/workspaces/audit, wraps @fonderie/client's WebhooksClient. Endpoint IDs are read once at setup; call refresh() after changing them.",
       "package": "vue-webhooks",
       "recipe": "vue-webhooks-wiring"
     },
@@ -8300,7 +8300,7 @@
     }
   },
   "invariants": {
-    "config-public-keys-allowlist": "Only keys listed in ConfigModule `publicKeys` are readable by frontends (GET /config/public, unauthenticated). Never list anything a stranger should not see; secrets are never readable there. Pass the SAFE fallback to useFlag (feature off) — it renders before the first load and when loading fails.",
+    "config-public-keys-allowlist": "Only keys listed in ConfigModule `publicKeys` are readable by frontends (GET /config/public, unauthenticated). Never list anything a stranger should not see; secrets are never readable there. Pass the SAFE fallback to useRemoteConfig (feature off) — it renders before the first load and when loading fails.",
     "geo-trust-from-env": "geoFromHeaders believes a platform's headers only for the source named in `trust`. Derive trust from the deployment environment (process.env.VERCEL ? 'vercel' : undefined), NEVER from the request — a client can send x-vercel-ip-country to a server that is not behind Vercel. Treat a null location as unknown, not suspicious. Gate on country only; region and city are display-grade.",
     "jwt-secret-from-env": "Read the auth JWT secret from process.env and throw if missing — never ship an insecure hardcoded fallback (the #1 scratch-build flaw, baseline round 0-baseline).",
     "rate-limit-default-on": "@fonderie/auth enables brute-force rate limiting by default (since auth 1.2.0); do not set rateLimit:false unless you have another limiter in front.",
