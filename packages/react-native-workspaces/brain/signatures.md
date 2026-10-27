@@ -413,6 +413,48 @@ new WorkspacesClient(http: HttpClient, tokens: TokenStore): WorkspacesClient
   .getSettings(opts?: IReadOptions | undefined): Promise<IApiResponse<IWorkspaceSettingsResult>>
   .updateSettings(input: IUpdateSettingsInput): Promise<IApiResponse<IWorkspaceSettingsResult>>
 
+function useCan(operation: PermissionOperation, resource: string, client?: WorkspacesClient | undefined): boolean
+
+function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
+
+function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRolesReturn
+
+function useInvitations(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseInvitationsReturn
+
+function useMemberRoles(userId: string): IUseMemberRolesReturn
+
+function useMembers(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseMembersReturn
+
+function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
+
+function usePermissionCatalog(client?: WorkspacesClient | undefined): IUsePermissionCatalogReturn
+
+function usePermissions(client?: WorkspacesClient | undefined): IUsePermissionsReturn
+
+function useRole(roleId: string): IUseRoleReturn
+
+function useRolePermissions(roleId: string): IUseRolePermissionsReturn
+
+function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
+
+function useWorkspace(workspaceId: string): IUseWorkspaceReturn
+
+function useWorkspaceBranch(branchId: string): IUseWorkspaceBranchReturn
+
+function useWorkspaceBranches(client?: WorkspacesClient | undefined): IUseWorkspaceBranchesReturn
+
+function useWorkspaceContacts(client?: WorkspacesClient | undefined, opts?: IWorkspaceContactsOptions | undefined): IUseWorkspaceContactsReturn
+
+function useWorkspaceLocations(client?: WorkspacesClient | undefined, opts?: { branchId?: string; } | undefined): IUseWorkspaceLocationsReturn
+
+function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
+
+function useWorkspaceSeats(client?: WorkspacesClient | undefined): IUseWorkspaceSeatsReturn
+
+function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
+
+function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
+
 interface IUseCurrentWorkspaceReturn {
     workspace: IWorkspaceDTO | null;
     isLoading: boolean;
@@ -646,46 +688,4 @@ interface IUseWorkspacesReturn {
     acceptInvitation: (code: string | IAcceptInvitationInput) => Promise<string>;
     leaveWorkspace: () => Promise<void>;
 }
-
-function useCan(operation: PermissionOperation, resource: string, client?: WorkspacesClient | undefined): boolean
-
-function useCurrentWorkspace(client?: WorkspacesClient | undefined): IUseCurrentWorkspaceReturn
-
-function useDeletedRoles(client?: WorkspacesClient | undefined): IUseDeletedRolesReturn
-
-function useInvitations(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseInvitationsReturn
-
-function useMemberRoles(userId: string): IUseMemberRolesReturn
-
-function useMembers(client?: WorkspacesClient | undefined, opts?: IUseListPageOptions | undefined): IUseMembersReturn
-
-function useOwnershipOffer(client?: WorkspacesClient | undefined): IUseOwnershipOfferReturn
-
-function usePermissionCatalog(client?: WorkspacesClient | undefined): IUsePermissionCatalogReturn
-
-function usePermissions(client?: WorkspacesClient | undefined): IUsePermissionsReturn
-
-function useRole(roleId: string): IUseRoleReturn
-
-function useRolePermissions(roleId: string): IUseRolePermissionsReturn
-
-function useRoles(client?: WorkspacesClient | undefined): IUseRolesReturn
-
-function useWorkspace(workspaceId: string): IUseWorkspaceReturn
-
-function useWorkspaceBranch(branchId: string): IUseWorkspaceBranchReturn
-
-function useWorkspaceBranches(client?: WorkspacesClient | undefined): IUseWorkspaceBranchesReturn
-
-function useWorkspaceContacts(client?: WorkspacesClient | undefined, opts?: IWorkspaceContactsOptions | undefined): IUseWorkspaceContactsReturn
-
-function useWorkspaceLocations(client?: WorkspacesClient | undefined, opts?: { branchId?: string; } | undefined): IUseWorkspaceLocationsReturn
-
-function useWorkspaceProfile(client?: WorkspacesClient | undefined): IUseWorkspaceProfileReturn
-
-function useWorkspaceSeats(client?: WorkspacesClient | undefined): IUseWorkspaceSeatsReturn
-
-function useWorkspaceSettings(client?: WorkspacesClient | undefined): IUseWorkspaceSettingsReturn
-
-function useWorkspaces(client?: WorkspacesClient | undefined): IUseWorkspacesReturn
 ```
