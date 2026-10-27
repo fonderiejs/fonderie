@@ -5,6 +5,15 @@
 // The cursor carries the sort key's created_at as Postgres text — full
 // microsecond precision. node-pg parses timestamptz into a millisecond Date,
 // which would skip rows created in the same millisecond between pages.
+//
+// Parked divergence (decision recorded 2026-10-26, "PR 5"): core exports the
+// shared encodeKeysetCursor/decodeKeysetCursor, and admin/audit/billing/auth
+// use it. Workspaces deliberately keeps its own pair: its `at|id` wire format
+// predates core's JSON-tuple format and this is a PUBLIC surface — cursors
+// already issued to clients must keep decoding. The migration path, when
+// scheduled, is a dual-decode window (accept both formats, emit core's).
+// Admin could swap outright because its cursors are short-lived and
+// admin-token-gated; workspaces cannot.
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;

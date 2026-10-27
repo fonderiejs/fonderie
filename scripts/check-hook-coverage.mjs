@@ -162,6 +162,16 @@ const ROUTE_ALLOW = new Map([
 	['GET /_admin/routes', 'AdminClient.routes() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/access/tokens', 'AdminClient.tokens() — prefix is configurable, invisible to the static match'],
 	['GET /_admin/activity/admin-log', 'AdminClient.adminLog() — prefix is configurable, invisible to the static match'],
+	// The served operator console: a browser navigates to the shell and its
+	// bundle (no Authorization header possible — deliberately outside the token
+	// guard), so no typed client method may exist for either.
+	['GET /_admin/ui', 'operator-console HTML shell — navigated to by a browser, never a typed client call'],
+	['GET /_admin/ui/app.js', "the console's JS bundle — referenced by the shell's <script> tag, not fetched via a typed client"],
+	// @fonderie/sse: SseClient connects to both, but the module's path prefix is
+	// configurable (options.path) and the brain records the `{base}` placeholder
+	// form, so this static match cannot see the pair.
+	['GET {base}/stream', 'SseClient connects here — prefix is configurable ({base} placeholder), invisible to the static match'],
+	['GET {base}/topics', 'SseClient reads the topic catalog — prefix is configurable ({base} placeholder), invisible to the static match'],
 	['GET /_admin/migrations', 'AdminClient.migrations() — prefix is configurable, invisible to the static match'],
 	[
 		'POST /_admin/migrations/:module/apply',
@@ -213,6 +223,13 @@ const ROUTE_ALLOW = new Map([
 	['DELETE /_admin/access/operators/links/:id', 'AdminClient.revokeOperatorLink() — prefix is configurable, invisible to the static match'],
 ]);
 
+// Allow-list entries whose route no longer appears in any outcomes file.
+// Pure and exported for the mutation tests (scripts/check-hook-coverage.test.mjs).
+export function staleRouteAllowEntries(routeRows) {
+	const live = new Set(routeRows.map((r) => `${r.method} ${r.path}`));
+	return [...ROUTE_ALLOW.keys()].filter((k) => !live.has(k));
+}
+
 function leg2() {
 	const sigDir = join(root, '.claude/skills/fonderie/signatures');
 	const routeRows = readdirSync(sigDir)
@@ -241,6 +258,19 @@ function leg2() {
 	}
 
 	const normalizeRoute = (p) => p.split('?')[0].replace(/:[A-Za-z]+/g, ':param');
+
+	// An allow entry whose route no longer exists is a stale decision masquerading
+	// as a live one — the route was renamed or removed and the list pretends
+	// otherwise. Exported (with the route-row shape) for the mutation tests.
+	const staleAllows = staleRouteAllowEntries(routeRows);
+	if (staleAllows.length) {
+		console.error(
+			`check:hook-coverage — ${staleAllows.length} allow-listed route(s) no longer exist in any outcomes file:`,
+		);
+		for (const r of staleAllows) console.error(`  - ${r}`);
+		console.error('\nRemove the entry, or fix the route it names.');
+		process.exit(1);
+	}
 
 	const uncoveredRoutes = [];
 	let routesChecked = 0;

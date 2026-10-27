@@ -92,7 +92,7 @@ forget to regenerate, CI fails on the diff. The habit that avoids it is in
 | Command | What it is |
 | --- | --- |
 | `npm run brain:serve` | a retrieval server over `brain.json` — how an agent queries the knowledge graph on demand |
-| `npm run brain:test` / `brain:project-test` / `brain:r3-test` | tests for the brain retrieval + project-brain paths |
+| `npm run brain:test` / `brain:project-test` / `brain:r3-test` | tests for the brain retrieval + project-brain paths; `brain:test` also runs the brain-completeness guard and its mutation tests (`brain:completeness:test`) |
 
 ## House rules baked into tooling
 

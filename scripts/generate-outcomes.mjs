@@ -11,6 +11,15 @@
 //
 // Run via `npm run docs:signatures` (which chains this script). Same
 // freshness contract: CI can enforce with `git diff --exit-code`.
+//
+// Route paths may be string literals ('/x'), plain templates (`/x`), or
+// templates with holes (`${base}/stream` — sse's form). Holes render as
+// {base} so the brain records the static tail an agent needs. A registration
+// call whose path is none of those THROWS rather than skipping silently: an
+// unreadable route is a brain under-count nobody notices (sse reported zero
+// routes for months before the 2026-10 audit caught it). The error names the
+// file and line and offers the two fixes — make the path statically
+// extractable, or extend routePathText() below for the new form.
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -126,6 +135,32 @@ function replayMigrations(sqlDir) {
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
+// Route path argument → display text, or null when not statically readable.
+// String literal ('/x') and plain template (`/x`) are taken verbatim; a
+// template with holes (`${base}/stream`) renders each hole as {name}, keeping
+// the static tail — the part an agent actually needs. A single-argument
+// path-helper call (admin's at('/_admin/ui')) and a const bound to any of
+// these (const scriptPath = at('/_admin/ui/app.js')) resolve to the DEFAULT
+// path — the same "record what the package declares" rule as the R() form.
+const routePathText = (arg, sf, consts) => {
+	if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) {
+		return arg.text.startsWith('/') ? arg.text : null;
+	}
+	if (ts.isTemplateExpression(arg)) {
+		const rendered =
+			arg.head.text +
+			arg.templateSpans
+				.map((s) => `{${s.expression.getText(sf).replace(/\s+/g, ' ')}}` + s.literal.text)
+				.join('');
+		return rendered.startsWith('/') || rendered.startsWith('{') ? rendered : null;
+	}
+	if (ts.isCallExpression(arg) && arg.arguments.length === 1) {
+		return routePathText(arg.arguments[0], sf, consts);
+	}
+	if (ts.isIdentifier(arg)) return consts?.get(arg.text) ?? null;
+	return null;
+};
+
 function collectRoutes(pkgDir) {
 	const routes = [];
 	const srcDir = join(pkgDir, 'src');
@@ -136,15 +171,28 @@ function collectRoutes(pkgDir) {
 	});
 	for (const file of walk(srcDir)) {
 		const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+		// Same-file const bindings (const scriptPath = at('/_admin/ui/app.js')) so
+		// an identifier path argument can resolve to its declared default.
+		const consts = new Map();
+		const prescan = (node) => {
+			if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+				const v = routePathText(node.initializer, sf, consts);
+				if (v !== null) consts.set(node.name.text, v);
+			}
+			ts.forEachChild(node, prescan);
+		};
+		prescan(sf);
 		const visit = (node) => {
 			if (
 				ts.isArrayLiteralExpression(node) &&
 				node.elements.length >= 3 &&
-				ts.isStringLiteral(node.elements[0]) && METHODS.has(node.elements[0].text) &&
-				ts.isStringLiteral(node.elements[1]) && node.elements[1].text.startsWith('/')
+				ts.isStringLiteral(node.elements[0]) && METHODS.has(node.elements[0].text)
 			) {
-				const chain = node.elements.slice(2).map((el) => el.getText(sf).replace(/\s+/g, ' '));
-				routes.push({ method: node.elements[0].text, path: node.elements[1].text, chain });
+				const path = routePathText(node.elements[1], sf, consts);
+				if (path !== null) {
+					const chain = node.elements.slice(2).map((el) => el.getText(sf).replace(/\s+/g, ' '));
+					routes.push({ method: node.elements[0].text, path, chain });
+				}
 			}
 			// R('id', 'METHOD', '/path', ...middleware) — the route-override helper form
 				// (auth). Record the DEFAULT method/path (args 1,2); runtime config.routes
@@ -153,11 +201,13 @@ function collectRoutes(pkgDir) {
 					ts.isCallExpression(node) &&
 					ts.isIdentifier(node.expression) && node.expression.text === 'R' &&
 					node.arguments.length >= 4 &&
-					ts.isStringLiteral(node.arguments[1]) && METHODS.has(node.arguments[1].text) &&
-					ts.isStringLiteral(node.arguments[2]) && node.arguments[2].text.startsWith('/')
+					ts.isStringLiteral(node.arguments[1]) && METHODS.has(node.arguments[1].text)
 				) {
-					const chain = node.arguments.slice(3).map((el) => el.getText(sf).replace(/\s+/g, ' '));
-					routes.push({ method: node.arguments[1].text, path: node.arguments[2].text, chain });
+					const path = routePathText(node.arguments[2], sf, consts);
+					if (path !== null) {
+						const chain = node.arguments.slice(3).map((el) => el.getText(sf).replace(/\s+/g, ' '));
+						routes.push({ method: node.arguments[1].text, path, chain });
+					}
 				}
 				// x.addRoute('METHOD', '/path', ...) / x.router.add('METHOD', '/path', ...)
 				// — the direct form. core mounts /healthz, /readyz and /metrics this
@@ -169,11 +219,26 @@ function collectRoutes(pkgDir) {
 					ts.isPropertyAccessExpression(node.expression) &&
 					(node.expression.name.text === 'addRoute' || node.expression.name.text === 'add') &&
 					node.arguments.length >= 3 &&
-					ts.isStringLiteral(node.arguments[0]) && METHODS.has(node.arguments[0].text) &&
-					ts.isStringLiteral(node.arguments[1]) && node.arguments[1].text.startsWith('/')
+					ts.isStringLiteral(node.arguments[0]) && METHODS.has(node.arguments[0].text)
 				) {
+					const path = routePathText(node.arguments[1], sf, consts);
+					// Fail loud, never skip: an unreadable registration is a route the
+					// brain under-counts and nobody notices. (The R() and tuple forms
+					// above stay silent — a bare ['GET', x, …] array is not provably
+					// a route; a direct addRoute('GET', x, …) call is.)
+					if (path === null) {
+						const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+						throw new Error(
+							`${file}:${line + 1}:${character + 1} — ${node.expression.name.text}('${node.arguments[0].text}', …) ` +
+								`has a path this extractor cannot read: ${node.arguments[1].getText(sf)}.\n` +
+								`Two ways forward: make the path statically extractable (a string literal, a template ` +
+								`with a static tail like \`\${base}/x\`, or a same-file const of one), or teach ` +
+								`routePathText() in scripts/generate-outcomes.mjs the new form. Do not leave it ` +
+								`unreadable — the brain would silently under-report routes.`,
+						);
+					}
 					const chain = node.arguments.slice(2).map((el) => el.getText(sf).replace(/\s+/g, ' '));
-					routes.push({ method: node.arguments[0].text, path: node.arguments[1].text, chain });
+					routes.push({ method: node.arguments[0].text, path, chain });
 				}
 				ts.forEachChild(node, visit);
 		};

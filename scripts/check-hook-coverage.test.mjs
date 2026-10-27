@@ -8,12 +8,12 @@
 //
 //   node scripts/check-hook-coverage.test.mjs
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { checkStaleIdentifiers, TEMP_STALE_ALLOW } from './check-hook-coverage.mjs';
+import { checkStaleIdentifiers, staleRouteAllowEntries, TEMP_STALE_ALLOW } from './check-hook-coverage.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -89,6 +89,42 @@ assert(
 assert(bare.scanned > 0, `real repo: scanned-identifier count is nonzero (${bare.scanned})`);
 const allowed = checkStaleIdentifiers(root);
 assert(allowed.failures.length === 0 && allowed.staleEntries.length === 0, 'real repo: temporary allow-list passes clean');
+
+// ── Leg 2 stale-allow check, driven directly ─────────────────────────────────
+// The four routes allow-listed in PR 8 (admin console shell/bundle, the two
+// sse placeholders) must be covered by the same stale-entry rule as leg 3's:
+// a route that disappears from the outcomes files must turn its allow entry
+// red, and a live route's entry must stay green.
+{
+	const liveRows = [
+		{ method: 'GET', path: '/_admin/ui' },
+		{ method: 'GET', path: '/_admin/ui/app.js' },
+		{ method: 'GET', path: '{base}/stream' },
+		{ method: 'GET', path: '{base}/topics' },
+	];
+	const stale = staleRouteAllowEntries(liveRows);
+	assert(
+		!stale.some((k) => liveRows.some((r) => `${r.method} ${r.path}` === k)),
+		'leg 2: the four PR-8 allow entries are NOT flagged while their routes live',
+	);
+	assert(stale.length > 0, 'leg 2: entries for absent routes ARE flagged (every other entry is stale vs the fixture)');
+	assert(
+		staleRouteAllowEntries([...liveRows, { method: 'GET', path: '/healthz' }]).includes('GET /healthz') === false,
+		'leg 2: adding a live row clears its entry',
+	);
+	// Real repo: no allow entry may be stale against the committed outcomes.
+	const realRows = readdirSync(join(root, '.claude/skills/fonderie/signatures'))
+		.filter((f) => f.endsWith('-outcomes.md'))
+		.flatMap((f) =>
+			[
+				...readFileSync(join(root, '.claude/skills/fonderie/signatures', f), 'utf8').matchAll(
+					/^\| (GET|POST|PUT|PATCH|DELETE) \| `([^`]+)`/gm,
+				),
+			].map((m) => ({ method: m[1], path: m[2] })),
+		);
+	const realStale = staleRouteAllowEntries(realRows);
+	assert(realStale.length === 0, `real repo: every ROUTE_ALLOW entry names a live route (stale: ${realStale.join(', ') || 'none'})`);
+}
 
 if (failed) {
 	console.error('\ncheck-hook-coverage mutation tests FAILED');
