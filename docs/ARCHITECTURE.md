@@ -77,6 +77,15 @@ permissions`, with `workspaces` and `billing` above `auth`, `courier` above
 `workspaces`, `config` above `courier`. Never import from a package that
 depends on you.
 
+**Peer or dependency?** A brick that imports another `@fonderie/*` package
+declares it as a `peerDependency` by default, so the whole app shares one
+copy. A hard runtime `dependencies` entry is allowed only when the target
+holds **no module-level shared state** — a duplicate copy must be harmless.
+`@fonderie/rate-limit` qualifies (bucket state lives in the caller-created
+store instance), which is why `auth` and `workspaces` hard-dep it. `core`
+does not qualify — the `background()` runner is a module-level registry
+(`packages/core/src/background.ts`) — so core is always a peer.
+
 ---
 
 ## The frontend mirrors are one pattern
