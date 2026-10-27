@@ -4,18 +4,18 @@
     "adapter-express": "5.4.13",
     "adapter-hono": "6.3.11",
     "adapter-koa": "5.4.14",
-    "admin": "1.8.4",
+    "admin": "1.8.5",
     "audit": "5.3.4",
-    "auth": "7.27.5",
+    "auth": "7.27.6",
     "billing": "11.5.1",
     "client": "3.25.0",
     "config": "6.6.10",
     "core": "0.33.0",
-    "courier": "7.16.3",
-    "customers": "6.11.1",
+    "courier": "7.16.4",
+    "customers": "6.11.2",
     "events": "5.13.3",
     "geo": "0.5.14",
-    "logger": "0.3.10",
+    "logger": "0.4.0",
     "media": "0.5.1",
     "permissions": "5.2.0",
     "rate-limit": "4.1.2",
@@ -76,7 +76,7 @@
     "vue-webhooks-screens": "0.4.2",
     "vue-workspaces": "0.16.0",
     "vue-workspaces-screens": "0.5.7",
-    "webhooks": "7.2.4",
+    "webhooks": "7.2.5",
     "workspaces": "9.1.0"
   },
   "packages": {
@@ -150,7 +150,7 @@
       "hasOutcomes": false
     },
     "admin": {
-      "version": "1.8.4",
+      "version": "1.8.5",
       "stability": "experimental",
       "requires": [
         "core",
@@ -362,7 +362,7 @@
       "hasOutcomes": true
     },
     "auth": {
-      "version": "7.27.5",
+      "version": "7.27.6",
       "stability": "stable",
       "requires": [
         "core",
@@ -1083,7 +1083,7 @@
       "hasOutcomes": true
     },
     "courier": {
-      "version": "7.16.3",
+      "version": "7.16.4",
       "stability": "stable",
       "requires": [
         "core",
@@ -1185,7 +1185,7 @@
       "hasOutcomes": true
     },
     "customers": {
-      "version": "6.11.1",
+      "version": "6.11.2",
       "stability": "stable",
       "requires": [
         "core",
@@ -1488,7 +1488,7 @@
       "hasOutcomes": true
     },
     "logger": {
-      "version": "0.3.10",
+      "version": "0.4.0",
       "stability": "maturing",
       "requires": [
         "core"
@@ -3077,7 +3077,7 @@
       "hasOutcomes": false
     },
     "webhooks": {
-      "version": "7.2.4",
+      "version": "7.2.5",
       "stability": "stable",
       "requires": [
         "core",
