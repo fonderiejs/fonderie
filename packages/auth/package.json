@@ -2,7 +2,7 @@
 	"name": "@fonderie/auth",
 	"version": "7.27.5",
 	"fonderie": { "stability": "stable" },
-	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP-based MFA with backup codes, and self-service password recovery.",
+	"description": "Drop-in auth for SaaS — email/password, phone OTP, Google OAuth, server-side sessions (sid-bound; revoking the session row kills the token), TOTP-based MFA with backup codes, and self-service password recovery.",
 	"keywords": [
 		"fonderiejs",
 		"auth",

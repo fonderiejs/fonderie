@@ -58,9 +58,9 @@ each other**; they talk through `ctx.meta` and receive interfaces
 
 ## The five tiers
 
-71 packages are not 71 ideas. They are ~18 backend bricks, a client, three
-adapters, two tools — and the same UI bricks mirrored across three frontend
-frameworks.
+A monorepo this size is not that many ideas. The packages are ~18 backend
+bricks, a client, three adapters, two tools — and the same UI bricks mirrored
+across three frontend frameworks.
 
 | Tier | Packages | Role |
 | --- | --- | --- |
@@ -76,6 +76,15 @@ Dependencies point one way, toward `core`: `core → store → auth →
 permissions`, with `workspaces` and `billing` above `auth`, `courier` above
 `workspaces`, `config` above `courier`. Never import from a package that
 depends on you.
+
+**Peer or dependency?** A brick that imports another `@fonderie/*` package
+declares it as a `peerDependency` by default, so the whole app shares one
+copy. A hard runtime `dependencies` entry is allowed only when the target
+holds **no module-level shared state** — a duplicate copy must be harmless.
+`@fonderie/rate-limit` qualifies (bucket state lives in the caller-created
+store instance), which is why `auth` and `workspaces` hard-dep it. `core`
+does not qualify — the `background()` runner is a module-level registry
+(`packages/core/src/background.ts`) — so core is always a peer.
 
 ---
 
@@ -151,7 +160,7 @@ And the egress cousin: **`webhooks`** fans out events to *external* endpoints
 
 ## Stability tiers
 
-The version spread is real maturity signal; made explicit here. The durable
+The stability spread is real maturity signal; made explicit here. The durable
 source of truth is a `fonderie.stability` field on each backend brick's
 `package.json`, read into the brain by the generator (which **enforces** its
 presence — a new backend brick can't ship untiered) and exposed per package in
@@ -160,12 +169,13 @@ field.
 
 | Stability | Bricks |
 | --- | --- |
-| **Stable** (5.x–9.x) | `auth` · `billing` · `workspaces` · `courier` · `config` · `permissions` · `webhooks` · `customers` · `audit` · `rate-limit` · adapters |
-| **Maturing** (0.x, in use) | `core` · `store` · `events` · `logger` · `client` — foundational and battle-tested, pre-1.0 by version only |
-| **Experimental** (early 0.x) | `media` · `storage` · `risk` · `geo` · `admin` — newest bricks; API may move |
+| **Stable** | `auth` · `billing` · `workspaces` · `courier` · `config` · `permissions` · `webhooks` · `customers` · `audit` · `rate-limit` · adapters |
+| **Maturing** | `core` · `store` · `events` · `logger` · `client` — foundational and battle-tested |
+| **Experimental** | `media` · `storage` · `risk` · `geo` · `sse` · `admin` — newest bricks; API may move |
 
-Frontend mirrors track their backend brick's maturity but are uniformly early
-(0.x) as a family.
+Frontend mirrors track their backend brick's maturity and default to beta;
+the admin mirrors (`react-admin`, `vue-admin` and their `-screens`) carry the
+same `experimental` band as `admin` itself.
 
 ---
 

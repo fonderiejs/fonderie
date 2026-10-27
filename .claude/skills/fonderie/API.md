@@ -226,6 +226,16 @@ Each adapter exports the same surface: `mount`, `bridge`, `adapt`, `cors`,
 peer — install `@fonderie/workspaces` / `permissions` / `billing` only if you
 use the matching guard.
 
+Deliberate divergences from that shared surface (accepted decisions, not
+parity bugs — do not "fix" them):
+- `withCache(options)` is **Hono-only**. It sets a `Cache-Control` header on
+  the handler's response; express/koa apps set the header in route code.
+- `mount()`'s options are framework glue and differ: express takes a
+  `register?` callback (seal infra routes at `listen()`) plus `maxBodyBytes`;
+  koa takes `maxBodyBytes`. Hono takes neither — it hands the Web `Request`
+  through instead of reading the raw socket, so there is no body stream to
+  cap (`maxBodyBytes` caps express/koa's raw-stream reads, default 5 MB).
+
 ```ts
 // Express — infra routes are sealed lazily at app.listen()
 import { mount } from '@fonderie/adapter-express';

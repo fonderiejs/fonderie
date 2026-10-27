@@ -91,7 +91,7 @@ What each package does to your app once wired: DB tables created, rows
 seeded, HTTP routes registered (with middleware). **Read the outcomes file
 instead of excavating `dist/` or tarballs.**
 
-- `@fonderie/admin` (5 tables, 26 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
+- `@fonderie/admin` (5 tables, 28 routes) → [signatures/admin-outcomes.md](signatures/admin-outcomes.md)
 - `@fonderie/audit` (0 tables, 2 routes) → [signatures/audit-outcomes.md](signatures/audit-outcomes.md)
 - `@fonderie/auth` (12 tables, 51 routes) → [signatures/auth-outcomes.md](signatures/auth-outcomes.md)
 - `@fonderie/billing` (13 tables, 30 routes) → [signatures/billing-outcomes.md](signatures/billing-outcomes.md)
@@ -105,6 +105,7 @@ instead of excavating `dist/` or tarballs.**
 - `@fonderie/permissions` (1 tables, 0 routes) → [signatures/permissions-outcomes.md](signatures/permissions-outcomes.md)
 - `@fonderie/rate-limit` (1 tables, 0 routes) → [signatures/rate-limit-outcomes.md](signatures/rate-limit-outcomes.md)
 - `@fonderie/risk` (1 tables, 0 routes) → [signatures/risk-outcomes.md](signatures/risk-outcomes.md)
+- `@fonderie/sse` (0 tables, 2 routes) → [signatures/sse-outcomes.md](signatures/sse-outcomes.md)
 - `@fonderie/storage` (1 tables, 0 routes) → [signatures/storage-outcomes.md](signatures/storage-outcomes.md)
 - `@fonderie/webhooks` (3 tables, 10 routes) → [signatures/webhooks-outcomes.md](signatures/webhooks-outcomes.md)
 - `@fonderie/workspaces` (12 tables, 59 routes) → [signatures/workspaces-outcomes.md](signatures/workspaces-outcomes.md)

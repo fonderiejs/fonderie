@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { IFonderieApp, IFonderieModule, IReadinessProblem, Middleware } from '@fonderie/core';
-import { HTTP, normalizeMountPath, normalizeRequestPath, setApiResponse } from '@fonderie/core';
+import { HTTP, decodeKeysetCursor, normalizeMountPath, normalizeRequestPath, setApiResponse } from '@fonderie/core';
 import { validate, validateAdminToken } from '@fonderie/core/middlewares';
 
 import { attention, collectChecks, runDoctor } from './doctor';
@@ -160,6 +160,9 @@ export class AdminModule implements IFonderieModule {
 					const q = new URL(ctx.request.url).searchParams;
 					const limit = Number(q.get('limit')) || undefined;
 					const before = q.get('before') ?? undefined;
+					if (before && !decodeKeysetCursor(before)) {
+						return setApiResponse(HTTP.UNPROCESSABLE, 'INVALID_PARAMETER', 'Invalid cursor');
+					}
 					const page = await readAdminLog(store, {
 						...(limit ? { limit } : {}),
 						...(before ? { before } : {}),
