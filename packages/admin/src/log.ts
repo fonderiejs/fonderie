@@ -1,4 +1,4 @@
-import { normalizeRequestPath } from '@fonderie/core';
+import { decodeKeysetCursor, encodeKeysetCursor, normalizeRequestPath } from '@fonderie/core';
 import type { IFonderieContext, Middleware } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
@@ -71,7 +71,7 @@ export async function readAdminLog(
 	opts: { limit?: number; before?: string } = {},
 ): Promise<IAdminLogPage> {
 	const limit = Math.min(Math.max(opts.limit ?? 50, 1), MAX_PAGE);
-	const cursor = opts.before ? decodeCursor(opts.before) : null;
+	const cursor = opts.before ? decodeKeysetCursor(opts.before) : null;
 	const rows = await store.query<IAdminLogEntry>(
 		`SELECT id, at, actor, method, path, route, module, status,
 		        duration_ms AS "durationMs", request_id AS "requestId", client_ip AS "clientIp"
@@ -79,21 +79,14 @@ export async function readAdminLog(
 		  WHERE ($1::timestamptz IS NULL OR (at, id) < ($1::timestamptz, $2::uuid))
 		  ORDER BY at DESC, id DESC
 		  LIMIT $3`,
-		[cursor?.at ?? null, cursor?.id ?? null, limit + 1],
+		[cursor?.createdAt ?? null, cursor?.id ?? null, limit + 1],
 	);
 	const page = rows.slice(0, limit);
 	const last = page[page.length - 1];
 	return {
 		entries: page,
-		next: rows.length > limit && last ? encodeCursor(last) : null,
+		next: rows.length > limit && last
+			? encodeKeysetCursor(new Date(last.at).toISOString(), last.id)
+			: null,
 	};
-}
-
-function encodeCursor(e: IAdminLogEntry): string {
-	return Buffer.from(`${new Date(e.at).toISOString()}|${e.id}`, 'utf8').toString('base64url');
-}
-
-function decodeCursor(c: string): { at: string; id: string } | null {
-	const [at, id] = Buffer.from(c, 'base64url').toString('utf8').split('|');
-	return at && id ? { at, id } : null;
 }

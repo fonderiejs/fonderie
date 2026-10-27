@@ -83,10 +83,10 @@ lifecycle hooks beyond boot and an optional readiness check.
 
 ### Foundations — pre-1.0, everything rests on them
 
-| Package | Version | What it is |
-| --- | --- | --- |
-| `@fonderie/core` | 0.4.0 | Router, middleware pipeline, module system, shared context + response helpers. The engine. |
-| `@fonderie/store` | 0.2.0 | `IStoreAdapter`, PostgreSQL driver, migration runner, SQL tagged-template helpers, and the versioned-resource control-plane primitive. |
+| Package | What it is |
+| --- | --- |
+| `@fonderie/core` | Router, middleware pipeline, module system, shared context + response helpers. The engine. |
+| `@fonderie/store` | `IStoreAdapter`, PostgreSQL driver, migration runner, SQL tagged-template helpers, and the versioned-resource control-plane primitive. |
 
 These are intentionally still `0.x`: their public surface is the load-bearing
 contract for everything else, and it was frozen-reviewed but not yet stamped
@@ -94,35 +94,35 @@ contract for everything else, and it was frozen-reviewed but not yet stamped
 
 ### Bricks — the SaaS backend, one concern each
 
-| Package | Version | What it gives you |
-| --- | --- | --- |
-| `@fonderie/auth` | 4.0.0 | Email/password, phone OTP, Google OAuth, stateless JWT sessions, TOTP MFA, password recovery. |
-| `@fonderie/workspaces` | 4.0.0 | Multi-tenant teams: members, custom roles, token invitations, per-workspace route scoping. |
-| `@fonderie/permissions` | 4.0.0 | RBAC — roles, per-resource CRUD, `requirePermission` route gate, multi-role via `BOOL_OR`. |
-| `@fonderie/billing` | 4.0.0 | Config-driven plan catalogue, Stripe subscriptions, user + workspace billing, usage metering, webhooks. |
-| `@fonderie/courier` | 4.0.0 | Multi-channel messaging (email/SMS/push), FS or DB templates, per-type routing, message log. |
-| `@fonderie/config` | 4.0.0 | DB-backed feature flags + remote config, per-environment overrides, TTL hot reload, admin control plane. |
-| `@fonderie/events` | 4.0.0 | Event bus with in-memory + PostgreSQL transports; adapter interface for Redis/Kafka/RabbitMQ. |
-| `@fonderie/webhooks` | 4.0.0 | Outgoing webhook engine — register endpoints, fan out workspace events, track + retry delivery. |
-| `@fonderie/audit` | 4.0.0 | Workspace-scoped activity trail over `fonderie_events`. |
-| `@fonderie/customers` | 4.0.0 | Workspace-scoped customer records (people + businesses) with emails, phones, addresses, tags. |
-| `@fonderie/rate-limit` | 3.0.0 | Atomic token-bucket limiter over memory/PostgreSQL/Redis, standard `RateLimit-*` headers. |
+| Package | What it gives you |
+| --- | --- |
+| `@fonderie/auth` | Email/password, phone OTP, Google OAuth, server-side sessions (each access token's `sid` dies with its session row), TOTP MFA, password recovery. |
+| `@fonderie/workspaces` | Multi-tenant teams: members, custom roles, token invitations, per-workspace route scoping. |
+| `@fonderie/permissions` | RBAC — roles, per-resource CRUD, `requirePermission` route gate, multi-role via `BOOL_OR`. |
+| `@fonderie/billing` | Config-driven plan catalogue, Stripe subscriptions, user + workspace billing, usage metering, webhooks. |
+| `@fonderie/courier` | Multi-channel messaging (email/SMS/push), FS or DB templates, per-type routing, message log. |
+| `@fonderie/config` | DB-backed feature flags + remote config, per-environment overrides, live push invalidation (LISTEN on the server, SSE to frontends), admin control plane. |
+| `@fonderie/events` | Event bus with in-memory + PostgreSQL transports; adapter interface for Redis/Kafka/RabbitMQ. |
+| `@fonderie/webhooks` | Outgoing webhook engine — register endpoints, fan out workspace events, track + retry delivery. |
+| `@fonderie/audit` | Workspace-scoped activity trail over `fonderie_events`. |
+| `@fonderie/customers` | Workspace-scoped customer records (people + businesses) with emails, phones, addresses, tags. |
+| `@fonderie/rate-limit` | Atomic token-bucket limiter over memory/PostgreSQL/Redis, standard `RateLimit-*` headers. |
 
 ### Adapters — run bricks inside an existing app
 
-| Package | Version | What it does |
-| --- | --- | --- |
-| `@fonderie/adapter-express` | 4.0.0 | `bridge()`, `adapt()`, `mount()` to use Fonderie middleware in native Express routes. |
-| `@fonderie/adapter-hono` | 4.0.0 | Same, for Hono. |
-| `@fonderie/adapter-koa` | 4.0.0 | Same, for Koa. |
+| Package | What it does |
+| --- | --- |
+| `@fonderie/adapter-express` | `bridge()`, `adapt()`, `mount()` to use Fonderie middleware in native Express routes. |
+| `@fonderie/adapter-hono` | Same, for Hono. |
+| `@fonderie/adapter-koa` | Same, for Koa. |
 
 ### Client-facing tools
 
-| Package | Version | Purpose |
-| --- | --- | --- |
-| `@fonderie/cli` | 0.3.0 | Teaches any coding agent the SDK without loading it eagerly; also drives a live deployment's admin API. See [TOOLING.md](TOOLING.md). |
-| `@fonderie/client` | 0.1.1 | Isomorphic, fully-typed TS client for Fonderie APIs. Zero runtime deps. |
-| `@fonderie/logger` | 0.1.1 | Structured logger, child loggers, request-logging middleware. |
+| Package | Purpose |
+| --- | --- |
+| `@fonderie/cli` | Teaches any coding agent the SDK without loading it eagerly; also drives a live deployment's admin API. See [TOOLING.md](TOOLING.md). |
+| `@fonderie/client` | Isomorphic, fully-typed TS client for Fonderie APIs. Zero runtime deps. |
+| `@fonderie/logger` | Structured logger, child loggers, request-logging middleware. |
 
 ## The self-hosted admin UI
 

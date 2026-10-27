@@ -63,6 +63,9 @@ const OP_COLS = `id, email, name, password_hash AS "passwordHash", scopes, totp_
 const SESSION_COLS = `id_hash AS "idHash", operator_id AS "operatorId", stage, created_at AS "createdAt",
   last_seen_at AS "lastSeenAt", expires_at AS "expiresAt", step_up_at AS "stepUpAt"`;
 
+// Deliberate duplicate of normalizeEmail in @fonderie/auth
+// (packages/auth/src/services/email.ts): admin must not take an auth peer for
+// one string helper. If one changes, change both.
 export const normalizeEmail = (e: string): string => e.trim().toLowerCase();
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
