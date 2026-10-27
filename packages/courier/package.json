@@ -72,7 +72,7 @@
 		"@fonderie/store": "../store",
 		"@types/node": "^26.6.5",
 		"@types/nodemailer": "^8.0.2",
-		"tsup": "^8.5.1",
+		"tsup": "^9.0.0",
 		"tsx": "^4.23.15",
 		"typescript": "^6.0.3"
 	},

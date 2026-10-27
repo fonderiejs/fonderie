@@ -41,6 +41,8 @@ interface IListAuditEventsInput {
     cursor?: string;
 }
 
+function useAuditEvents(rawFilters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
+
 interface IUseAuditEventsReturn {
     events: IAuditEventDTO[];
     isLoading: boolean;
@@ -52,6 +54,4 @@ interface IUseAuditEventsReturn {
     }) => Promise<void>;
     loadMore: () => Promise<void>;
 }
-
-function useAuditEvents(rawFilters?: IListAuditEventsInput | undefined): IUseAuditEventsReturn
 ```

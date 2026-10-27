@@ -196,6 +196,42 @@ interface IWalletTransactionDTO {
 
 type SubscriberType = 'user' | 'workspace';
 
+function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
+
+function useCancelSubscription(client?: BillingClient | undefined): IUseCancelSubscriptionReturn
+
+function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
+
+function useInvoices(client?: BillingClient | undefined): IUseInvoicesReturn
+
+function usePaymentMethod(client?: BillingClient | undefined): IUsePaymentMethodReturn
+
+function usePlan(planId: string): IUsePlanReturn
+
+function usePlans(client?: BillingClient | undefined): IUsePlansReturn
+
+function usePurchasePack(client?: BillingClient | undefined): IUsePurchasePackReturn
+
+function useReactivateSubscription(client?: BillingClient | undefined): IUseReactivateSubscriptionReturn
+
+function useRemovePaymentMethod(client?: BillingClient | undefined): IUseRemovePaymentMethodReturn
+
+function useSavePaymentMethod(client?: BillingClient | undefined): IUseSavePaymentMethodReturn
+
+function useSetupPaymentMethod(client?: BillingClient | undefined): IUseSetupPaymentMethodReturn
+
+function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
+
+function useUsage(metric: string): IUseUsageReturn
+
+function useWallet(client?: BillingClient | undefined): IUseWalletReturn
+
+function useWalletCheckout(client?: BillingClient | undefined): IUseWalletCheckoutReturn
+
+function useWalletPreferences(client?: BillingClient | undefined): IUseWalletPreferencesReturn
+
+function useWalletTransactions(client?: BillingClient | undefined): IUseWalletTransactionsReturn
+
 interface IUseBillingPortalReturn {
     openPortal: () => Promise<string>;
     isLoading: boolean;
@@ -342,40 +378,4 @@ interface IUseWalletTransactionsReturn {
     }) => Promise<void>;
     loadMore: () => Promise<void>;
 }
-
-function useBillingPortal(client?: BillingClient | undefined): IUseBillingPortalReturn
-
-function useCancelSubscription(client?: BillingClient | undefined): IUseCancelSubscriptionReturn
-
-function useCheckout(client?: BillingClient | undefined): IUseCheckoutReturn
-
-function useInvoices(client?: BillingClient | undefined): IUseInvoicesReturn
-
-function usePaymentMethod(client?: BillingClient | undefined): IUsePaymentMethodReturn
-
-function usePlan(planId: string): IUsePlanReturn
-
-function usePlans(client?: BillingClient | undefined): IUsePlansReturn
-
-function usePurchasePack(client?: BillingClient | undefined): IUsePurchasePackReturn
-
-function useReactivateSubscription(client?: BillingClient | undefined): IUseReactivateSubscriptionReturn
-
-function useRemovePaymentMethod(client?: BillingClient | undefined): IUseRemovePaymentMethodReturn
-
-function useSavePaymentMethod(client?: BillingClient | undefined): IUseSavePaymentMethodReturn
-
-function useSetupPaymentMethod(client?: BillingClient | undefined): IUseSetupPaymentMethodReturn
-
-function useSubscription(client?: BillingClient | undefined): IUseSubscriptionReturn
-
-function useUsage(metric: string): IUseUsageReturn
-
-function useWallet(client?: BillingClient | undefined): IUseWalletReturn
-
-function useWalletCheckout(client?: BillingClient | undefined): IUseWalletCheckoutReturn
-
-function useWalletPreferences(client?: BillingClient | undefined): IUseWalletPreferencesReturn
-
-function useWalletTransactions(client?: BillingClient | undefined): IUseWalletTransactionsReturn
 ```

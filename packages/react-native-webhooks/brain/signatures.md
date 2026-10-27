@@ -75,6 +75,14 @@ new WebhooksClient(http: HttpClient, tokens: TokenStore): WebhooksClient
   .listDeliveries(endpointId: string, opts?: IReadOptions | undefined): Promise<IApiResponse<IWebhookDeliveryListResult>>
   .testEndpoint(endpointId: string): Promise<IApiResponse<ITestWebhookResult>>
 
+function useDeletedWebhookEndpoints(client?: WebhooksClient | undefined): IUseDeletedWebhookEndpointsReturn
+
+function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
+
+function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn
+
+function useWebhookEndpoints(client?: WebhooksClient | undefined): IUseWebhookEndpointsReturn
+
 interface IUseDeletedWebhookEndpointsReturn {
     endpoints: IDeletedWebhookEndpointDTO[];
     isLoading: boolean;
@@ -117,12 +125,4 @@ interface IUseWebhookEndpointsReturn {
     removeEndpoint: (endpointId: string) => Promise<void>;
     testEndpoint: (endpointId: string) => Promise<ITestWebhookResult>;
 }
-
-function useDeletedWebhookEndpoints(client?: WebhooksClient | undefined): IUseDeletedWebhookEndpointsReturn
-
-function useWebhookDeliveries(endpointId: string): IUseWebhookDeliveriesReturn
-
-function useWebhookEndpoint(endpointId: string): IUseWebhookEndpointReturn
-
-function useWebhookEndpoints(client?: WebhooksClient | undefined): IUseWebhookEndpointsReturn
 ```

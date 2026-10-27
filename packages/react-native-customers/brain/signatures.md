@@ -262,6 +262,26 @@ interface IListCustomersInput {
 
 type IUpdateCustomerInput = Omit<ICreateCustomerInput, 'referralCode' | 'referredByCode'>;
 
+function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
+
+function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerAddressesReturn
+
+function useCustomerEmails(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerEmailsReturn
+
+function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
+
+function useCustomerNotes(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerNotesReturn
+
+function useCustomerPhones(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerPhonesReturn
+
+function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerRelationshipsReturn
+
+function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerTagsReturn
+
+function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
+
+function useDeletedCustomers(client?: CustomersClient | undefined): IUseDeletedCustomersReturn
+
 interface ICustomerSectionOptions {
     read?: boolean;
 }
@@ -391,24 +411,4 @@ interface IUseDeletedCustomersReturn {
     restore: (id: string) => Promise<void>;
     purge: (id: string) => Promise<void>;
 }
-
-function useCustomer(customerId: string, depth?: 1 | 2 | undefined): IUseCustomerReturn
-
-function useCustomerAddresses(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerAddressesReturn
-
-function useCustomerEmails(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerEmailsReturn
-
-function useCustomerLabels(type: CustomerLabelType): IUseCustomerLabelsReturn
-
-function useCustomerNotes(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerNotesReturn
-
-function useCustomerPhones(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerPhonesReturn
-
-function useCustomerRelationships(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerRelationshipsReturn
-
-function useCustomerTags(customerId: string, opts?: ICustomerSectionOptions | undefined): IUseCustomerTagsReturn
-
-function useCustomers(params?: IListCustomersInput | undefined): IUseCustomersReturn
-
-function useDeletedCustomers(client?: CustomersClient | undefined): IUseDeletedCustomersReturn
 ```

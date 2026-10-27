@@ -41,6 +41,12 @@ new MediaClient(http: HttpClient, tokens: TokenStore): MediaClient
   .assetUrl(id: string): string
   .assetIdFromUrl(url: string | null | undefined): string | null
 
+function useDeleteMedia(client?: MediaClient | undefined): IUseDeleteMediaReturn
+
+function useUploadAvatar(client?: FonderieClient | undefined): IUseUploadAvatarReturn
+
+function useUploadMedia(client?: MediaClient | undefined): IUseUploadMediaReturn
+
 interface IUseDeleteMediaReturn {
     remove: (id: string) => Promise<void>;
     isDeleting: boolean;
@@ -62,10 +68,4 @@ interface IUseUploadMediaReturn {
 type MediaInput = Blob | {
     base64: string;
 };
-
-function useDeleteMedia(client?: MediaClient | undefined): IUseDeleteMediaReturn
-
-function useUploadAvatar(client?: FonderieClient | undefined): IUseUploadAvatarReturn
-
-function useUploadMedia(client?: MediaClient | undefined): IUseUploadMediaReturn
 ```
