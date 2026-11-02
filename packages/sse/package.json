@@ -54,7 +54,7 @@
 	},
 	"devDependencies": {
 		"@fonderie/core": "../core",
-		"@types/node": "^26.6.5",
+		"@types/node": "^26.6.6",
 		"@types/pg": "^8.21.0",
 		"pg": "^8.23.1",
 		"tsup": "^9.0.0",

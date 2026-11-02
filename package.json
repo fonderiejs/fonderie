@@ -47,7 +47,7 @@
     "brain:serve:test": "node scripts/brain-serve.test.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.2",
+    "@biomejs/biome": "^2.6.4",
     "@changesets/cli": "^3.0.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
