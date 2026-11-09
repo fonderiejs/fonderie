@@ -59,9 +59,9 @@
 		"@fonderie/workspaces": "../workspaces",
 		"@fonderie/permissions": "../permissions",
 		"@fonderie/billing": "../billing",
-		"koa": "^3.2.1",
+		"koa": "^3.3.0",
 		"@types/koa": "^3.0.3",
-		"@types/node": "^26.6.5",
+		"@types/node": "^26.6.6",
 		"tsx": "^4.23.15",
 		"tsup": "^9.0.0",
 		"typescript": "^6.0.3"
