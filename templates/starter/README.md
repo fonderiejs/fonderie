@@ -31,8 +31,8 @@ The server boots even without a database configured — set `DATABASE_URL` in
 
 ## Next Steps
 
-This backend was built with Fonderie. Open the project in Claude Code and ask it
-to extend the app — for example:
+This backend was built with Fonderie. Open the project in your coding agent
+(Claude Code, Kimi Code, Cursor…) and ask it to extend the app — for example:
 
 - "Add Stripe billing to this app"
 - "Add rate limiting to the API"
@@ -45,4 +45,6 @@ to extend the app — for example:
 ## AI Assistant
 
 This backend was created with Fonderie. The `.claude/skills/fonderie/` directory
-teaches your AI assistant how to extend it.
+teaches your AI assistant how to extend it. Using a different agent?
+`npx @fonderie/cli skill --target kimi` (or `agents`, or `all`) writes the same
+skill where your client looks for it.
