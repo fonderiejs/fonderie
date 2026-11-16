@@ -302,6 +302,83 @@
       "description": "pre-built Vue screens (CustomersListScreen, CustomerDetailScreen) built on vue-customers' composables via Vue's h() render API, emitting select-customer / navigate-list",
       "package": "vue-customers-screens",
       "recipe": "vue-customers-screens-wiring"
+    },
+    "storage.files": {
+      "description": "content-agnostic object storage — store/serve arbitrary bytes on Postgres, disk, or S3-compatible backends behind one IStorageProvider interface; the layer @fonderie/media builds on",
+      "package": "storage",
+      "recipe": "storage-files"
+    },
+    "media.uploads": {
+      "description": "user-owned image assets — upload, store and serve avatars/logos with type and size caps, GDPR account erasure built in. Frontend hooks: react-media.hooks / vue-media.composables / react-native-media.hooks",
+      "package": "media",
+      "recipe": "media-uploads"
+    },
+    "risk.abuse": {
+      "description": "abuse/fraud scoring for trial, login, registration and promo flows — signal → meaning → decision; the engine decides, never enforces, your route acts on the verdict",
+      "package": "risk",
+      "recipe": "risk-abuse"
+    },
+    "sse.realtime": {
+      "description": "push live updates to frontends over Server-Sent Events — clients subscribe to all or individual events, each brick's catalog decides who receives what; @fonderie/sse/pg broadcaster for multi-instance",
+      "package": "sse",
+      "recipe": "sse-realtime"
+    },
+    "admin.ops": {
+      "description": "the operator's surface — one reserved path (/_admin) behind one admin token: installed bricks, versions, readiness/doctor, route table, tokens, admin log. Powers the fonderie admin CLI commands and the react-admin / vue-admin consoles",
+      "package": "admin",
+      "recipe": "admin-ops"
+    },
+    "logger.logging": {
+      "description": "structured JSON logging — levels, child loggers, pluggable transports, request-logging middleware",
+      "package": "logger",
+      "recipe": "logging"
+    },
+    "adapters.express": {
+      "description": "mount a booted FonderieApp inside an existing Express server (mount()) instead of app.listen",
+      "package": "adapter-express"
+    },
+    "adapters.hono": {
+      "description": "mount a booted FonderieApp inside an existing Hono server (mount()) instead of app.listen",
+      "package": "adapter-hono"
+    },
+    "adapters.koa": {
+      "description": "mount a booted FonderieApp inside an existing Koa server (mount()) instead of app.listen",
+      "package": "adapter-koa"
+    },
+    "react-media.hooks": {
+      "description": "React hooks for media — image/avatar upload to @fonderie/media, session-authenticated over @fonderie/client",
+      "package": "react-media",
+      "recipe": "react-media-wiring"
+    },
+    "vue-media.composables": {
+      "description": "Vue 3 composables for media — image/avatar upload to @fonderie/media, session-authenticated over @fonderie/client",
+      "package": "vue-media",
+      "recipe": "vue-media-wiring"
+    },
+    "react-native-media.hooks": {
+      "description": "React Native hooks for media — re-exports @fonderie/react-media; image/avatar upload to @fonderie/media",
+      "package": "react-native-media",
+      "recipe": "react-native-media-wiring"
+    },
+    "react-admin.hooks": {
+      "description": "React hooks over @fonderie/admin — attention, manifest, doctor, config, routes, tokens, admin log; admin-token authenticated, for internal consoles only",
+      "package": "react-admin",
+      "recipe": "react-admin-wiring"
+    },
+    "react-admin.screens": {
+      "description": "the React admin shell — seven operator pages plus the config and courier-template screens under one admin token",
+      "package": "react-admin-screens",
+      "recipe": "react-admin-screens-wiring"
+    },
+    "vue-admin.composables": {
+      "description": "Vue 3 composables over @fonderie/admin — attention, manifest, doctor, config, routes, tokens, admin log; admin-token authenticated, for internal consoles only",
+      "package": "vue-admin",
+      "recipe": "vue-admin-wiring"
+    },
+    "vue-admin.screens": {
+      "description": "the Vue admin shell — seven operator pages plus the config and courier-template screens under one admin token",
+      "package": "vue-admin-screens",
+      "recipe": "vue-admin-screens-wiring"
     }
   },
   "recipes": {
@@ -969,6 +1046,133 @@
         "frontend-client-injection",
         "frontend-shared-token",
         "frontend-workspace-scoping"
+      ]
+    },
+    "storage-files": {
+      "when": "storing and serving arbitrary files (exports, documents, backups) on Postgres, disk, or an S3-compatible backend",
+      "packages": [
+        "storage",
+        "store"
+      ],
+      "invariants": [],
+      "note": "pick one IStorageProvider (Postgres, disk, or @fonderie/storage/s3) — the interface is identical, so the backend is a deploy-time choice, not app code"
+    },
+    "media-uploads": {
+      "when": "user-owned image uploads — avatars, logos, profile pictures",
+      "packages": [
+        "media",
+        "store"
+      ],
+      "invariants": [],
+      "note": "MediaModule caps type and size (DEFAULT_ALLOWED_TYPES / DEFAULT_MAX_BYTES) and ships accountEraser() for GDPR erasure; frontend upload: react-media.hooks / vue-media.composables / react-native-media.hooks"
+    },
+    "risk-abuse": {
+      "when": "scoring trial, login, registration or promo signups for abuse before granting access",
+      "packages": [
+        "risk",
+        "store"
+      ],
+      "invariants": [],
+      "note": "RiskEngine.assess() returns a verdict — it DECIDES, never enforces; your route acts on it. record() the outcome later so scoring improves"
+    },
+    "sse-realtime": {
+      "when": "pushing live updates to connected browsers without polling",
+      "packages": [
+        "sse",
+        "events"
+      ],
+      "invariants": [],
+      "note": "clients subscribe to all or individual events; each brick's catalog decides who receives what. Multi-instance: use the @fonderie/sse/pg broadcaster"
+    },
+    "admin-ops": {
+      "when": "operating a deployment — installed bricks, readiness/doctor, route table, tokens, admin log behind one admin token",
+      "packages": [
+        "admin"
+      ],
+      "invariants": [],
+      "note": "one reserved path (/_admin) behind one admin token; powers the fonderie admin CLI commands and the react-admin / vue-admin consoles"
+    },
+    "logging": {
+      "when": "structured JSON logs with levels, child loggers and request logging",
+      "packages": [
+        "logger"
+      ],
+      "invariants": []
+    },
+    "react-media-wiring": {
+      "when": "image/avatar upload in a React web app",
+      "packages": [
+        "client",
+        "react",
+        "react-media"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token"
+      ]
+    },
+    "vue-media-wiring": {
+      "when": "image/avatar upload in a Vue 3 app",
+      "packages": [
+        "client",
+        "vue-media"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token"
+      ]
+    },
+    "react-native-media-wiring": {
+      "when": "image/avatar upload in a React Native app",
+      "packages": [
+        "client",
+        "react-native-media"
+      ],
+      "invariants": [
+        "frontend-client-injection",
+        "frontend-shared-token"
+      ]
+    },
+    "react-admin-wiring": {
+      "when": "building an operator console over the admin API in React",
+      "packages": [
+        "client",
+        "react-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "react-admin-screens-wiring": {
+      "when": "a ready-made React admin shell — operator pages plus config and template screens",
+      "packages": [
+        "client",
+        "react-admin",
+        "react-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-admin-wiring": {
+      "when": "building an operator console over the admin API in Vue 3",
+      "packages": [
+        "client",
+        "vue-admin"
+      ],
+      "invariants": [
+        "frontend-admin-token"
+      ]
+    },
+    "vue-admin-screens-wiring": {
+      "when": "a ready-made Vue admin shell — operator pages plus config and template screens",
+      "packages": [
+        "client",
+        "vue-admin",
+        "vue-admin-screens"
+      ],
+      "invariants": [
+        "frontend-admin-token"
       ]
     }
   },
