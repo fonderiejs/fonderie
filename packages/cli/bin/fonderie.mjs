@@ -82,22 +82,29 @@ function doQuery() {
 }
 
 // ── fonderie skill — write the lazy router + per-package bodies ──────────────
-// Where each coding agent discovers project-level skills. The skill CONTENT is
-// identical for every target — plain markdown, no client-specific syntax — so a
-// target is only a directory. `agents` is the portable shared dir (read by
-// Kimi Code and other AGENTS.md-era tools); the named targets keep each
-// client's own convention. `--out` overrides with an explicit directory, which
-// is also the escape hatch for clients not listed here (e.g. Cursor — point it
-// at the dir your version scans).
+// Where each coding agent discovers project-level skills, and in which shape.
+// The skill CONTENT is identical for every target — plain markdown, no
+// client-specific syntax — so a target is a directory + a filename convention.
+//
+// The `flat` distinction is load-bearing, learned from a live dogfood: Claude
+// Code reads <dir>/SKILL.md, but Kimi Code's scanner RESERVES the filename
+// SKILL.md for the directory form (<name>/SKILL.md) — a top-level SKILL.md is
+// silently invisible, and the agent hand-rolls auth while the skill sits on
+// disk. For those scanners the router ships as a flat fonderie.md instead;
+// the bodies stay in fonderie/ next to it, so relative references resolve
+// identically. `agents` is the portable shared dir (read by Kimi Code and
+// other AGENTS.md-era tools) and follows the same rule. `--out` overrides
+// with an explicit directory, keeping the Claude-style layout — the escape
+// hatch for clients not listed here (e.g. Cursor).
 const SKILL_TARGETS = {
-  claude: '.claude/skills',
-  kimi: '.kimi-code/skills',
-  agents: '.agents/skills',
+  claude: { dir: '.claude/skills', flat: false },
+  kimi: { dir: '.kimi-code/skills', flat: true },
+  agents: { dir: '.agents/skills', flat: true },
 };
 
 function skillOutDirs(projectDir) {
   const explicit = arg('--out', null);
-  if (explicit) return [explicit];
+  if (explicit) return [{ dir: explicit, flat: false }];
   const t = arg('--target', 'claude');
   const names = t === 'all' ? Object.keys(SKILL_TARGETS) : t.split(',').map((s) => s.trim());
   const unknown = names.filter((n) => !SKILL_TARGETS[n]);
@@ -105,15 +112,14 @@ function skillOutDirs(projectDir) {
     console.error(`unknown target "${unknown.join(', ')}". Targets: ${Object.keys(SKILL_TARGETS).join(', ')}, all — or --out <dir>.`);
     process.exit(2);
   }
-  return names.map((n) => join(projectDir, SKILL_TARGETS[n]));
+  return names.map((n) => ({ dir: join(projectDir, SKILL_TARGETS[n].dir), flat: SKILL_TARGETS[n].flat }));
 }
 
-// Write the router + bodies into ONE out dir. The layout is flat on purpose
-// (SKILL.md at the scan-dir root, bodies in a fonderie/ subdir): it is what
-// .claude/skills has always shipped, and it registers under Kimi Code's flat
-// form too — the frontmatter `name: fonderie` wins over the filename, and
-// loose .md files inside subdirectories are never mistaken for skills.
-function writeSkill(outDir, projectDir) {
+// Write the router + bodies into ONE out dir. `flat` picks the router's
+// filename: SKILL.md (Claude-style) or fonderie.md (scanners that reserve
+// SKILL.md for the directory form). Bodies always live in fonderie/ next to
+// the router, so the router's relative references resolve the same either way.
+function writeSkill(outDir, projectDir, { flat = false } = {}) {
   const inst = installed(projectDir);
   const instNames = new Set(inst.map((p) => p.name));
   mkdirSync(join(outDir, 'fonderie'), { recursive: true });
@@ -180,15 +186,16 @@ function writeSkill(outDir, projectDir) {
     for (const [k, v] of Object.entries(K.invariants).sort()) L.push(`- **${k}**: ${v}`);
     L.push('');
   }
-  writeFileSync(join(outDir, 'SKILL.md'), L.join('\n') + '\n');
-  return { bodies, routerTok: Math.ceil(L.join('\n').length / 4) };
+  const routerFile = flat ? 'fonderie.md' : 'SKILL.md';
+  writeFileSync(join(outDir, routerFile), L.join('\n') + '\n');
+  return { bodies, routerTok: Math.ceil(L.join('\n').length / 4), routerFile };
 }
 
 function doSkill() {
   const projectDir = arg('--project', process.cwd());
-  for (const outDir of skillOutDirs(projectDir)) {
-    const { bodies, routerTok } = writeSkill(outDir, projectDir);
-    console.log(`Wrote ${outDir}/SKILL.md (router ~${routerTok} tok, always resident) + ${bodies} lazy bodies in fonderie/.`);
+  for (const { dir: outDir, flat } of skillOutDirs(projectDir)) {
+    const { bodies, routerTok, routerFile } = writeSkill(outDir, projectDir, { flat });
+    console.log(`Wrote ${outDir}/${routerFile} (router ~${routerTok} tok, always resident) + ${bodies} lazy bodies in fonderie/.`);
     console.log(`Point your agent at ${outDir}. Bodies load only when a task touches that package.`);
   }
 }

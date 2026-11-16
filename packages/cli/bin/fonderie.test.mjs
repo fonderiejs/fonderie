@@ -90,20 +90,26 @@ mkdirSync(join(projT, 'node_modules', '@fonderie', 'auth', 'brain'), { recursive
 writeFileSync(join(projT, 'node_modules', '@fonderie', 'auth', 'package.json'), JSON.stringify({ name: '@fonderie/auth', version: '1.3.2' }));
 writeFileSync(join(projT, 'node_modules', '@fonderie', 'auth', 'brain', 'signatures.md'), '# auth\n\nclass AuthModule {}\n');
 run(['skill', '--project', projT, '--target', 'kimi']);
-if (!existsSync(join(projT, '.kimi-code/skills/SKILL.md'))) fail('--target kimi did not write .kimi-code/skills/SKILL.md');
+// Kimi Code's scanner reserves the filename SKILL.md for the directory form —
+// a top-level SKILL.md is silently invisible (dogfood-proven: the agent
+// hand-rolled auth while the skill sat on disk). Flat targets get fonderie.md.
+if (!existsSync(join(projT, '.kimi-code/skills/fonderie.md'))) fail('--target kimi did not write .kimi-code/skills/fonderie.md');
+if (existsSync(join(projT, '.kimi-code/skills/SKILL.md'))) fail('--target kimi must NOT write a top-level SKILL.md (invisible to the scanner)');
 if (!existsSync(join(projT, '.kimi-code/skills/fonderie/auth.md'))) fail('--target kimi did not write the bodies');
 if (existsSync(join(projT, '.claude/skills'))) fail('--target kimi should not write the claude dir');
 run(['skill', '--project', projT, '--target', 'all']);
-for (const d of ['.claude/skills', '.kimi-code/skills', '.agents/skills']) {
-  if (!existsSync(join(projT, d, 'SKILL.md'))) fail(`--target all missed ${d}`);
+if (!existsSync(join(projT, '.claude/skills/SKILL.md'))) fail('--target all missed .claude/skills/SKILL.md');
+for (const d of ['.kimi-code/skills', '.agents/skills']) {
+  if (!existsSync(join(projT, d, 'fonderie.md'))) fail(`--target all missed ${d}/fonderie.md`);
+  if (existsSync(join(projT, d, 'SKILL.md'))) fail(`--target all must not write ${d}/SKILL.md`);
 }
 // the skill content is client-neutral: every target gets identical bytes
-if (readFileSync(join(projT, '.claude/skills/SKILL.md'), 'utf8') !== readFileSync(join(projT, '.kimi-code/skills/SKILL.md'), 'utf8'))
+if (readFileSync(join(projT, '.claude/skills/SKILL.md'), 'utf8') !== readFileSync(join(projT, '.kimi-code/skills/fonderie.md'), 'utf8'))
   fail('targets should receive identical skill bytes');
 // comma list
 const projC = mkdtempSync(join(tmpdir(), 'fonderie-targets-list-'));
 run(['skill', '--project', projC, '--target', 'kimi,agents']);
-if (!existsSync(join(projC, '.kimi-code/skills/SKILL.md')) || !existsSync(join(projC, '.agents/skills/SKILL.md')))
+if (!existsSync(join(projC, '.kimi-code/skills/fonderie.md')) || !existsSync(join(projC, '.agents/skills/fonderie.md')))
   fail('comma-list target did not write both dirs');
 if (existsSync(join(projC, '.claude/skills'))) fail('comma-list target should not write the claude dir');
 // unknown target refused with guidance
@@ -116,7 +122,7 @@ if (!/unknown target/.test(tErr)) fail('unknown target not reported: ' + tErr);
 const proj4 = mkdtempSync(join(tmpdir(), 'fonderie-init-kimi-'));
 writeFileSync(join(proj4, 'package.json'), JSON.stringify({ name: 'app' }));
 run(['init', '--project', proj4, '--target', 'kimi']);
-if (!existsSync(join(proj4, '.kimi-code/skills/SKILL.md'))) fail('init --target kimi did not write the skill');
+if (!existsSync(join(proj4, '.kimi-code/skills/fonderie.md'))) fail('init --target kimi did not write the skill');
 const pj4 = JSON.parse(readFileSync(join(proj4, 'package.json'), 'utf8'));
 if (pj4.scripts.postinstall !== 'fonderie skill --target kimi') fail(`init --target kimi wired the wrong postinstall (got: ${pj4.scripts.postinstall})`);
 run(['init', '--project', proj4, '--target', 'kimi']);
