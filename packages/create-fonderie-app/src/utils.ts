@@ -68,7 +68,7 @@ export function printSuccess(projectName: string): void {
 		pc.cyan('  cp .env.example .env'),
 		pc.cyan('  npm run dev'),
 		'',
-		'Then open Claude Code and say:',
+		'Then open your coding agent (Claude Code, Kimi Code, Cursor…) and say:',
 		pc.dim('  "Add billing to this app."'),
 		'',
 		'Read the README.md for more.',
