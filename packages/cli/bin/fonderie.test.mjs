@@ -84,6 +84,45 @@ run(['init', '--project', proj3]);
 const pj3 = JSON.parse(readFileSync(join(proj3, 'package.json'), 'utf8'));
 if (pj3.scripts.postinstall !== 'patch-package && fonderie skill') fail(`init did not chain existing postinstall (got: ${pj3.scripts.postinstall})`);
 
+// --- skill --target: same bytes, per-client directories ---
+const projT = mkdtempSync(join(tmpdir(), 'fonderie-targets-'));
+mkdirSync(join(projT, 'node_modules', '@fonderie', 'auth', 'brain'), { recursive: true });
+writeFileSync(join(projT, 'node_modules', '@fonderie', 'auth', 'package.json'), JSON.stringify({ name: '@fonderie/auth', version: '1.3.2' }));
+writeFileSync(join(projT, 'node_modules', '@fonderie', 'auth', 'brain', 'signatures.md'), '# auth\n\nclass AuthModule {}\n');
+run(['skill', '--project', projT, '--target', 'kimi']);
+if (!existsSync(join(projT, '.kimi-code/skills/SKILL.md'))) fail('--target kimi did not write .kimi-code/skills/SKILL.md');
+if (!existsSync(join(projT, '.kimi-code/skills/fonderie/auth.md'))) fail('--target kimi did not write the bodies');
+if (existsSync(join(projT, '.claude/skills'))) fail('--target kimi should not write the claude dir');
+run(['skill', '--project', projT, '--target', 'all']);
+for (const d of ['.claude/skills', '.kimi-code/skills', '.agents/skills']) {
+  if (!existsSync(join(projT, d, 'SKILL.md'))) fail(`--target all missed ${d}`);
+}
+// the skill content is client-neutral: every target gets identical bytes
+if (readFileSync(join(projT, '.claude/skills/SKILL.md'), 'utf8') !== readFileSync(join(projT, '.kimi-code/skills/SKILL.md'), 'utf8'))
+  fail('targets should receive identical skill bytes');
+// comma list
+const projC = mkdtempSync(join(tmpdir(), 'fonderie-targets-list-'));
+run(['skill', '--project', projC, '--target', 'kimi,agents']);
+if (!existsSync(join(projC, '.kimi-code/skills/SKILL.md')) || !existsSync(join(projC, '.agents/skills/SKILL.md')))
+  fail('comma-list target did not write both dirs');
+if (existsSync(join(projC, '.claude/skills'))) fail('comma-list target should not write the claude dir');
+// unknown target refused with guidance
+let tErr = '';
+try { run(['skill', '--project', projT, '--target', 'vim']); fail('skill accepted an unknown target'); }
+catch (e) { tErr = String(e.stderr || e.stdout || ''); }
+if (!/unknown target/.test(tErr)) fail('unknown target not reported: ' + tErr);
+
+// --- init --target kimi: the postinstall hook carries the target ---
+const proj4 = mkdtempSync(join(tmpdir(), 'fonderie-init-kimi-'));
+writeFileSync(join(proj4, 'package.json'), JSON.stringify({ name: 'app' }));
+run(['init', '--project', proj4, '--target', 'kimi']);
+if (!existsSync(join(proj4, '.kimi-code/skills/SKILL.md'))) fail('init --target kimi did not write the skill');
+const pj4 = JSON.parse(readFileSync(join(proj4, 'package.json'), 'utf8'));
+if (pj4.scripts.postinstall !== 'fonderie skill --target kimi') fail(`init --target kimi wired the wrong postinstall (got: ${pj4.scripts.postinstall})`);
+run(['init', '--project', proj4, '--target', 'kimi']);
+const pj4b = JSON.parse(readFileSync(join(proj4, 'package.json'), 'utf8'));
+if (pj4b.scripts.postinstall !== 'fonderie skill --target kimi') fail(`init --target kimi not idempotent (got: ${pj4b.scripts.postinstall})`);
+
 // --- add: offline guards (the happy path installs from npm — not unit-tested) ---
 // unknown capability → non-zero, lists the recipes (no network touched)
 let addErr = '';
