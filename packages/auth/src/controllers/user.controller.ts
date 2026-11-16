@@ -7,7 +7,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { IAuthConfig } from '../config';
 
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 
 import { MESSAGE_KEYS, EVENT_KEYS, type ISessionRevokedEvent } from '../config';
 import { toUserDTO } from '../dtos/user';

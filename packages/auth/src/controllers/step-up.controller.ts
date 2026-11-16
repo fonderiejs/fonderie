@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 import { HTTP, background, setApiResponse } from '@fonderie/core';
 import type { ICourierMessage, IFonderieContext } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { MESSAGE_KEYS, type IAuthConfig } from '../config';

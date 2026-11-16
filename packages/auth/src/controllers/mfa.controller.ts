@@ -5,7 +5,7 @@ import { setApiResponse, HTTP, background } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 
 import type { IAuthConfig } from '../config';
 import { MESSAGE_KEYS } from '../config';

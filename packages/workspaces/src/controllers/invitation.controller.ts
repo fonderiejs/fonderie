@@ -3,7 +3,7 @@ import type { IFonderieContext } from '@fonderie/core';
 import type { ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 
 import { getWorkspaceSettings } from '../services/workspaces';
 import { MESSAGE_KEYS } from '../config';

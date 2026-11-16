@@ -5,7 +5,7 @@ import { tokenPairCookies, cookieHeaders } from '../services/cookies';
 import { setApiResponse, HTTP, constantTimeEqual, background } from '@fonderie/core';
 import type { IFonderieContext, ICourierMessage } from '@fonderie/core';
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import type { IAuthConfig } from '../config';

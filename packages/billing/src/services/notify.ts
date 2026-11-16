@@ -1,5 +1,5 @@
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 import type { IReadinessProblem } from '@fonderie/core';
 import { validateAdminToken } from '@fonderie/core/middlewares';
 

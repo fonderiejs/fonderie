@@ -2,7 +2,7 @@ import type { IAdminDescription, IFonderieModule, IFonderieApp, ILocaleSettings 
 import { defineLocales } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from './notification-event';
 
 import type { ITemplateResolver, ICourierMessage } from './types';
 import type { ICourierConfig } from './config';

@@ -4,7 +4,7 @@ import type { IStoreAdapter } from '@fonderie/store';
 import type { EventBus } from '@fonderie/events';
 import { background, decodeKeysetCursor } from '@fonderie/core';
 import type { ICourierMessage } from '@fonderie/core';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from './notification-event';
 import { EVENT_KEYS, MESSAGE_KEYS, type IAuthConfig, type ISessionRevokedEvent } from './config';
 import { deletionDate } from './services/pending-deletion';
 import { eraseAccountNow, erasureHash } from './services/deletion-schedule';

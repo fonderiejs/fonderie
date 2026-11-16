@@ -1,4 +1,4 @@
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 import type { ICourierMessage } from '@fonderie/core';
 import type { IStoreAdapter } from '@fonderie/store';
 
