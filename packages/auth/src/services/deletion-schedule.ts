@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 
 import { COURIER_FORMAT_KEY } from '@fonderie/core';
 import type { ICourierMessage } from '@fonderie/core';
-import { NOTIFICATION_EVENT } from '@fonderie/events';
+import { NOTIFICATION_EVENT } from '../notification-event';
 import type { IStoreAdapter } from '@fonderie/store';
 
 import { EVENT_KEYS, MESSAGE_KEYS, deletionGracePeriodDays } from '../config';
