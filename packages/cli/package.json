@@ -8,7 +8,10 @@
 		"skill",
 		"ai-agent",
 		"claude-code",
+		"kimi-code",
+		"cursor",
 		"codex",
+		"agents",
 		"lazy"
 	],
 	"license": "MIT",

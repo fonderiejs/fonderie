@@ -18,8 +18,9 @@ instead of your product.
 Fonderie is the standard that ends the re-derivation. Each piece — auth,
 workspaces, billing, messaging, permissions, events — is an audited, reviewable
 brick that snaps into `@fonderie/core` and runs in **your** process against
-**your** database. Install it and any assistant (Claude Code, Cursor, Codex,
-Gemini CLI) builds on a backend it already knows — the same way, every time.
+**your** database. Install it and any assistant (Claude Code, Kimi Code,
+Cursor, Codex, Gemini CLI) builds on a backend it already knows — the same
+way, every time.
 
 It's the bet HTTP made: standardize the boring parts. The web has GET, POST, and
 a 404 nobody re-argues. The SaaS backend never got its equivalent — so twenty
@@ -37,10 +38,14 @@ seats, no rent. MIT.
 
 ## The skill
 
-This repo ships a [Claude Code skill](.claude/skills/fonderie/SKILL.md) that
+This repo ships an [agent skill](.claude/skills/fonderie/SKILL.md) that
 teaches an assistant to reach for `@fonderie/*` bricks instead of hand-writing
 auth, billing, or permissions. It loads automatically — say "add subscriptions"
 and the assistant wires `@fonderie/billing` instead of improvising Stripe glue.
+The skill is plain markdown, client-neutral: `npx @fonderie/cli skill --target
+claude|kimi|agents|all` writes it where your assistant looks for it
+(`.claude/skills`, `.kimi-code/skills`, the portable `.agents/skills`, or
+`--out <dir>` for anything else).
 
 Three files, with a strict generated/curated split:
 
@@ -90,7 +95,7 @@ deploy-ready apps for Hono, Express, and Koa.
 | [`@fonderie/auth`](packages/auth) | Drop-in auth for SaaS |
 | [`@fonderie/billing`](packages/billing) | SaaS billing in one module |
 | [`@fonderie/client`](packages/client) | Isomorphic TypeScript client for Fonderie-powered APIs |
-| [`@fonderie/cli`](packages/cli) | The Fonderie CLI — `fonderie skill` writes a lazy agent skill; `fonderie query` answers what to install for a capability |
+| [`@fonderie/cli`](packages/cli) | The Fonderie CLI — `fonderie skill` writes a lazy agent skill (Claude Code, Kimi Code, or any agent via `--target`/`--out`); `fonderie query` answers what to install for a capability |
 | [`@fonderie/config`](packages/config) | DB-backed feature flags and remote config |
 | [`@fonderie/core`](packages/core) | Framework core |
 | [`@fonderie/courier`](packages/courier) | Transactional messaging for SaaS |

@@ -3,10 +3,12 @@
 // (PLAN-SKILLS-CLI.md — lazy skills beat the eager brain at 0.14 knowledge
 // overhead vs fat, at equal completion/quality):
 //
-//   fonderie skill [--out <dir>] [--project <dir>]
-//       Write a LAZY skill into <dir> (default .claude/skills): a small router
-//       SKILL.md (always resident) + one body per INSTALLED @fonderie package
-//       (read on demand). Load scales with what the agent does, not the catalogue.
+//   fonderie skill [--target <claude|kimi|agents|all>] [--out <dir>] [--project <dir>]
+//       Write a LAZY skill into the agent's skills dir (default target claude):
+//       a small router SKILL.md (always resident) + one body per INSTALLED
+//       @fonderie package (read on demand). Load scales with what the agent
+//       does, not the catalogue. Same bytes for every target — only the
+//       directory changes.
 //
 //   fonderie query <concept>          fonderie query --concepts
 //       Answer "what do I install for this capability" — the package, the recipe,
@@ -80,9 +82,38 @@ function doQuery() {
 }
 
 // ── fonderie skill — write the lazy router + per-package bodies ──────────────
-function doSkill() {
-  const projectDir = arg('--project', process.cwd());
-  const outDir = arg('--out', join(projectDir, '.claude/skills'));
+// Where each coding agent discovers project-level skills. The skill CONTENT is
+// identical for every target — plain markdown, no client-specific syntax — so a
+// target is only a directory. `agents` is the portable shared dir (read by
+// Kimi Code and other AGENTS.md-era tools); the named targets keep each
+// client's own convention. `--out` overrides with an explicit directory, which
+// is also the escape hatch for clients not listed here (e.g. Cursor — point it
+// at the dir your version scans).
+const SKILL_TARGETS = {
+  claude: '.claude/skills',
+  kimi: '.kimi-code/skills',
+  agents: '.agents/skills',
+};
+
+function skillOutDirs(projectDir) {
+  const explicit = arg('--out', null);
+  if (explicit) return [explicit];
+  const t = arg('--target', 'claude');
+  const names = t === 'all' ? Object.keys(SKILL_TARGETS) : t.split(',').map((s) => s.trim());
+  const unknown = names.filter((n) => !SKILL_TARGETS[n]);
+  if (unknown.length) {
+    console.error(`unknown target "${unknown.join(', ')}". Targets: ${Object.keys(SKILL_TARGETS).join(', ')}, all — or --out <dir>.`);
+    process.exit(2);
+  }
+  return names.map((n) => join(projectDir, SKILL_TARGETS[n]));
+}
+
+// Write the router + bodies into ONE out dir. The layout is flat on purpose
+// (SKILL.md at the scan-dir root, bodies in a fonderie/ subdir): it is what
+// .claude/skills has always shipped, and it registers under Kimi Code's flat
+// form too — the frontmatter `name: fonderie` wins over the filename, and
+// loose .md files inside subdirectories are never mistaken for skills.
+function writeSkill(outDir, projectDir) {
   const inst = installed(projectDir);
   const instNames = new Set(inst.map((p) => p.name));
   mkdirSync(join(outDir, 'fonderie'), { recursive: true });
@@ -150,9 +181,16 @@ function doSkill() {
     L.push('');
   }
   writeFileSync(join(outDir, 'SKILL.md'), L.join('\n') + '\n');
-  const routerTok = Math.ceil(L.join('\n').length / 4);
-  console.log(`Wrote ${outDir}/SKILL.md (router ~${routerTok} tok, always resident) + ${bodies} lazy bodies in fonderie/.`);
-  console.log('Point your agent at .claude/skills. Bodies load only when a task touches that package.');
+  return { bodies, routerTok: Math.ceil(L.join('\n').length / 4) };
+}
+
+function doSkill() {
+  const projectDir = arg('--project', process.cwd());
+  for (const outDir of skillOutDirs(projectDir)) {
+    const { bodies, routerTok } = writeSkill(outDir, projectDir);
+    console.log(`Wrote ${outDir}/SKILL.md (router ~${routerTok} tok, always resident) + ${bodies} lazy bodies in fonderie/.`);
+    console.log(`Point your agent at ${outDir}. Bodies load only when a task touches that package.`);
+  }
 }
 
 // ── fonderie init — generate the skill AND keep it fresh on install/update ───
@@ -166,7 +204,12 @@ function doInit() {
   if (!existsSync(pjPath)) { console.log('\n(no package.json here — skipped postinstall wiring; run `fonderie skill` after installs to refresh.)'); return; }
   const pj = JSON.parse(readFileSync(pjPath, 'utf8'));
   pj.scripts ||= {};
-  const HOOK = 'fonderie skill';
+  // Carry --target/--out into the hook so every install regenerates into the
+  // same dirs init just wrote. The bare default stays byte-identical to what
+  // init has always wired.
+  const target = arg('--target', null);
+  const out = arg('--out', null);
+  const HOOK = `fonderie skill${target ? ` --target ${target}` : ''}${out ? ` --out ${out}` : ''}`;
   const cur = pj.scripts.postinstall;
   if (cur && cur.includes(HOOK)) {
     console.log('\n✓ postinstall already refreshes the skill.');
@@ -656,11 +699,16 @@ else if (cmd === 'admin') adminCmd().catch((e) => { console.error(e.message); pr
 else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
-  fonderie init [--project <dir>]                  set up the lazy skill + keep it fresh (postinstall)
+  fonderie init [--target <t>] [--project <dir>]   set up the lazy skill + keep it fresh (postinstall)
   fonderie add <capability> [--project <dir>]      deterministically wire a brick: install + compose + migrate + env
   fonderie env generate [--project <dir>]          write .env.example from the installed bricks' env.json, complete .env
       --example-only (skip .env) · --check (exit 1 if .env.example is out of date — CI) · --force (write .env even if not gitignored)
-  fonderie skill [--out <dir>] [--project <dir>]   write the lazy skill (router + bodies)
+  fonderie skill [--target <t>] [--out <dir>] [--project <dir>]
+                                                   write the lazy skill (router + bodies)
+      --target claude (.claude/skills, default) · kimi (.kimi-code/skills) ·
+      agents (.agents/skills, the portable shared dir) · all, or a comma list —
+      same skill bytes, only the directory changes. --out overrides with an
+      explicit dir for any other client.
   fonderie query <concept>                         what to install for a capability
   fonderie query --concepts                        list every capability
 
