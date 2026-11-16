@@ -95,6 +95,10 @@ jobs:
       # code and breaking R3's version-matched-by-construction guarantee.
       - run: npm run docs:signatures && git diff --exit-code .claude/skills/fonderie/SIGNATURES.md .claude/skills/fonderie/signatures 'packages/*/brain/*'
       - run: npm run docs:brain && git diff --exit-code .claude/skills/fonderie/brain.json packages/cli/data/knowledge.json
+      # Catalog-coverage guard — a brick that ships a fragment but has no
+      # concept is undiscoverable: the dogfood agent hand-rolled auth while 16
+      # such bricks sat invisible before #717. Fails the next silent blind spot.
+      - run: npm run check:catalog-coverage
       - run: npm run brain:test
       - run: npm run brain:project-test
       - run: node packages/cli/bin/fonderie.test.mjs
