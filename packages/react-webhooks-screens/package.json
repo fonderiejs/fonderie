@@ -53,6 +53,7 @@
 	},
 	"files": [
 		"dist",
+		"brain",
 		"LICENSE",
 		"README.md"
 	],

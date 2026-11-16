@@ -13,6 +13,10 @@
 //   sse reported 0 routes                template-literal paths (`${base}/…`) (2026-10-26)
 //                                        matched nothing, in the GENERATOR
 //                                        and in this guard's own regex alike
+//   53 frontend tarballs shipped no      brain/ generated on disk but        (2026-11-16)
+//   brain/ fragment                      missing from package.json `files` —
+//                                        the CLI's lazy bodies pointed at
+//                                        files that never reach node_modules
 //
 // None of those failed anything. Each generator matched what it could, skipped
 // what it could not, printed a cheerful count and exited 0. That is the failure
@@ -194,6 +198,23 @@ function leg7() {
 	}
 }
 
+// ── 8. a fragment on disk must ship in the tarball ──────────────────────────
+// The co-located fragment is only skew-proof if it REACHES node_modules: 53
+// frontend packages generated brain/signatures.md at build time but left
+// "brain" out of package.json `files`, so the published tarball excluded it —
+// and the CLI's router pointed agents at body files that can never exist in a
+// consumer's install. `files` is the whole contract here; check it directly.
+function leg8() {
+	for (const p of readdirSync(pkgsDir)) {
+		const brainDir = join(pkgsDir, p, 'brain');
+		if (!existsSync(join(pkgsDir, p, 'package.json')) || !existsSync(brainDir)) continue;
+		if (!readdirSync(brainDir).some((f) => f.endsWith('.md'))) continue;
+		const files = pkgJson(p).files;
+		if (!Array.isArray(files) || !files.includes('brain'))
+			fail(`${p}: brain/ exists on disk but is not in package.json "files" — the fragment never reaches node_modules`);
+	}
+}
+
 const isMain = Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
 	leg1();
@@ -203,6 +224,7 @@ if (isMain) {
 	leg5();
 	leg6();
 	leg7();
+	leg8();
 
 	if (failures) {
 		console.error(
