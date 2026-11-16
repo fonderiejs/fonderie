@@ -1,5 +1,11 @@
 # @fonderie/cli
 
+## 0.16.0
+
+### Minor Changes
+
+- cafa622: `fonderie init` now also leaves a marker-guarded pointer in AGENTS.md — the one channel every coding agent reads, with or without a skill scanner (Cursor, Aider, …) — directing it at `fonderie query --concepts`. Existing AGENTS.md files are appended to, never replaced; repeat inits stay idempotent.
+
 ## 0.15.2
 
 ### Patch Changes
