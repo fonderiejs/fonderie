@@ -77,6 +77,19 @@ if (pj2.scripts.build !== 'tsc') fail('init clobbered an existing script');
 run(['init', '--project', proj2]);
 const pj2b = JSON.parse(readFileSync(join(proj2, 'package.json'), 'utf8'));
 if (pj2b.scripts.postinstall !== 'fonderie skill') fail(`init not idempotent (got: ${pj2b.scripts.postinstall})`);
+// init leaves the AGENTS.md pointer — the channel every agent reads, skill
+// scanner or not — and a repeat init must not stack a second copy
+const ag2 = readFileSync(join(proj2, 'AGENTS.md'), 'utf8');
+if (!ag2.includes('<!-- fonderie:pointer -->') || !ag2.includes('fonderie query --concepts')) fail('init did not write the AGENTS.md pointer');
+if (ag2.split('<!-- fonderie:pointer -->').length !== 2) fail('init stacked a duplicate AGENTS.md pointer');
+// an existing AGENTS.md is appended to, not replaced
+const proj2c = mkdtempSync(join(tmpdir(), 'fonderie-init-agents-'));
+writeFileSync(join(proj2c, 'package.json'), JSON.stringify({ name: 'app' }));
+writeFileSync(join(proj2c, 'AGENTS.md'), '# My rules\n\nAlways wear a hat.\n');
+run(['init', '--project', proj2c]);
+const ag2c = readFileSync(join(proj2c, 'AGENTS.md'), 'utf8');
+if (!ag2c.includes('Always wear a hat.')) fail('init clobbered an existing AGENTS.md');
+if (!ag2c.includes('<!-- fonderie:pointer -->')) fail('init did not append the pointer to an existing AGENTS.md');
 // existing postinstall is chained, not clobbered
 const proj3 = mkdtempSync(join(tmpdir(), 'fonderie-init2-'));
 writeFileSync(join(proj3, 'package.json'), JSON.stringify({ name: 'app', scripts: { postinstall: 'patch-package' } }));
@@ -631,4 +644,4 @@ await (async () => {
   console.log('  ✓ template export · diff · apply (inline vs body files, per-locale, round-trip, whole-template PUT + ifVersion, idempotent, locale-scoped prune, validation)');
 })();
 
-console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall, add guards, config/secret management, config/secret/template manifests)');
+console.log('fonderie CLI test: all assertions passed (skill, query installed/uninstalled, init wires idempotent fresh-keeping postinstall + AGENTS.md pointer, add guards, config/secret management, config/secret/template manifests)');

@@ -200,6 +200,31 @@ function doSkill() {
   }
 }
 
+// AGENTS.md is the one channel every coding agent reads, with or without a
+// skill scanner (Cursor, Aider, and whatever ships next). init leaves a short
+// pointer there so an agent whose skill dir we don't know still finds the
+// catalog. Marker-guarded so repeat inits don't stack copies.
+function writeAgentsPointer(projectDir) {
+  const p = join(projectDir, 'AGENTS.md');
+  const MARKER = '<!-- fonderie:pointer -->';
+  const BLOCK = [
+    MARKER,
+    '## Fonderie bricks',
+    '',
+    'Do not hand-write auth, billing, teams, permissions, email, webhooks, rate',
+    'limiting, or config — use the audited `@fonderie/*` brick. Run',
+    '`npx fonderie query --concepts` for the capability list, then',
+    '`npx fonderie query <concept>` for the package, recipe, and wiring.',
+  ].join('\n');
+  const cur = existsSync(p) ? readFileSync(p, 'utf8') : '';
+  if (cur.includes(MARKER)) {
+    console.log('\n✓ AGENTS.md already points at the catalog.');
+    return;
+  }
+  writeFileSync(p, cur ? cur.trimEnd() + '\n\n' + BLOCK + '\n' : '# AGENTS.md\n\n' + BLOCK + '\n');
+  console.log('\n✓ AGENTS.md now points every agent at `fonderie query --concepts` — skill scanner or not.');
+}
+
 // ── fonderie init — generate the skill AND keep it fresh on install/update ───
 // Freshness by construction (the R3 goal): a `postinstall` regenerates the skill
 // from node_modules every time packages change, so the resident knowledge is
@@ -230,6 +255,7 @@ function doInit() {
     writeFileSync(pjPath, JSON.stringify(pj, null, 2) + '\n');
     console.log(`\n✓ Added \`"postinstall": "${HOOK}"\` — the skill regenerates on every install/update, staying version-matched.`);
   }
+  writeAgentsPointer(projectDir);
 }
 
 // ── fonderie add <capability> — deterministic wiring in ONE command ─────────
@@ -707,6 +733,7 @@ else {
   console.log(`fonderie — the Fonderie CLI (lazy skills for coding agents)
 
   fonderie init [--target <t>] [--project <dir>]   set up the lazy skill + keep it fresh (postinstall)
+                                                   + point AGENTS.md at the catalog, for agents without a skill scanner
   fonderie add <capability> [--project <dir>]      deterministically wire a brick: install + compose + migrate + env
   fonderie env generate [--project <dir>]          write .env.example from the installed bricks' env.json, complete .env
       --example-only (skip .env) · --check (exit 1 if .env.example is out of date — CI) · --force (write .env even if not gitignored)
