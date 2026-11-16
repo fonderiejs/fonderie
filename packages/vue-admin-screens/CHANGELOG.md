@@ -1,5 +1,15 @@
 # @fonderie/vue-admin-screens
 
+## 1.7.3
+
+### Patch Changes
+
+- bb3b876: Ship the co-located brain/ fragment in every frontend package tarball. The fragments were generated at build time but "brain" was missing from package.json files, so the published tarball excluded them — and the CLI's lazy skill pointed agents at per-package body files that could never exist in a consumer's node_modules. Adds a brain-completeness leg so a package with a fragment on disk but not in files fails CI.
+- Updated dependencies [bb3b876]
+  - @fonderie/vue-admin@1.3.1
+  - @fonderie/vue-config-admin-screens@0.8.3
+  - @fonderie/vue-courier-admin-screens@0.11.3
+
 ## 1.7.2
 
 ### Patch Changes
