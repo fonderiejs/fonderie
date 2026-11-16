@@ -1,6 +1,6 @@
 {
 	"name": "@fonderie/react-native-webhooks",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "React Native hooks for Fonderie's outgoing webhooks — re-exports @fonderie/react-webhooks (no platform-specific code: no storage, no DOM/RN APIs).",
 	"keywords": [
 		"fonderiejs",
@@ -34,7 +34,7 @@
 	},
 	"dependencies": {
 		"@fonderie/client": "^3.17.0",
-		"@fonderie/react-webhooks": "^0.6.0"
+		"@fonderie/react-webhooks": "^0.6.1"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0"
