@@ -46,7 +46,7 @@
 		"@types/node": "^26.6.6",
 		"tsup": "^9.0.0",
 		"typescript": "^6.0.3",
-		"vue": "^3.5.45"
+		"vue": "^3.5.46"
 	},
 	"publishConfig": {
 		"access": "public"
